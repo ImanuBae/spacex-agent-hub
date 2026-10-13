@@ -1,0 +1,4 @@
+
+> @spacex/contracts@0.0.0 build
+> tsc -p tsconfig.json
+

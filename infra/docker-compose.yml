@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: spacex
+      RABBITMQ_DEFAULT_PASS: spacex_dev
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+volumes:
+  pgdata:
