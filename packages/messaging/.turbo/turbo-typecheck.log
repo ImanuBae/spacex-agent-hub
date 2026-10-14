@@ -1,4 +1,0 @@
-
-> @spacex/messaging@0.0.0 typecheck
-> tsc -p tsconfig.json --noEmit
-
