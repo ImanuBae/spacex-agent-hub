@@ -8,10 +8,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "lint": "echo lint-todo"
+    "test": "vitest run src --passWithNoTests",
+    "lint": "eslint src"
   },
   "dependencies": {
-    "@spacex/contracts": "*"
+    "@spacex/contracts": "*",
+    "amqplib": "^0.10.9"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.7"
   }
 }
