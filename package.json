@@ -8,7 +8,8 @@
   "workspaces": [
     "packages/*",
     "services/*",
-    "apps/*"
+    "apps/*",
+    "templates/service"
   ],
   "scripts": {
     "dev": "turbo run dev",
@@ -16,9 +17,13 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "check": "turbo run lint typecheck test build"
+    "check": "turbo run lint typecheck test build",
+    "dev:template": "npm run build && npm run dev --workspace=@spacex/service-template",
+    "demo:messaging": "npm run build && npm run demo:messaging --workspace=@spacex/service-template"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
     "eslint": "^10.12.0",
     "prettier": "^3.9.10",
     "turbo": "^2.11.7",

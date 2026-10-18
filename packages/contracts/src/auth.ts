@@ -2,9 +2,9 @@ import { z } from "zod";
 import { Role } from "./roles.js";
 
 export const TokenClaims = z.object({
-  sub: z.string(),
+  sub: z.string().min(1),
   role: Role,
-  branchId: z.string().nullable(),
-  exp: z.number(),
+  branchIds: z.array(z.string().uuid()),
+  exp: z.number().int().positive(),
 });
 export type TokenClaims = z.infer<typeof TokenClaims>;

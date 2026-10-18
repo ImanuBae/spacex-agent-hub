@@ -1,0 +1,26 @@
+{
+  "name": "@spacex/service-template",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --env-file-if-exists=.env --watch dist/index.js",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "demo:messaging": "node --env-file-if-exists=.env dist/messaging-demo.js"
+  },
+  "dependencies": {
+    "@spacex/config": "*",
+    "@spacex/contracts": "*",
+    "@spacex/logger": "*",
+    "@spacex/messaging": "*",
+    "express": "^5.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}
