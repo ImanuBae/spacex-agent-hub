@@ -29,7 +29,11 @@ export default function AuditPage() {
   };
 
   useEffect(() => {
-    loadLogs();
+    const timer = window.setTimeout(() => {
+      void loadLogs();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleClearLogs = async () => {

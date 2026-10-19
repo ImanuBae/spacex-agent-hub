@@ -1,27 +1,27 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import {
-  getAdminProfile,
+  getAdminProfileSnapshot,
+  getServerAdminProfileSnapshot,
+  parseAdminProfileSnapshot,
   PROFILE_UPDATED_EVENT,
   saveAdminProfile,
+  subscribeToAdminProfile,
   type AdminProfile,
 } from "../../../lib/services/profile";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<AdminProfile>({
-    name: "",
-    email: "",
-    phone: "",
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const profileSnapshot = useSyncExternalStore(
+    subscribeToAdminProfile,
+    getAdminProfileSnapshot,
+    getServerAdminProfileSnapshot,
+  );
+  const storedProfile = parseAdminProfileSnapshot(profileSnapshot);
+  const [profileDraft, setProfileDraft] = useState<AdminProfile | null>(null);
+  const profile = profileDraft ?? storedProfile;
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    setProfile(getAdminProfile());
-    setIsLoading(false);
-  }, []);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,7 +39,7 @@ export default function ProfilePage() {
 
     try {
       saveAdminProfile(updatedProfile);
-      setProfile(updatedProfile);
+      setProfileDraft(updatedProfile);
       setErrorMessage("");
       setSuccessMessage("Thông tin cá nhân đã được cập nhật.");
       window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
@@ -49,10 +49,6 @@ export default function ProfilePage() {
       setErrorMessage("Không thể lưu thông tin cá nhân. Vui lòng thử lại.");
     }
   };
-
-  if (isLoading) {
-    return <p className="text-sm text-slate-500">Đang tải thông tin cá nhân...</p>;
-  }
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
@@ -99,7 +95,7 @@ export default function ProfilePage() {
             required
             value={profile.name}
             onChange={(event) => {
-              setProfile({ ...profile, name: event.target.value });
+              setProfileDraft({ ...profile, name: event.target.value });
               setSuccessMessage("");
             }}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -119,7 +115,7 @@ export default function ProfilePage() {
             required
             value={profile.email}
             onChange={(event) => {
-              setProfile({ ...profile, email: event.target.value });
+              setProfileDraft({ ...profile, email: event.target.value });
               setSuccessMessage("");
             }}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -138,7 +134,7 @@ export default function ProfilePage() {
             type="tel"
             value={profile.phone}
             onChange={(event) => {
-              setProfile({ ...profile, phone: event.target.value });
+              setProfileDraft({ ...profile, phone: event.target.value });
               setSuccessMessage("");
             }}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"

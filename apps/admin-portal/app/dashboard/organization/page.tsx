@@ -16,9 +16,9 @@ export default function OrganizationPage() {
   const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(
     null,
   );
-  const [deletingDepartmentId, setDeletingDepartmentId] = useState<number | null>(
-    null,
-  );
+  const [deletingDepartmentId, setDeletingDepartmentId] = useState<
+    number | null
+  >(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -29,7 +29,6 @@ export default function OrganizationPage() {
 
   const loadDepartments = async () => {
     try {
-      setIsLoading(true);
       const data = await organizationService.getAllDepartments();
       setDepartments(data);
     } catch (error) {
@@ -45,7 +44,30 @@ export default function OrganizationPage() {
   };
 
   useEffect(() => {
-    loadDepartments();
+    let isActive = true;
+
+    organizationService
+      .getAllDepartments()
+      .then((data) => {
+        if (isActive) setDepartments(data);
+      })
+      .catch((error) => {
+        console.error("Lỗi tải danh sách phòng ban:", error);
+        if (isActive) {
+          setErrorMessage(
+            error instanceof Error
+              ? `Không thể tải danh sách phòng ban: ${error.message}`
+              : "Không thể tải danh sách phòng ban.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const openCreateModal = () => {

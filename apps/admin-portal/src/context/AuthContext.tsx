@@ -1,7 +1,7 @@
 // apps/admin-portal/src/context/AuthContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import type { Role } from "@/types/roles";
 
 interface AuthContextType {
@@ -12,14 +12,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<Role>("center_director");
-
-  useEffect(() => {
-    const savedRole = localStorage.getItem("mock_user_role") as Role;
-    if (savedRole) {
-      setRoleState(savedRole);
+  const [role, setRoleState] = useState<Role>(() => {
+    if (typeof window === "undefined") {
+      return "center_director";
     }
-  }, []);
+    return (localStorage.getItem("mock_user_role") as Role) || "center_director";
+  });
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
