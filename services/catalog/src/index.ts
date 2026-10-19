@@ -1,10 +1,11 @@
 import { loadConfig } from "@spacex/config";
 import { createLogger } from "@spacex/logger";
 import { createApp } from "./app.js";
+import { registerCatalogRoutes } from "./routes.js";
 
 const config = loadConfig();
 const logger = createLogger(config.SERVICE_NAME);
-const server = createApp(config.SERVICE_NAME).listen(config.PORT, config.HOST, () => {
+const server = createApp(config.SERVICE_NAME, registerCatalogRoutes).listen(config.PORT, config.HOST, () => {
   logger.info("service.started", { host: config.HOST, port: config.PORT });
 });
 server.on("error", (error) => {

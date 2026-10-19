@@ -68,3 +68,64 @@ npm run db:seed --workspace=@spacex/catalog
 docker compose -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "\dt"
 docker compose -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "SELECT code, name, price_vnd, status FROM courses;"
 ```
+
+## API Catalog (BE-02)
+
+Hợp đồng đầy đủ: [quy ước phát triển](../../docs/quy-uoc-phat-trien.md). Schema đầu vào dùng `CourseInput`, `CoursePackageInput`, `ListQuery` từ `@spacex/contracts`. Chưa có xác thực (IAM làm sau): API chỉ dùng để demo local.
+
+### Chạy server
+
+Cần PostgreSQL đang chạy và đã `db:migrate`, `db:seed` (xem mục trên). Từ root repo:
+
+```powershell
+npm run build --workspace=@spacex/catalog
+npm start --workspace=@spacex/catalog
+```
+
+Server nghe ở `http://127.0.0.1:4001`. `start` chạy `dist/`, nên sửa code TypeScript xong phải build lại và khởi động lại.
+
+### Endpoint
+
+| Method | Path | Thành công | Lỗi có thể gặp |
+|---|---|---|---|
+| GET | `/health` | 200 | |
+| POST | `/api/v1/courses` | 201 `{ data }` | 400, 409 (trùng `code`) |
+| GET | `/api/v1/courses?page=1&pageSize=20` | 200 `{ data, pagination }` | 400 |
+| GET | `/api/v1/courses/:id` | 200 `{ data }` | 400 (id không phải UUID), 404 |
+| PUT | `/api/v1/courses/:id` | 200 `{ data }` | 400, 404, 409 |
+| POST | `/api/v1/packages` | 201 `{ data }` | 400, 404 (`courseId` không tồn tại), 409 (trùng `code`) |
+| GET | `/api/v1/packages?page=1&pageSize=20` | 200 `{ data, pagination }` | 400 |
+| GET | `/api/v1/packages/:id` | 200 `{ data }` | 400, 404 |
+| PUT | `/api/v1/packages/:id` | 200 `{ data }` | 400, 404 (id hoặc `courseId` mới không tồn tại), 409 |
+
+- `PUT` thay toàn bộ các trường (chưa có PATCH); gửi đủ dữ liệu, trường có giá trị mặc định sẽ về mặc định nếu bỏ qua. `id` và `createdAt` được giữ nguyên, `updatedAt` được cập nhật.
+- Danh sách sắp `createdAt DESC, id DESC`, `pageSize` tối đa 100, trả mọi trạng thái (`draft`, `active`, `closed`), chưa có bộ lọc.
+- `priceVnd` và `pagination.total` là số. Chưa có `DELETE`.
+- Lỗi theo dạng `{ "error": { "code", "message", "details"? }, "correlationId" }`; `code` là `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT` hoặc `INTERNAL_ERROR`.
+
+### Gọi thử (PowerShell)
+
+```powershell
+$base = "http://127.0.0.1:4001"
+$body = @{ code = "DEMO-1"; name = "Khoa demo"; goal = "Thu API"; level = "beginner"; deliveryModes = @("online"); priceVnd = 1500000 } | ConvertTo-Json
+$course = Invoke-RestMethod -Method Post -Uri "$base/api/v1/courses" -ContentType "application/json" -Body $body
+$pkg = @{ courseId = $course.data.id; code = "DEMO-PKG-1"; name = "Goi 12 buoi"; sessionCount = 12; priceVnd = 1200000 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "$base/api/v1/packages" -ContentType "application/json" -Body $pkg
+Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=20"
+```
+
+`Invoke-RestMethod` ném lỗi khi gặp 4xx; dùng `Invoke-WebRequest` trong `try/catch` nếu cần xem mã và nội dung lỗi. Dữ liệu tạo qua API không xóa được bằng API; dọn bằng psql nếu cần.
+
+### Test
+
+```powershell
+npm test --workspace=@spacex/catalog
+```
+
+Test API chạm PostgreSQL thật nằm ở `src/routes.test.ts` và **chỉ chạy khi có biến `CATALOG_TEST_DATABASE_URL`** (CI hiện chưa có PostgreSQL nên tự bỏ qua). Chạy cục bộ:
+
+```powershell
+$env:CATALOG_TEST_DATABASE_URL = "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog"; npm test --workspace=@spacex/catalog
+```
+
+Mỗi lần chạy dùng mã `code` riêng, tự xóa dữ liệu test khi xong và không phụ thuộc dữ liệu seed.
