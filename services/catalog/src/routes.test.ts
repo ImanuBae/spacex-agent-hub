@@ -109,6 +109,27 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
             expect(status).toBe(409);
             expect(body.error.code).toBe("CONFLICT");
         });
+
+        it("rejects unknown fields (strict mode)", async () => {
+            const { status, body } = await call("POST", "/api/v1/courses",
+                courseBody("strict", { extraField: "should be rejected" }));
+            expect(status).toBe(400);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
+        });
+
+        it("rejects empty deliveryModes", async () => {
+            const { status, body } = await call("POST", "/api/v1/courses",
+                courseBody("empty-dm", { deliveryModes: [] }));
+            expect(status).toBe(400);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
+        });
+
+        it("rejects invalid level enum", async () => {
+            const { status, body } = await call("POST", "/api/v1/courses",
+                courseBody("bad-level", { level: "expert" }));
+            expect(status).toBe(400);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
+        });
     });
 
     describe("packages", () => {
@@ -151,6 +172,20 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
         it("returns 409 when updating to another package's code", async () => {
             await call("POST", "/api/v1/packages", packageBody(courseA.id, "taken"));
             expect((await call("PUT", `/api/v1/packages/${packageA.id}`, packageBody(courseA.id, "taken"))).status).toBe(409);
+        });
+        it("rejects invalid package data", async () => {
+            const { status, body } = await call("POST", "/api/v1/packages",
+                { courseId: courseA.id, code: "", name: "", sessionCount: 0, priceVnd: -1 });
+            expect(status).toBe(400);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
+            expect(body.error.details).toEqual(
+                expect.arrayContaining([expect.objectContaining({ path: "sessionCount" })]));
+        });
+        it("rejects unknown fields on package (strict mode)", async () => {
+            const { status, body } = await call("POST", "/api/v1/packages",
+                packageBody(courseA.id, "pkg-strict", { extra: true }));
+            expect(status).toBe(400);
+            expect(body.error.code).toBe("VALIDATION_ERROR");
         });
     });
 });

@@ -113,19 +113,214 @@ $pkg = @{ courseId = $course.data.id; code = "DEMO-PKG-1"; name = "Goi 12 buoi";
 Invoke-RestMethod -Method Post -Uri "$base/api/v1/packages" -ContentType "application/json" -Body $pkg
 Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=20"
 ```
+# Thử phân trang (seed có 4 khóa, pageSize=2 sẽ chia thành 2 trang)
+Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=2"
 
 `Invoke-RestMethod` ném lỗi khi gặp 4xx; dùng `Invoke-WebRequest` trong `try/catch` nếu cần xem mã và nội dung lỗi. Dữ liệu tạo qua API không xóa được bằng API; dọn bằng psql nếu cần.
+
+### Ví dụ Payload & Response từng Endpoint
+
+Tất cả phản hồi thành công bọc trong `{ "data": ... }` (kèm `"pagination"` với danh sách). Mọi phản hồi lỗi tuân theo chuẩn: `{ "error": { "code", "message", "details"? }, "correlationId" }`.
+
+#### 1. Khóa học (Courses)
+
+- **`POST /api/v1/courses`** (Tạo khóa học)
+  - Request:
+    ```json
+    {
+      "code": "PROG-JS-01",
+      "name": "JavaScript căn bản cho người mới",
+      "description": "Biến, hàm, DOM, Async/Await",
+      "goal": "Làm chủ JavaScript cơ bản",
+      "level": "beginner",
+      "deliveryModes": ["online", "onsite"],
+      "branchIds": [],
+      "priceVnd": 1500000,
+      "status": "draft"
+    }
+    ```
+  - Response `201 Created`:
+    ```json
+    {
+      "data": {
+        "id": "e814d3f3-0fb6-407b-8ff8-043329241b71",
+        "code": "PROG-JS-01",
+        "name": "JavaScript căn bản cho người mới",
+        "description": "Biến, hàm, DOM, Async/Await",
+        "goal": "Làm chủ JavaScript cơ bản",
+        "level": "beginner",
+        "deliveryModes": ["online", "onsite"],
+        "branchIds": [],
+        "priceVnd": 1500000,
+        "status": "draft",
+        "createdAt": "2026-10-20T08:00:00.000Z",
+        "updatedAt": "2026-10-20T08:00:00.000Z"
+      }
+    }
+    ```
+
+- **`GET /api/v1/courses?page=1&pageSize=20`** (Danh sách khóa học)
+  - Response `200 OK`:
+    ```json
+    {
+      "data": [
+        {
+          "id": "e814d3f3-0fb6-407b-8ff8-043329241b71",
+          "code": "PROG-JS-01",
+          "name": "JavaScript căn bản cho người mới",
+          "description": "Biến, hàm, DOM, Async/Await",
+          "goal": "Làm chủ JavaScript cơ bản",
+          "level": "beginner",
+          "deliveryModes": ["online", "onsite"],
+          "branchIds": [],
+          "priceVnd": 1500000,
+          "status": "draft",
+          "createdAt": "2026-10-20T08:00:00.000Z",
+          "updatedAt": "2026-10-20T08:00:00.000Z"
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "pageSize": 20,
+        "total": 1,
+        "totalPages": 1
+      }
+    }
+    ```
+
+- **`GET /api/v1/courses/:id`** (Chi tiết khóa học)
+  - Response `200 OK`: Trả về `{ "data": { ... } }` như trên.
+  - Response `404 Not Found`:
+    ```json
+    {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "Course not found"
+      },
+      "correlationId": "req-1234"
+    }
+    ```
+
+- **`PUT /api/v1/courses/:id`** (Cập nhật toàn bộ khóa học)
+  - Gửi body đầy đủ các trường cần cập nhật (giống `POST`).
+  - Response `200 OK`: Trả về `{ "data": { ... } }` với `updatedAt` được làm mới.
+
+#### 2. Gói học (Packages)
+
+- **`POST /api/v1/packages`** (Tạo gói học gắn với một khóa)
+  - Request:
+    ```json
+    {
+      "courseId": "e814d3f3-0fb6-407b-8ff8-043329241b71",
+      "code": "PROG-JS-01-PK12",
+      "name": "Gói tiêu chuẩn 12 buổi",
+      "sessionCount": 12,
+      "priceVnd": 1500000,
+      "status": "draft"
+    }
+    ```
+  - Response `201 Created`:
+    ```json
+    {
+      "data": {
+        "id": "7b05536b-67df-4b72-a08b-6fa8cf835338",
+        "courseId": "e814d3f3-0fb6-407b-8ff8-043329241b71",
+        "code": "PROG-JS-01-PK12",
+        "name": "Gói tiêu chuẩn 12 buổi",
+        "sessionCount": 12,
+        "priceVnd": 1500000,
+        "status": "draft",
+        "createdAt": "2026-10-20T08:05:00.000Z",
+        "updatedAt": "2026-10-20T08:05:00.000Z"
+      }
+    }
+    ```
+
+- **`GET /api/v1/packages?page=1&pageSize=20`** (Danh sách gói học)
+  - Response `200 OK`: Trả về `{ "data": [...], "pagination": { ... } }`.
+
+- **`GET /api/v1/packages/:id`** (Chi tiết gói học)
+  - Response `200 OK` hoặc `404 Not Found`.
+
+- **`PUT /api/v1/packages/:id`** (Cập nhật gói học)
+  - Request: Cung cấp đầy đủ các trường (`courseId`, `code`, `name`, `sessionCount`, `priceVnd`, `status`).
+
+### Mã lỗi chuẩn (Error Codes)
+
+| HTTP Status | Error Code (`error.code`) | Khi nào xảy ra | Ví dụ `details` |
+|---|---|---|---|
+| **400** | `VALIDATION_ERROR` | Thiếu trường, sai kiểu (`priceVnd` âm, `level` không hợp lệ, id không phải UUID) | `[{ "path": ["level"], "message": "Invalid enum value" }]` |
+| **404** | `NOT_FOUND` | Khóa/gói không tìm thấy; hoặc `courseId` trong gói không tồn tại | — |
+| **409** | `CONFLICT` | Mã `code` đã tồn tại | — |
+| **500** | `INTERNAL_ERROR` | Lỗi database hoặc sự cố server | Không trả stack trace |
+
+### Dữ liệu Seed sẵn có (Local / Demo)
+
+Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
+
+**Khóa học (`courses`):**
+
+| code | name | level | status | priceVnd |
+|---|---|---|---|---|
+| `OFFICE-BASIC` | Tin học văn phòng cơ bản | beginner | draft | 1 500 000 |
+| `GRAPHIC-DESIGN` | Thiết kế đồ hoạ với Canva & Photoshop | beginner | active | 2 000 000 |
+| `DATA-ANALYSIS` | Phân tích dữ liệu với Excel nâng cao | intermediate | active | 3 000 000 |
+| `WEB-FULLSTACK` | Lập trình Web Fullstack | advanced | draft | 5 000 000 |
+
+**Gói học (`course_packages`):**
+
+| code | name | courseCode | sessionCount | status | priceVnd |
+|---|---|---|---|---|---|
+| `OFFICE-12` | Gói 12 buổi | OFFICE-BASIC | 12 | draft | 1 500 000 |
+| `GRAPHIC-8` | Gói 8 buổi | GRAPHIC-DESIGN | 8 | active | 2 000 000 |
+| `DATA-16` | Gói 16 buổi chuyên sâu | DATA-ANALYSIS | 16 | active | 3 000 000 |
+
+### Lưu ý cho Frontend (FE) tích hợp
+
+1. **CORS và Reverse Proxy**:
+   - Catalog **không** bật CORS middleware (theo `docs/quy-uoc-phat-trien.md`).
+   - Next.js (`admin-portal`) cần cấu hình **rewrites** trong `next.config.mjs`:
+     ```javascript
+     async rewrites() {
+       return [
+         {
+           source: '/api/catalog/:path*',
+           destination: 'http://127.0.0.1:4001/api/v1/:path*',
+         },
+       ];
+     }
+     ```
+   - Trình duyệt gọi `fetch('/api/catalog/courses')` cùng domain → không lỗi CORS.
+
+2. **`PUT` thay toàn bộ**: Gửi đủ payload như `POST`. Trường tùy chọn bị bỏ sẽ về mặc định. Chưa có `PATCH`.
+
+3. **`priceVnd` là số**: Backend serialize `BIGINT` → `number` trong JSON. FE format tiền bằng `Number.prototype.toLocaleString('vi-VN')`.
+
+4. **Chưa cần Auth**: Giai đoạn hiện tại không yêu cầu JWT/Session header.
+
+### Khởi động nhanh Catalog cho FE
+
+```powershell
+# 1. Bật PostgreSQL
+docker compose -f infra/docker-compose.yml up -d postgres
+
+# 2. Migration + Seed
+npm run db:migrate --workspace=@spacex/catalog
+npm run db:seed --workspace=@spacex/catalog
+
+# 3. Build & chạy (cổng 4001)
+npm run build --workspace=@spacex/catalog
+npm start --workspace=@spacex/catalog
+```
 
 ### Test
 
 ```powershell
+# Unit test (không cần DB)
 npm test --workspace=@spacex/catalog
-```
 
-Test API chạm PostgreSQL thật nằm ở `src/routes.test.ts` và **chỉ chạy khi có biến `CATALOG_TEST_DATABASE_URL`** (CI hiện chưa có PostgreSQL nên tự bỏ qua). Chạy cục bộ:
-
-```powershell
+# Test tích hợp kèm PostgreSQL thật
 $env:CATALOG_TEST_DATABASE_URL = "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog"; npm test --workspace=@spacex/catalog
 ```
 
-Mỗi lần chạy dùng mã `code` riêng, tự xóa dữ liệu test khi xong và không phụ thuộc dữ liệu seed.
+Test dùng mã `code` riêng, tự xóa dữ liệu khi xong, không phụ thuộc seed.
