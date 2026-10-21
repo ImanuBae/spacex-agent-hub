@@ -13,6 +13,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - name: Remove lockfile to regenerate for Linux
+        run: rm -f package-lock.json
       - run: npm install --include=optional
       - run: npm run check
   messaging:
@@ -36,6 +38,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - name: Remove lockfile to regenerate for Linux
+        run: rm -f package-lock.json
       - run: npm install --include=optional
       - run: npm run demo:messaging
       - run: npm test --workspace=@spacex/messaging
