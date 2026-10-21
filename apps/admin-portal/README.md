@@ -1,36 +1,22 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Admin Portal (`@spacex/admin-portal`)
 
-## Getting Started
+Hệ thống quản trị viên (Admin Portal) được xây dựng trên nền tảng Next.js (App Router), TypeScript và Tailwind CSS, tích hợp mô hình dữ liệu cục bộ (`localStorage`) cho phép quản lý toàn diện các module vận hành.
 
-First, run the development server:
+### Các tính năng chính
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Dashboard Overview**: Thống kê KPI trực quan và theo dõi hoạt động gần đây.
+- **Courses**: Quản lý danh sách khóa học và lịch trình đào tạo.
+- **Finance**: Quản lý tài chính, giao dịch và báo cáo doanh thu.
+- **Mailbox**: Hệ thống hộp thư và trao đổi thông tin.
+- **Leads**: Quản lý học viên tiềm năng và trạng thái đăng ký.
+- **Organization**: Sơ đồ cấu trúc tổ chức, phòng ban và nhân sự.
+- **Audit Logs**: Nhật ký hệ thống ghi nhận lịch sử thao tác của quản trị viên.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Hướng dẫn cài đặt và chạy ứng dụng
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Cài đặt dependencies từ thư mục gốc monorepo:**
+   ```bash
+   npm install
+   ```
+2. Chạy môi trường phát triển (Development) cho Admin Portal:
+   npm run dev
