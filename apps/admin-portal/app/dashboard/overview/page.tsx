@@ -13,28 +13,70 @@ export default function OverviewPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchDashboardData() {
-      try {
-        setIsLoading(true);
-        const [cData, fData, mData, lData] = await Promise.all([
-          courseService.getAllCourses(),
-          financeService.getAllTransactions(),
-          mailboxService.getAllMessages(),
-          leadService.getAllLeads(),
-        ]);
-        setCourses(cData);
-        setTransactions(fData);
-        setMessages(mData);
-        setLeads(lData);
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu tổng quan:", error);
-      } finally {
-        setIsLoading(false);
+      const results = await Promise.allSettled([
+        courseService.getAllCourses(),
+        financeService.getAllTransactions(),
+        mailboxService.getAllMessages(),
+        leadService.getAllLeads(),
+      ] as const);
+
+      if (!isMounted) return;
+
+      const [coursesResult, transactionsResult, messagesResult, leadsResult] =
+        results;
+
+      if (coursesResult.status === "fulfilled") {
+        setCourses(coursesResult.value);
+        setCourseLoadError(null);
+      } else {
+        setCourseLoadError(
+          coursesResult.reason instanceof Error
+            ? coursesResult.reason.message
+            : "Không thể tải dữ liệu khóa học.",
+        );
       }
+
+      if (transactionsResult.status === "fulfilled") {
+        setTransactions(transactionsResult.value);
+      } else {
+        console.error(
+          "Lỗi khi tải giao dịch cho trang tổng quan:",
+          transactionsResult.reason,
+        );
+      }
+
+      if (messagesResult.status === "fulfilled") {
+        setMessages(messagesResult.value);
+      } else {
+        console.error(
+          "Lỗi khi tải tin nhắn cho trang tổng quan:",
+          messagesResult.reason,
+        );
+      }
+
+      if (leadsResult.status === "fulfilled") {
+        setLeads(leadsResult.value);
+      } else {
+        console.error(
+          "Lỗi khi tải leads cho trang tổng quan:",
+          leadsResult.reason,
+        );
+      }
+
+      setIsLoading(false);
     }
+
     fetchDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Tính toán số liệu thống kê
@@ -87,10 +129,13 @@ export default function OverviewPage() {
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-2">
           <p className="text-sm font-medium text-slate-500">Tổng số Khóa học</p>
           <h3 className="text-3xl font-bold text-slate-800">
-            {isLoading ? "..." : courses.length}
+            {isLoading ? "..." : courseLoadError ? "—" : courses.length}
           </h3>
-          <p className="text-xs text-blue-600 font-medium">
-            Khóa học đang vận hành
+          <p
+            className={`text-xs font-medium ${courseLoadError ? "text-red-600" : "text-blue-600"}`}
+            role={courseLoadError ? "status" : undefined}
+          >
+            {courseLoadError || "Khóa học đang vận hành"}
           </p>
         </div>
 
