@@ -30,5 +30,8 @@ Hệ thống quản trị viên (Admin Portal) được xây dựng trên nền 
 1. Tạo file `.env.local` tại thư mục `apps/admin-portal/`.
 2. Khai báo biến cấu hình:
    ```env
-   NEXT_PUBLIC_ENABLE_MOCK=true
+# Bật/tắt chế độ Mock cho Admin Portal (true/false)
+NEXT_PUBLIC_ENABLE_MOCK=true
+NEXT_PUBLIC_API_URL=http://127.0.0.1:4001
+
    ```
