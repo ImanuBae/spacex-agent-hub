@@ -6,8 +6,11 @@ import { createApp } from "./app.js";
 import type * as ClientModule from "./db/client.js";
 import { coursePackages, courses } from "./db/schema.js";
 
-// Test chạm DB thật: chỉ chạy khi có CATALOG_TEST_DATABASE_URL (CI hiện chưa có PostgreSQL).
-const testDatabaseUrl = process.env.CATALOG_TEST_DATABASE_URL;
+// Test chạm DB thật: ưu tiên CATALOG_TEST_DATABASE_URL, fallback sang DATABASE_URL từ .env
+const testDatabaseUrl = process.env.CATALOG_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!testDatabaseUrl) {
+    console.warn("\n⚠️ [CATALOG TEST] 21 tests DB bị bỏ qua do thiếu biến CATALOG_TEST_DATABASE_URL hoặc DATABASE_URL. Để chạy: bật Postgres và chạy npm run test:db hoặc truyền biến môi trường.\n");
+}
 // Mã duy nhất cho mỗi lần chạy, để không đụng seed hay các lần chạy trước.
 const prefix = `T${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const GHOST = "00000000-0000-4000-8000-000000000000";

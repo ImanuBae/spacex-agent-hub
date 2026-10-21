@@ -49,7 +49,8 @@ npm run db:seed --workspace=@spacex/catalog
 
 - `db:generate`: sinh file migration mới trong `drizzle/` từ `src/db/schema.ts`. Chỉ cần chạy khi sửa schema; không kết nối database.
 - `db:migrate`: áp dụng các migration chưa chạy vào database. Chạy lại nhiều lần an toàn.
-- `db:seed`: nạp khóa `OFFICE-BASIC` và gói `OFFICE-12` theo ví dụ trong `docs/quy-uoc-phat-trien.md`. Chạy lại nhiều lần an toàn (bỏ qua `code` đã có).
+- `db:seed`: nạp 4 khóa học và 3 gói học mẫu. Chạy lại nhiều lần an toàn (bỏ qua `code` đã có).
+
 
 Đã áp dụng hoặc commit migration thì không sửa tay file đó. Muốn đổi cấu trúc, sửa `schema.ts` rồi chạy `db:generate` để tạo migration mới.
 
@@ -112,9 +113,9 @@ $course = Invoke-RestMethod -Method Post -Uri "$base/api/v1/courses" -ContentTyp
 $pkg = @{ courseId = $course.data.id; code = "DEMO-PKG-1"; name = "Goi 12 buoi"; sessionCount = 12; priceVnd = 1200000 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$base/api/v1/packages" -ContentType "application/json" -Body $pkg
 Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=20"
-```
 # Thử phân trang (seed có 4 khóa, pageSize=2 sẽ chia thành 2 trang)
 Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=2"
+```
 
 `Invoke-RestMethod` ném lỗi khi gặp 4xx; dùng `Invoke-WebRequest` trong `try/catch` nếu cần xem mã và nội dung lỗi. Dữ liệu tạo qua API không xóa được bằng API; dọn bằng psql nếu cần.
 
@@ -182,8 +183,7 @@ Tất cả phản hồi thành công bọc trong `{ "data": ... }` (kèm `"pagin
       "pagination": {
         "page": 1,
         "pageSize": 20,
-        "total": 1,
-        "totalPages": 1
+        "total": 1
       }
     }
     ```
@@ -249,7 +249,7 @@ Tất cả phản hồi thành công bọc trong `{ "data": ... }` (kèm `"pagin
 
 | HTTP Status | Error Code (`error.code`) | Khi nào xảy ra | Ví dụ `details` |
 |---|---|---|---|
-| **400** | `VALIDATION_ERROR` | Thiếu trường, sai kiểu (`priceVnd` âm, `level` không hợp lệ, id không phải UUID) | `[{ "path": ["level"], "message": "Invalid enum value" }]` |
+| **400** | `VALIDATION_ERROR` | Thiếu trường, sai kiểu (`priceVnd` âm, `level` không hợp lệ, id không phải UUID) | `[{ "path": "level", "message": "Invalid option: expected one of \"beginner\"|\"intermediate\"|\"advanced\"" }]` |
 | **404** | `NOT_FOUND` | Khóa/gói không tìm thấy; hoặc `courseId` trong gói không tồn tại | — |
 | **409** | `CONFLICT` | Mã `code` đã tồn tại | — |
 | **500** | `INTERNAL_ERROR` | Lỗi database hoặc sự cố server | Không trả stack trace |
@@ -279,18 +279,19 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 
 1. **CORS và Reverse Proxy**:
    - Catalog **không** bật CORS middleware (theo `docs/quy-uoc-phat-trien.md`).
-   - Next.js (`admin-portal`) cần cấu hình **rewrites** trong `next.config.mjs`:
+   - Cấu hình rewrite thuộc quyền sở hữu của Dev 1 tại `apps/admin-portal/next.config.mjs`. Ví dụ cấu hình tham khảo theo đúng quy ước dòng 138:
      ```javascript
+     const catalogUrl = process.env.CATALOG_API_URL || 'http://127.0.0.1:4001';
      async rewrites() {
        return [
          {
-           source: '/api/catalog/:path*',
-           destination: 'http://127.0.0.1:4001/api/v1/:path*',
+           source: '/api/v1/:path*',
+           destination: `${catalogUrl}/api/v1/:path*`,
          },
        ];
      }
      ```
-   - Trình duyệt gọi `fetch('/api/catalog/courses')` cùng domain → không lỗi CORS.
+   - Trình duyệt gọi đường dẫn tương đối cùng origin (ví dụ `fetch('/api/v1/courses')`) → không bị lỗi CORS.
 
 2. **`PUT` thay toàn bộ**: Gửi đủ payload như `POST`. Trường tùy chọn bị bỏ sẽ về mặc định. Chưa có `PATCH`.
 
@@ -316,11 +317,32 @@ npm start --workspace=@spacex/catalog
 ### Test
 
 ```powershell
-# Unit test (không cần DB)
-npm test --workspace=@spacex/catalog
+# 1. Chạy test tích hợp kèm PostgreSQL thật (tự động đọc DATABASE_URL từ .env)
+npm run test:db --workspace=@spacex/catalog
 
-# Test tích hợp kèm PostgreSQL thật
+# 2. Hoặc truyền biến môi trường thủ công
 $env:CATALOG_TEST_DATABASE_URL = "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog"; npm test --workspace=@spacex/catalog
+
+# 3. Unit test (khi không có DB, tự động skip an toàn cho CI)
+npm test --workspace=@spacex/catalog
 ```
 
 Test dùng mã `code` riêng, tự xóa dữ liệu khi xong, không phụ thuộc seed.
+
+## Nghiệm thu Runtime (Kiểm tra thực tế 21/10/2026)
+
+| Mã TC | Hạng mục | Mục tiêu & Lệnh kiểm tra | Kết quả thực tế | Đánh giá |
+|:---:|:---:|---|---|:---:|
+| **TC-01** | BE-01 | Migration DB trống (`catalog_verify`) | Migration completed | **Đạt** |
+| **TC-02** | BE-01 | Migration chạy lần 2 an toàn (idempotent) | Migration completed (mã thoát 0) | **Đạt** |
+| **TC-03** | BE-01 | Seed chạy 2 lần không nhân đôi | Đúng 4 courses, 3 packages | **Đạt** |
+| **TC-04** | BE-01 | Ràng buộc DB (psql): giá âm, trùng code, FK ảo | Ném lỗi 23514, 23505, 23503 | **Đạt** |
+| **TC-05** | BE-02 | Tạo và xem khóa (POST & GET /courses/:id) | 201 Created (id UUID, priceVnd dạng số) | **Đạt** |
+| **TC-06** | BE-02 | Bắt lỗi dữ liệu sai (400, 404, 409) | 400 VALIDATION_ERROR, details.path là chuỗi | **Đạt** |
+| **TC-07** | BE-02 | Phân trang GET /courses?page=1&pageSize=2 | Trả 2 bản ghi, pagination có page, pageSize, total | **Đạt** |
+| **TC-08** | BE-02 | Cập nhật PUT thay thế toàn bộ khóa | 200 OK, đổi tên & giá, giữ nguyên createdAt | **Đạt** |
+| **TC-09** | BE-02 | CRUD gói học (POST, GET, PUT /packages) | Tạo gói 201, đọc 200, cập nhật 200 | **Đạt** |
+| **TC-10** | BE-02 | Dữ liệu còn sau khi tắt/bật lại server API | Đọc lại dữ liệu thành công qua HTTP 200 | **Đạt** |
+| **TC-11** | BE-02 | Sống sót sau restart container Postgres | Container restart 0.4s, API tự kết nối lại | **Đạt** |
+| **TC-12** | BE-03 | Test tự động `npm run test:db` (có Postgres) | 26 passed (26), 0 skipped (2.19s) | **Đạt** |
+| **TC-13** | BE-03 | Kiểm tra Monorepo `npm run check` | Tasks: 28 successful, 28 total (4.26s) | **Đạt** |
