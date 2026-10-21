@@ -27,6 +27,10 @@ export default function CoursesPage() {
     try {
       setIsLoading(true);
       setLoadError(null);
+
+      // Giả lập độ trễ mạng 1 giây để kiểm chứng rõ trạng thái Loading trên giao diện
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const data = await courseService.getAllCourses();
       setCourses(data);
     } catch (error) {
@@ -44,15 +48,16 @@ export default function CoursesPage() {
   useEffect(() => {
     let isMounted = true;
 
-    courseService
-      .getAllCourses()
-      .then((data) => {
+    const initFetch = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const data = await courseService.getAllCourses();
         if (isMounted) {
           setCourses(data);
-          setLoadError(null);
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         console.error("Lỗi khi tải danh sách khóa học:", error);
         if (isMounted) {
           setLoadError(
@@ -61,12 +66,14 @@ export default function CoursesPage() {
               : "Không thể tải danh sách khóa học.",
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) {
           setIsLoading(false);
         }
-      });
+      }
+    };
+
+    initFetch();
 
     return () => {
       isMounted = false;
@@ -251,7 +258,6 @@ export default function CoursesPage() {
                     <td className="break-words px-5 py-4">
                       {course.instructor}
                     </td>
-                    {/* Áp dụng hàm formatCurrency để hiển thị giá tiền kèm chữ "đ" */}
                     <td className="whitespace-nowrap px-5 py-4 font-semibold text-blue-600">
                       {formatCurrency(course.price)}
                     </td>

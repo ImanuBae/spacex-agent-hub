@@ -20,3 +20,15 @@ Hệ thống quản trị viên (Admin Portal) được xây dựng trên nền 
    ```
 2. Chạy môi trường phát triển (Development) cho Admin Portal:
    npm run dev
+
+## Cấu hình Môi trường & Mock Mode
+
+Ứng dụng hỗ trợ chế độ Mock (giả lập dữ liệu) phục vụ cho quá trình phát triển giao diện và kiểm thử độc lập mà chưa cần kết nối Backend đầy đủ.
+
+### Cách cấu hình:
+
+1. Tạo file `.env.local` tại thư mục `apps/admin-portal/`.
+2. Khai báo biến cấu hình:
+   ```env
+   NEXT_PUBLIC_ENABLE_MOCK=true
+   ```
