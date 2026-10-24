@@ -13,6 +13,33 @@ export function createApp(service: string, registerRoutes?: (app: express.Expres
   const app = express();
   const logger = createLogger(service);
   app.disable("x-powered-by");
+  const allowedOrigins = new Set(
+    (
+      process.env.CORS_ALLOWED_ORIGINS ??
+      "http://localhost:3000,http://127.0.0.1:3000"
+    )
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+  app.use((req, res, next) => {
+    const origin = req.get("origin");
+    const isAllowedOrigin = origin !== undefined && allowedOrigins.has(origin);
+    res.vary("Origin");
+
+    if (isAllowedOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    }
+
+    if (req.method === "OPTIONS") {
+      res.sendStatus(isAllowedOrigin ? 204 : 403);
+      return;
+    }
+
+    next();
+  });
   app.use((req, res, next) => {
     const incoming = req.get("x-correlation-id");
     const correlationId = incoming && /^[a-zA-Z0-9_-]{1,128}$/.test(incoming) ? incoming : randomUUID();
