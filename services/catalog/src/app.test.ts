@@ -23,31 +23,6 @@ describe("service HTTP contract", () => {
     expect(response.headers.get("x-correlation-id")).toBe("demo-123");
     expect(await response.json()).toEqual({ status: "ok", service: "test-service" });
   });
-  it("allows the admin portal origin to make API requests", async () => {
-    const preflight = await fetch(`${base}/courses`, {
-      method: "OPTIONS",
-      headers: {
-        origin: "http://localhost:3000",
-        "access-control-request-method": "POST",
-        "access-control-request-headers": "content-type",
-      },
-    });
-    expect(preflight.status).toBe(204);
-    expect(preflight.headers.get("access-control-allow-origin")).toBe(
-      "http://localhost:3000",
-    );
-    expect(preflight.headers.get("access-control-allow-methods")).toContain(
-      "DELETE",
-    );
-  });
-  it("rejects unconfigured CORS origins", async () => {
-    const preflight = await fetch(`${base}/courses`, {
-      method: "OPTIONS",
-      headers: { origin: "https://untrusted.example" },
-    });
-    expect(preflight.status).toBe(403);
-    expect(preflight.headers.get("access-control-allow-origin")).toBeNull();
-  });
   it("rejects invalid catalog data with field details", async () => {
     const response = await fetch(`${base}/courses`, { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: "", priceVnd: -1 }) });

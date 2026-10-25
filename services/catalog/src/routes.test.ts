@@ -9,7 +9,7 @@ import { coursePackages, courses } from "./db/schema.js";
 // Test chạm DB thật: ưu tiên CATALOG_TEST_DATABASE_URL, fallback sang DATABASE_URL từ .env
 const testDatabaseUrl = process.env.CATALOG_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 if (!testDatabaseUrl) {
-    console.warn("\n⚠️ [CATALOG TEST] Các test PostgreSQL bị bỏ qua do thiếu biến CATALOG_TEST_DATABASE_URL hoặc DATABASE_URL. Để chạy: bật Postgres và chạy npm run test:db hoặc truyền biến môi trường.\n");
+    console.warn("\n⚠️ [CATALOG TEST] 21 tests DB bị bỏ qua do thiếu biến CATALOG_TEST_DATABASE_URL hoặc DATABASE_URL. Để chạy: bật Postgres và chạy npm run test:db hoặc truyền biến môi trường.\n");
 }
 // Mã duy nhất cho mỗi lần chạy, để không đụng seed hay các lần chạy trước.
 const prefix = `T${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -109,21 +109,6 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
         it("returns 409 when updating to another course's code", async () => {
             await call("POST", "/api/v1/courses", courseBody("taken"));
             const { status, body } = await call("PUT", `/api/v1/courses/${courseA.id}`, courseBody("taken"));
-            expect(status).toBe(409);
-            expect(body.error.code).toBe("CONFLICT");
-        });
-
-        it("deletes a course and returns 404 when deleting it again", async () => {
-            const created = (await call("POST", "/api/v1/courses", courseBody("delete"))).body.data;
-            const { status, body } = await call("DELETE", `/api/v1/courses/${created.id}`);
-            expect(status).toBe(200);
-            expect(body.data).toEqual({ success: true });
-            expect((await call("GET", `/api/v1/courses/${created.id}`)).status).toBe(404);
-            expect((await call("DELETE", `/api/v1/courses/${created.id}`)).status).toBe(404);
-        });
-
-        it("rejects deleting a course that has packages", async () => {
-            const { status, body } = await call("DELETE", `/api/v1/courses/${courseA.id}`);
             expect(status).toBe(409);
             expect(body.error.code).toBe("CONFLICT");
         });

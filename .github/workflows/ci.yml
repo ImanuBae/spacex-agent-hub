@@ -13,10 +13,38 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Remove lockfile to regenerate for Linux
-        run: rm -f package-lock.json
-      - run: npm install --include=optional
+      - run: npm ci
       - run: npm run check
+  catalog:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: catalog
+          POSTGRES_PASSWORD: catalog_test
+          POSTGRES_DB: catalog_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U catalog -d catalog_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://catalog:catalog_test@127.0.0.1:5432/catalog_test
+      CATALOG_TEST_DATABASE_URL: postgresql://catalog:catalog_test@127.0.0.1:5432/catalog_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run db:migrate --workspace=@spacex/catalog
+      - run: npm run db:seed --workspace=@spacex/catalog
+      - run: npm run test:db --workspace=@spacex/catalog
   messaging:
     runs-on: ubuntu-latest
     services:
@@ -38,9 +66,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Remove lockfile to regenerate for Linux
-        run: rm -f package-lock.json
-      - run: npm install --include=optional
+      - run: npm ci
       - run: npm run demo:messaging
       - run: npm test --workspace=@spacex/messaging
         env:

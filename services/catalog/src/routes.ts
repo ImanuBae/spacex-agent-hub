@@ -83,22 +83,6 @@ export function registerCatalogRoutes(app: Express) {
         }
     });
 
-    app.delete("/api/v1/courses/:id", async (req, res) => {
-        const id = IdParam.parse(req.params.id);
-        try {
-            const [row] = await db.delete(courses).where(eq(courses.id, id)).returning({ id: courses.id });
-            if (!row) {
-                throw new HttpError(404, "NOT_FOUND", "Course not found");
-            }
-            res.json({ data: { success: true } });
-        } catch (error) {
-            if (pgErrorCode(error) === "23503") {
-                throw new HttpError(409, "CONFLICT", "Course has packages and cannot be deleted");
-            }
-            throw error;
-        }
-    });
-
     app.post("/api/v1/packages", async (req, res) => {
         const input = CoursePackageInput.parse(req.body);
         try {

@@ -40,7 +40,8 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
       return [
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
-        { label: "Tài chính chi nhánh", href: "/dashboard/finance" },
+        { label: "Xem khóa học", href: "/dashboard/courses" },
+        { label: "Xem lịch", href: "/dashboard/schedule" },
       ];
     case "accountant":
       return [

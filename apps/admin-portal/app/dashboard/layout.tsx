@@ -5,6 +5,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "./components/Sidebar";
+import { isMockEnabled } from "../../lib/mock-session";
+import MockUnavailable from "../mock-unavailable";
 import {
   getAdminProfile,
   PROFILE_UPDATED_EVENT,
@@ -32,8 +34,11 @@ export default function DashboardLayout({
 
   // 3. Xử lý logic khi người dùng bấm nút Đăng xuất
   const handleLogout = () => {
+    localStorage.removeItem("admin_logged_in");
     router.push("/login");
   };
+
+  if (!isMockEnabled()) return <MockUnavailable />;
 
   return (
     <div className="flex h-screen overflow-hidden">

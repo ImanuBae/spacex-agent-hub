@@ -42,10 +42,7 @@ export class CourseApiError extends Error {
   }
 }
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:4001"
-).replace(/\/$/, "");
-const COURSES_URL = `${API_BASE_URL}/api/v1/courses`;
+const COURSES_URL = "/api/v1/courses";
 
 function formatDetails(details: unknown): string {
   if (!Array.isArray(details)) {
@@ -80,7 +77,7 @@ async function request<T>(
     });
   } catch {
     throw new Error(
-      `Không thể kết nối Catalog API tại ${API_BASE_URL}. Hãy kiểm tra Catalog Backend và cấu hình CORS.`,
+      "Không thể kết nối dịch vụ khóa học. Vui lòng thử lại sau.",
     );
   }
 
@@ -149,11 +146,4 @@ export const courseService = {
     return response.data;
   },
 
-  deleteCourse: async (id: string): Promise<{ success: boolean }> => {
-    const response = await request<{ success: boolean }>(
-      `${COURSES_URL}/${encodeURIComponent(id)}`,
-      { method: "DELETE" },
-    );
-    return response.data;
-  },
 };

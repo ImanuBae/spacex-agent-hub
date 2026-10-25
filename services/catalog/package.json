@@ -9,7 +9,7 @@
     "dev": "node --env-file-if-exists=.env --watch dist/index.js",
     "start": "node --env-file-if-exists=.env dist/index.js",
     "test": "vitest run",
-    "test:db": "node --env-file-if-exists=.env ../../node_modules/vitest/vitest.mjs run",
+    "test:db": "node --env-file-if-exists=.env scripts/test-db.mjs",
     "lint": "eslint src",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",

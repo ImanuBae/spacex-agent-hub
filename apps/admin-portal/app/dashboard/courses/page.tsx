@@ -63,24 +63,6 @@ export default function CoursesPage() {
     setLoadError(null);
   };
 
-  const handleDelete = async (course: Course) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa khóa học "${course.name}"?`)) {
-      return;
-    }
-
-    try {
-      await courseService.deleteCourse(course.id);
-      setCourses((current) => current.filter((item) => item.id !== course.id));
-    } catch (error) {
-      console.error(`Lỗi khi xóa khóa học ${course.id}:`, error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Xóa khóa học thất bại. Vui lòng thử lại.",
-      );
-    }
-  };
-
   const filteredCourses = courses.filter((course) => {
     const query = searchTerm.toLowerCase();
     return (
@@ -247,13 +229,7 @@ export default function CoursesPage() {
                         >
                           Sửa
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(course)}
-                          className="cursor-pointer rounded-md bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100"
-                        >
-                          Xóa
-                        </button>
+
                       </div>
                     </td>
                   </tr>

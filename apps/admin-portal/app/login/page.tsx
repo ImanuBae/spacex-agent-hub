@@ -3,6 +3,8 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { isMockEnabled } from "../../lib/mock-session";
+import MockUnavailable from "../mock-unavailable";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +14,8 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  if (!isMockEnabled()) return <MockUnavailable />;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -36,7 +40,7 @@ export default function LoginPage() {
     } else {
       // Giả lập logic đăng ký tài khoản thành công
       setSuccessMsg(
-        "Đăng ký tài khoản thành công! Đang chuyển sang trang đăng nhập...",
+        "Đã thử giao diện đăng ký. Không có tài khoản thật được tạo. Đang chuyển sang đăng nhập demo...",
       );
       setTimeout(() => {
         setIsLoginMode(true);
@@ -57,6 +61,9 @@ export default function LoginPage() {
             {isLoginMode
               ? "Đăng nhập vào hệ thống quản trị"
               : "Đăng ký tài khoản quản trị viên mới"}
+          </p>
+          <p className="mt-3 rounded bg-amber-50 p-2 text-sm text-amber-800">
+            Demo giao diện: email bất kỳ và mật khẩu từ 6 ký tự. Chưa xác thực tài khoản hoặc phân quyền thật.
           </p>
         </div>
 

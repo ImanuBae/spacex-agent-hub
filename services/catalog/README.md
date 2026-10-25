@@ -1,34 +1,22 @@
-# Service mẫu Express + TypeScript
+# Catalog API - BE-01/02/03
 
-Chạy từ root repo sau `npm ci`:
+PostgreSQL + Drizzle, Express/TypeScript, local port 4001.
 
-```powershell
-npm run dev:template
-```
-
-Health: `http://127.0.0.1:4000/health`. Lệnh build trước khi chạy; khi sửa TypeScript cần chạy build lại ở terminal khác. `node --watch` theo dõi JavaScript đã build, không tự compile TypeScript.
-
-Muốn đổi cấu hình, copy `.env.example` thành `.env` trong thư mục này. `PORT`, `HOST`, `SERVICE_NAME` được kiểm bằng Zod khi khởi động. Health chỉ thể hiện process hoạt động, không kiểm DB/broker.
-
-## Tạo Catalog từ mẫu
-
-Từ root, copy `templates/service/` sang `services/catalog/`, bỏ `dist/`, `.env`, `.turbo/` nếu được copy cùng. Đổi tên package thành `@spacex/catalog`, dùng `SERVICE_NAME=catalog`, `PORT=4001`; chạy `npm install` ở root để cập nhật workspace lockfile.
-
-Giữ `app.ts` không mở cổng để test được. Thêm route qua callback `registerRoutes` trước middleware 404; dùng `HttpError` cho lỗi nghiệp vụ và parse Zod cho request. Bổ sung PostgreSQL/migration/seed trong service. Bỏ demo/test mẫu khi thay bằng kiểm tra Catalog thật.
-
-Hợp đồng API và vai trò: [quy ước phát triển](../../docs/quy-uoc-phat-trien.md).
-
-## Demo RabbitMQ
-
-Chạy hạ tầng theo README gốc, sau đó:
+Chạy từ root monorepo với Node 22+, npm 10+ và Docker:
 
 ```powershell
-npm run demo:messaging
+npm ci
+# Chỉ copy khi chưa có file; chỉnh DATABASE_URL theo cổng PostgreSQL local.
+Copy-Item services/catalog/.env.example services/catalog/.env
+npm run build
+npm run db:migrate --workspace=@spacex/catalog
+npm run db:seed --workspace=@spacex/catalog
+npm start --workspace=@spacex/catalog
 ```
 
-Nếu đổi cổng RabbitMQ trong `infra/.env`, cập nhật `RABBITMQ_URL` trong `templates/service/.env` theo cổng đó. Không commit `.env`. Demo subscribe trước, publish `demo.ping`, chờ đúng event id rồi thoát. Log publish/receive mang cùng correlationId. Queue bền vững `demo.service-template` và queue `.dead` được giữ lại để kiểm tra; demo không tự xóa dữ liệu broker.
-
-Kết nối broker cần callback ghi nhận lỗi. Tắt consumer/process có công việc đang chạy cần đợi handler kết thúc trước khi close. Demo chỉ có một event và chờ hoàn thành; khi áp dụng vào service phải xử lý shutdown phù hợp công việc thực tế.
+Health: `http://127.0.0.1:4001/health` chỉ kiểm process. Chạy PostgreSQL như
+mục dưới trước migration. Portal: [hướng dẫn FE](../../apps/admin-portal/README.md).
+Đây là demo local chưa có IAM/Gateway; mock session không xác thực quyền API.
 
 ## Cơ sở dữ liệu (PostgreSQL + Drizzle)
 
@@ -36,7 +24,7 @@ Catalog lưu khóa học và gói học trong PostgreSQL, database `catalog`. Sc
 
 ### Chuẩn bị
 
-1. Chạy hạ tầng từ root: `docker compose -f infra/docker-compose.yml up -d`. Database `catalog`, user `catalog` được tạo bởi `infra/postgres-init/01-create-dbs.sh`.
+1. Chạy hạ tầng từ root: `docker compose --env-file infra/.env -f infra/docker-compose.yml up -d`. Database `catalog`, user `catalog` được tạo bởi `infra/postgres-init/01-create-dbs.sh`.
 2. Copy `.env.example` thành `.env` trong thư mục này. `DATABASE_URL` mặc định: `postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog`. Nếu `POSTGRES_PORT` trong `infra/.env` khác 5432 (ví dụ 5433), đổi cổng trong `DATABASE_URL` cho khớp. Không commit `.env`.
 
 ### Lệnh (chạy từ root repo)
@@ -61,13 +49,13 @@ npm run db:seed --workspace=@spacex/catalog
 | `courses` | `code` duy nhất; `delivery_modes` là `text[]`; `branch_ids` là `uuid[]` (mặc định rỗng); `price_vnd` là `bigint`; `created_at`/`updated_at` là `timestamptz` (UTC). |
 | `course_packages` | `course_id` là khóa ngoại tới `courses(id)`, `ON DELETE RESTRICT`; `code` duy nhất; `session_count` > 0; giá chung, không có giá theo chi nhánh. |
 
-`UNIQUE(code)` của gói hiện áp dụng toàn hệ thống; chờ Lead xác nhận có đổi thành duy nhất trong cùng khóa hay không.
+`UNIQUE(code)` của gói áp dụng toàn hệ thống theo L-01.
 
 ### Kiểm tra bằng psql
 
 ```powershell
-docker compose -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "\dt"
-docker compose -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "SELECT code, name, price_vnd, status FROM courses;"
+docker compose --env-file infra/.env -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "\dt"
+docker compose --env-file infra/.env -f infra/docker-compose.yml exec postgres psql -P pager=off "postgresql://catalog:catalog_dev@127.0.0.1:5432/catalog" -c "SELECT code, name, price_vnd, status FROM courses;"
 ```
 
 ## API Catalog (BE-02)
@@ -79,7 +67,7 @@ Hợp đồng đầy đủ: [quy ước phát triển](../../docs/quy-uoc-phat-t
 Cần PostgreSQL đang chạy và đã `db:migrate`, `db:seed` (xem mục trên). Từ root repo:
 
 ```powershell
-npm run build --workspace=@spacex/catalog
+npm run build
 npm start --workspace=@spacex/catalog
 ```
 
@@ -279,7 +267,7 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 
 1. **CORS và Reverse Proxy**:
    - Catalog **không** bật CORS middleware (theo `docs/quy-uoc-phat-trien.md`).
-   - Cấu hình rewrite thuộc quyền sở hữu của Dev 1 tại `apps/admin-portal/next.config.mjs`. Ví dụ cấu hình tham khảo theo đúng quy ước dòng 138:
+   - Cấu hình rewrite thuộc quyền sở hữu của Dev 1 tại `apps/admin-portal/next.config.ts`. Ví dụ cấu hình tham khảo theo đúng quy ước dòng 138:
      ```javascript
      const catalogUrl = process.env.CATALOG_API_URL || 'http://127.0.0.1:4001';
      async rewrites() {
@@ -303,14 +291,14 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 
 ```powershell
 # 1. Bật PostgreSQL
-docker compose -f infra/docker-compose.yml up -d postgres
+docker compose --env-file infra/.env -f infra/docker-compose.yml up -d postgres
 
 # 2. Migration + Seed
 npm run db:migrate --workspace=@spacex/catalog
 npm run db:seed --workspace=@spacex/catalog
 
 # 3. Build & chạy (cổng 4001)
-npm run build --workspace=@spacex/catalog
+npm run build
 npm start --workspace=@spacex/catalog
 ```
 
@@ -329,7 +317,12 @@ npm test --workspace=@spacex/catalog
 
 Test dùng mã `code` riêng, tự xóa dữ liệu khi xong, không phụ thuộc seed.
 
-## Nghiệm thu Runtime (Kiểm tra thực tế 21/10/2026)
+Chỉ dùng DB test local. `test:db` thoát lỗi nếu thiếu cả hai biến URL; không
+được coi test skip là kiểm tra DB đạt. CI có job Catalog riêng, cấp PostgreSQL,
+chạy migration/seed và test:db. `npm test` mặc định vẫn có thể skip DB khi chưa
+cấu hình URL. Kiểm chứng nghiệm thu bản tích hợp được ghi trong `docs/`.
+
+## Lịch sử tự kiểm của dev ngày 21/10/2026
 
 | Mã TC | Hạng mục | Mục tiêu & Lệnh kiểm tra | Kết quả thực tế | Đánh giá |
 |:---:|:---:|---|---|:---:|
