@@ -62,3 +62,22 @@ Chưa có IAM/JWT thật, Gateway, quyền/phạm vi dữ liệu backend, các n
 tài chính/chat/lead/tổ chức đầy đủ hoặc giao diện gói học. Các trang kế toán/
 giảng viên ngoài lịch mới có khung. Đây là nghiệm thu phần tách nhỏ của đợt,
 không đóng toàn bộ WEB-1/WEB-4/CAT-1 hoặc toàn bộ MVP.
+
+## Chốt hồ sơ nghiệm thu ngày 26/10
+
+- Fetch lại origin: không có commit dev mới; cả 6 nhánh FE/BE đều đã nằm
+  trong lịch sử main. Code tích hợp tại `2b527ec` không còn lỗi đã nêu ở hai
+  lần review trong phạm vi output chức năng FE-01/02/03, BE-01/02/03.
+- Chạy lại check: 32/32 task qua; DB mới chạy migration/seed và test:db
+  26/26 qua. Chạy lại Chrome: tạo/xem, validation, restart API/DB, đủ 7 role,
+  mobile và tắt mock/production đều qua. Không phát hiện lỗi chức năng mới.
+- Hoàn chỉnh [bàn giao Lead](ban-giao-lead.md) và
+  [checklist phân công](phan-cong-den-2026-10-20.md), bỏ các trạng thái cũ
+  nói chưa có Portal/Catalog hoặc L-04 vẫn chờ tích hợp. Giữ lịch sử kiểm tra
+  18/10 riêng với kết quả 26/10.
+- Hai mục quy trình vẫn chưa xác minh: kết quả GitHub Actions/PR trên remote
+  và việc review/cập nhật trước deadline 20/10. Không đánh dấu đạt hai mục này
+  bằng kết quả local hoặc thay đổi ngược thời hạn.
+
+Bản chốt hồ sơ chỉ thay đổi tài liệu; kết quả Linux 32/32 trên cùng code
+`2b527ec` vẫn áp dụng. Không mở rộng nghiệm thu sang IAM/Gateway/MVP đầy đủ.

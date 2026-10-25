@@ -59,19 +59,30 @@ Trước khi có IAM, API này chỉ dùng để demo local. Chưa nghiệm thu 
 
 ## Checklist nghiệm thu cuối đợt
 
-- [ ] Có hướng dẫn và biến môi trường mẫu để chạy hạ tầng, Catalog, Portal.
-- [ ] PostgreSQL, Redis, RabbitMQ được xác nhận khởi động trên máy demo; Catalog kết nối được PostgreSQL.
-- [ ] Service mẫu và Catalog có health check hoạt động.
-- [ ] CI build/typecheck thực sự chạy; không tính `echo lint-todo` là lint đã triển khai.
-- [ ] Publish/consume được event mẫu; log có service name và correlationId.
-- [ ] Portal có layout, màn hình đăng nhập giao diện và menu theo mock role.
-- [ ] Tạo/xem khóa từ Portal qua Catalog API thật; kiểm tra lỗi đầu vào và dữ liệu còn sau restart.
-- [ ] API tạo/xem/sửa gói học có ví dụ kiểm tra, dù giao diện gói chưa nằm trong đợt này.
-- [ ] Ghi rõ mock session, phần chưa có IAM/Gateway và các hạng mục chưa hoàn thành.
-- [ ] Lead review PR và cập nhật trạng thái thực tế trước hạn cuối.
+Trạng thái cập nhật **26/10/2026**, dựa trên
+[biên bản nghiệm thu](nghiem-thu-sau-fix-2026-10-26.md). Dấu hoàn thành phản ánh
+chức năng đã kiểm chứng local, không khẳng định hoàn tất trước hạn 20/10.
+
+- [x] Có hướng dẫn và biến môi trường mẫu để chạy hạ tầng, Catalog, Portal.
+- [x] PostgreSQL, Redis, RabbitMQ được xác nhận khởi động trên máy demo; Catalog kết nối được PostgreSQL.
+- [x] Service mẫu và Catalog có health check hoạt động.
+- [ ] CI build/typecheck thực sự chạy trên GitHub. Workflow có lệnh thật và bản tương đương local qua 32/32 task trên Windows/Linux; chưa có kết quả GitHub Actions được xác minh.
+- [x] Publish/consume được event mẫu; log có service name và correlationId.
+- [x] Portal có layout, màn hình đăng nhập giao diện và menu theo mock role.
+- [x] Tạo/xem khóa từ Portal qua Catalog API thật; kiểm tra lỗi đầu vào và dữ liệu còn sau restart.
+- [x] API tạo/xem/sửa gói học có ví dụ kiểm tra, dù giao diện gói chưa nằm trong đợt này.
+- [x] Ghi rõ mock session, phần chưa có IAM/Gateway và các hạng mục chưa hoàn thành.
+- [ ] Lead review PR và cập nhật trạng thái trước hạn cuối: chưa đủ bằng chứng. Code đã được review, sửa và merge local ngày 26/10; không xác nhận ngược mốc 20/10 hoặc tình trạng PR trên GitHub.
 
 ## Sau deadline
 
-Tiến độ phần Lead và bằng chứng kiểm tra được cập nhật riêng trong [biên bản bàn giao](ban-giao-lead.md). L-01 đã có hợp đồng/schema; L-02 có service mẫu và CI; L-03 đã demo broker thật. L-04 chờ Portal và Catalog từ hai dev để review/tích hợp.
+Tiến độ phần Lead và bằng chứng kiểm tra được cập nhật trong
+[biên bản bàn giao](ban-giao-lead.md). L-01 có hợp đồng/schema; L-02 có service
+mẫu và workflow kiểm tra; L-03 đã demo broker thật. L-04 đã đạt luồng chức năng
+Portal/Catalog local ngày 26/10, gồm migration/seed và dữ liệu sau restart.
+FE-01/02/03 và BE-01/02/03 đạt output chức năng của đợt này trong bản tích hợp;
+hai mục quy trình/remote còn mở như checklist trên. Các nhánh gốc là lịch sử
+phát triển; nghiệm thu dùng main chứa bản sửa tích hợp, không dùng từng nhánh
+gốc độc lập để thay cho main.
 
 Ưu tiên IAM-1/IAM-2 → ORG-1/ORG-2 → GW-1 → nối đăng nhập thật cho WEB-1 để hoàn thiện mốc giai đoạn 0. Tiếp tục hoàn thiện outbox, idempotency và quan sát hệ thống theo PL-2/PL-3. Sau đó triển khai luồng web chat → Conversation → nhân viên trả lời, rồi mới nối AI, giữ chỗ và QR.
