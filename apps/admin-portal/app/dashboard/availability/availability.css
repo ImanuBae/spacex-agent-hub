@@ -1,0 +1,55 @@
+/* One full-width list shares the Portal canvas edges. On a phone every field
+   and decision stays in the row instead of pushing actions off the viewport. */
+.hub-theme.hub-scheduling-shell {
+  background-image: none;
+  --hub-line: #1b2232;
+  --hub-line-strong: #343d50;
+}
+.hub-theme .teacher-time-screen .ops-panel,
+.hub-theme .teacher-time-screen .ops-dialog {
+  background: var(--hub-bg);
+  backdrop-filter: none;
+  border-radius: 8px;
+}
+.hub-theme .teacher-time-screen button.primary {
+  background: var(--hub-ink);
+  color: var(--hub-bg);
+  border-radius: 6px;
+}
+.teacher-time-screen td:nth-child(3) {
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .teacher-time-screen thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .teacher-time-screen :is(table, tbody, tr, td) {
+    display: block;
+    width: 100%;
+  }
+  .teacher-time-screen tbody tr {
+    border-top: 1px solid var(--hub-line);
+    padding: 12px 0;
+  }
+  .teacher-time-screen td {
+    border: 0;
+    padding: 6px 0;
+    max-width: none;
+    min-width: 0;
+  }
+  .teacher-time-screen td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--hub-muted);
+    font-size: 12px;
+  }
+  .teacher-time-screen td:first-child::before,
+  .teacher-time-screen td:last-child::before {
+    display: none;
+  }
+}

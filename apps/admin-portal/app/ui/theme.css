@@ -1,0 +1,288 @@
+﻿/* Shared visual language for authenticated Portal screens and login.
+   Tokens live on the route wrapper so the public landing and other routes are isolated. */
+.hub-theme {
+  --hub-bg: #04060f;
+  --hub-panel: rgba(12, 18, 38, 0.82);
+  --hub-panel-raised: #101830;
+  --hub-control: #080f21;
+  --hub-hover: #18243d;
+  --hub-ink: #f3f6ff;
+  --hub-muted: #a4b1cb;
+  --hub-line: rgba(150, 175, 230, 0.16);
+  --hub-line-strong: rgba(150, 175, 230, 0.28);
+  --hub-accent: #5df0a8;
+  --hub-accent-deep: #2fd38a;
+  --hub-accent-ink: #032018;
+  --hub-positive: #78edb0;
+  --hub-negative: #ffabb4;
+  --hub-warning: #f2ce87;
+  color: var(--hub-ink);
+  background: var(--hub-bg);
+  color-scheme: dark;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.hub-theme *,
+.hub-theme *::before,
+.hub-theme *::after {
+  box-sizing: border-box;
+}
+.hub-theme :is(button, input, select, textarea) {
+  font: inherit;
+}
+.hub-theme button {
+  cursor: pointer;
+}
+.hub-theme button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.hub-theme a {
+  text-decoration: none;
+}
+.hub-theme :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--hub-accent);
+  outline-offset: 3px;
+}
+.hub-theme ::selection {
+  background: #5df0a833;
+  color: var(--hub-ink);
+}
+.hub-theme
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  color: var(--hub-ink);
+  background: var(--hub-control);
+  border: 1px solid var(--hub-line-strong);
+  border-radius: 10px;
+}
+.hub-theme :is(input, textarea)::placeholder {
+  color: #8999b6;
+}
+.hub-theme :is(input, select, textarea):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.hub-theme input:is([type="checkbox"], [type="radio"]) {
+  accent-color: var(--hub-accent);
+}
+.hub-theme .ops input:is([type="checkbox"], [type="radio"]) {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  flex-shrink: 0;
+  align-self: center;
+}
+.hub-theme input:-webkit-autofill {
+  -webkit-text-fill-color: var(--hub-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--hub-control) inset;
+  caret-color: var(--hub-ink);
+}
+.hub-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: inherit;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.hub-brand-mark {
+  color: var(--hub-accent);
+  font-size: 14px;
+  flex: none;
+}
+/* Adapt the existing Tailwind-based screens to the same tokens as the operations components.
+   These scoped selectors retain their layout, responsive utilities and business behavior. */
+.hub-theme .bg-white {
+  background: var(--hub-panel);
+  backdrop-filter: blur(16px);
+}
+.hub-theme :is(.bg-slate-50, .bg-slate-100) {
+  background: rgba(150, 175, 230, 0.055);
+}
+.hub-theme :is(.text-slate-900, .text-slate-800, .text-slate-700) {
+  color: var(--hub-ink);
+}
+.hub-theme
+  :is(.text-slate-600, .text-slate-500, .text-slate-400, .text-gray-500) {
+  color: var(--hub-muted);
+}
+.hub-theme :is(.border-slate-100, .border-slate-200, .border-gray-100) {
+  border-color: var(--hub-line);
+}
+.hub-theme .border-slate-300 {
+  border-color: var(--hub-line-strong);
+}
+.hub-theme .divide-slate-100 > * {
+  border-color: var(--hub-line);
+}
+.hub-theme :is(.shadow, .shadow-sm) {
+  box-shadow: none;
+}
+.hub-theme :is(section.bg-white, form.bg-white, div.bg-white) {
+  border-radius: 18px;
+}
+.hub-theme :is(.text-blue-600, .text-blue-700, .text-purple-600) {
+  color: var(--hub-accent);
+}
+.hub-theme :is(.bg-blue-50, .bg-blue-100, .bg-blue-50\/55) {
+  background: rgba(93, 240, 168, 0.09);
+}
+.hub-theme .border-blue-600 {
+  border-color: var(--hub-accent);
+}
+.hub-theme :is(.text-green-600, .text-green-700) {
+  color: var(--hub-positive);
+}
+.hub-theme :is(.bg-green-50, .bg-green-100) {
+  background: rgba(93, 240, 168, 0.09);
+}
+.hub-theme .border-green-200 {
+  border-color: rgba(93, 240, 168, 0.24);
+}
+.hub-theme :is(.text-red-600, .text-red-700) {
+  color: var(--hub-negative);
+}
+.hub-theme :is(.bg-red-50, .bg-red-100) {
+  background: rgba(255, 110, 130, 0.09);
+}
+.hub-theme :is(.border-red-100, .border-red-200) {
+  border-color: rgba(255, 110, 130, 0.25);
+}
+.hub-theme :is(.text-amber-600, .text-amber-700) {
+  color: var(--hub-warning);
+}
+.hub-theme .bg-amber-100 {
+  background: rgba(242, 206, 135, 0.1);
+}
+.hub-theme :is(.hover\:bg-slate-50, .hover\:bg-slate-100):hover {
+  background: var(--hub-hover);
+}
+.hub-theme .hover\:bg-blue-100:hover {
+  background: rgba(93, 240, 168, 0.16);
+}
+.hub-theme .hover\:bg-red-100:hover {
+  background: rgba(255, 110, 130, 0.16);
+}
+.hub-theme .hover\:text-blue-800:hover {
+  color: #a7f8d1;
+}
+.hub-theme .focus\:border-blue-500:focus {
+  border-color: var(--hub-accent);
+}
+.hub-theme .focus\:ring-blue-100:focus {
+  --tw-ring-color: rgba(93, 240, 168, 0.2);
+}
+.hub-theme .bg-blue-600 {
+  color: var(--hub-accent-ink);
+  background: linear-gradient(
+    180deg,
+    var(--hub-accent),
+    var(--hub-accent-deep)
+  );
+  border-color: transparent;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.hub-theme :is(.hover\:bg-blue-500, .hover\:bg-blue-700):hover {
+  background: #77f5b9;
+}
+.hub-theme table {
+  font-variant-numeric: tabular-nums;
+}
+.hub-theme th {
+  color: var(--hub-muted);
+  font-weight: 500;
+}
+.hub-theme tbody tr:hover {
+  background: rgba(150, 175, 230, 0.035);
+}
+.hub-theme table button {
+  flex-shrink: 0;
+}
+.hub-theme .ops {
+  color: var(--hub-ink);
+}
+.hub-theme .ops-dialog {
+  color: var(--hub-ink);
+  background: var(--hub-panel-raised);
+  border-radius: 20px;
+  box-shadow: 0 28px 90px #0009;
+}
+.hub-theme .ops-dialog::backdrop {
+  background: rgba(2, 5, 14, 0.75);
+  backdrop-filter: blur(8px);
+}
+.hub-theme .ops-dialog > .ops-heading {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--hub-line);
+  margin-bottom: 24px;
+}
+.hub-theme .ops-panel {
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+}
+.hub-theme .ops button.primary {
+  color: var(--hub-accent-ink);
+  background: linear-gradient(
+    180deg,
+    var(--hub-accent),
+    var(--hub-accent-deep)
+  );
+  border-color: transparent;
+  border-radius: 999px;
+}
+.hub-theme .ops button.primary:hover {
+  background: #77f5b9;
+}
+.hub-theme .ops button.icon-button {
+  width: 40px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 50%;
+}
+.hub-theme .ops-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--hub-line);
+  margin: 20px 0;
+  overflow-x: auto;
+}
+.hub-theme .ops-tabs button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--hub-muted);
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+.hub-theme .ops-tabs button[aria-selected="true"] {
+  color: var(--hub-accent);
+  box-shadow: inset 0 -2px var(--hub-accent);
+}
+.hub-theme .ops-tabs button span {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.hub-theme .ops-drawer {
+  margin: 0 0 0 auto;
+  height: 100svh;
+  max-height: 100svh;
+  max-width: 640px;
+  border-radius: 20px 0 0 20px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-theme *,
+  .hub-theme *::before,
+  .hub-theme *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

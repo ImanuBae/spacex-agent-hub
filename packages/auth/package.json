@@ -12,6 +12,12 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@spacex/contracts": "*"
+    "@spacex/contracts": "*",
+    "@spacex/http": "*",
+    "express": "^5.1.0",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
   }
 }

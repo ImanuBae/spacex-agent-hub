@@ -4,6 +4,7 @@ export const CourseInput = z.object({
   code: z.string().trim().min(1).max(50),
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(5000).default(""),
+  policyText: z.string().trim().max(10000).default(""),
   goal: z.string().trim().min(1).max(500),
   level: z.enum(["beginner", "intermediate", "advanced"]),
   deliveryModes: z.array(z.enum(["onsite", "online"])).min(1),
@@ -19,6 +20,7 @@ export const CoursePackageInput = z.object({
   code: z.string().trim().min(1).max(50),
   name: z.string().trim().min(1).max(200),
   sessionCount: z.number().int().positive(),
+  policyText: z.string().trim().max(10000).default(""),
   priceVnd: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   status: z.enum(["draft", "active", "closed"]).default("draft"),
 }).strict();

@@ -1,0 +1,6 @@
+{
+  "name": "@spacex/gateway", "version": "0.0.0", "private": true, "type": "module",
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "lint": "eslint src", "test": "vitest run src --passWithNoTests", "dev": "node --env-file-if-exists=.env --watch dist/index.js", "start": "node --env-file-if-exists=.env dist/index.js" },
+  "dependencies": { "@spacex/auth": "*", "@spacex/http": "*", "@spacex/config": "*", "express": "^5.1.0" },
+  "devDependencies": { "@types/express": "^5.0.0" }
+}

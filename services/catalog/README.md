@@ -1,5 +1,13 @@
 # Catalog API - BE-01/02/03
 
+**Cập nhật đợt 1:** API nay bắt buộc Bearer JWT và phiên IAM còn hiệu lực;
+chỉ `center_director` được POST/PUT khóa/gói. Các vai trò `branch_director`,
+`admissions`, `teacher`, `ai_agent` được đọc danh mục chung; accountant/student
+không có quyền Catalog. Không giới hạn danh mục giá chung theo branchIds.
+Catalog kiểm cả khi gọi trực tiếp, không chỉ qua Gateway.
+Xem [cấu hình và contract đợt 1](../../docs/huong-dan-dot-1.md).
+Ví dụ request bên dưới phải bổ sung header Authorization; `/health` vẫn public.
+
 PostgreSQL + Drizzle, Express/TypeScript, local port 4001.
 
 Chạy từ root monorepo với Node 22+, npm 10+ và Docker:
@@ -16,7 +24,8 @@ npm start --workspace=@spacex/catalog
 
 Health: `http://127.0.0.1:4001/health` chỉ kiểm process. Chạy PostgreSQL như
 mục dưới trước migration. Portal: [hướng dẫn FE](../../apps/admin-portal/README.md).
-Đây là demo local chưa có IAM/Gateway; mock session không xác thực quyền API.
+Portal hiện đi qua BFF/Gateway và IAM; phải cấu hình AUTH_SECRET/IDENTITY_URL
+trong Catalog trước khi khởi động. Không có chế độ bỏ qua xác thực ở runtime.
 
 ## Cơ sở dữ liệu (PostgreSQL + Drizzle)
 
@@ -60,7 +69,7 @@ docker compose --env-file infra/.env -f infra/docker-compose.yml exec postgres p
 
 ## API Catalog (BE-02)
 
-Hợp đồng đầy đủ: [quy ước phát triển](../../docs/quy-uoc-phat-trien.md). Schema đầu vào dùng `CourseInput`, `CoursePackageInput`, `ListQuery` từ `@spacex/contracts`. Chưa có xác thực (IAM làm sau): API chỉ dùng để demo local.
+Hợp đồng đầy đủ: [quy ước phát triển](../../docs/quy-uoc-phat-trien.md). Schema đầu vào dùng `CourseInput`, `CoursePackageInput`, `ListQuery` từ `@spacex/contracts`. Xác thực/quyền theo contract đợt 1; các endpoint có thể trả thêm 401/403/503 từ bước kiểm phiên.
 
 ### Chạy server
 
@@ -96,6 +105,9 @@ Server nghe ở `http://127.0.0.1:4001`. `start` chạy `dist/`, nên sửa code
 
 ```powershell
 $base = "http://127.0.0.1:4001"
+$loginBody = @{ email = 'YOUR_ADMIN_EMAIL'; password = 'YOUR_ADMIN_PASSWORD' } | ConvertTo-Json
+$session = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:4000/api/v1/auth/login' -ContentType 'application/json' -Body $loginBody
+$PSDefaultParameterValues['Invoke-RestMethod:Headers'] = @{ Authorization = "Bearer $($session.data.accessToken)" }
 $body = @{ code = "DEMO-1"; name = "Khoa demo"; goal = "Thu API"; level = "beginner"; deliveryModes = @("online"); priceVnd = 1500000 } | ConvertTo-Json
 $course = Invoke-RestMethod -Method Post -Uri "$base/api/v1/courses" -ContentType "application/json" -Body $body
 $pkg = @{ courseId = $course.data.id; code = "DEMO-PKG-1"; name = "Goi 12 buoi"; sessionCount = 12; priceVnd = 1200000 } | ConvertTo-Json
@@ -265,9 +277,11 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 
 ### Lưu ý cho Frontend (FE) tích hợp
 
-1. **CORS và Reverse Proxy**:
+1. **CORS và BFF/Gateway**:
    - Catalog **không** bật CORS middleware (theo `docs/quy-uoc-phat-trien.md`).
-   - Cấu hình rewrite thuộc quyền sở hữu của Dev 1 tại `apps/admin-portal/next.config.ts`. Ví dụ cấu hình tham khảo theo đúng quy ước dòng 138:
+   - Đợt 1 dùng route handler BFF `/api/v1/*` → Gateway, không dùng rewrite
+     thẳng Catalog. Biến server là `GATEWAY_URL`. Đoạn rewrite dưới đây chỉ là
+     ví dụ lịch sử của bản bàn giao BE-03, không đưa lại vào cấu hình hiện tại:
      ```javascript
      const catalogUrl = process.env.CATALOG_API_URL || 'http://127.0.0.1:4001';
      async rewrites() {
@@ -285,7 +299,8 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 
 3. **`priceVnd` là số**: Backend serialize `BIGINT` → `number` trong JSON. FE format tiền bằng `Number.prototype.toLocaleString('vi-VN')`.
 
-4. **Chưa cần Auth**: Giai đoạn hiện tại không yêu cầu JWT/Session header.
+4. **Auth bắt buộc**: direct API cần Bearer JWT còn phiên IAM; Portal dùng
+   cookie HttpOnly qua BFF. Đừng đặt token vào localStorage hoặc NEXT_PUBLIC_*.
 
 ### Khởi động nhanh Catalog cho FE
 

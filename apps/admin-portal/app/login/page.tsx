@@ -1,166 +1,128 @@
-// apps/admin-portal/app/login/page.tsx
 "use client";
-
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { isMockEnabled } from "../../lib/mock-session";
-import MockUnavailable from "../mock-unavailable";
+import { useAuth } from "../../src/context/AuthContext";
+import { getMenuByRole } from "../../lib/roles";
+import Link from "next/link";
+import Brand from "../landing/Brand";
+import Planet from "../landing/Planet";
+import "../landing/landing.css";
+import "../landing/entry.css";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isLoginMode, setIsLoginMode] = useState(true); // true: Đăng nhập, false: Đăng ký
+  const { reload } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  if (!isMockEnabled()) return <MockUnavailable />;
-
-  const handleSubmit = (e: FormEvent) => {
+  const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    setBusy(true);
     setError("");
-    setSuccessMsg("");
-
-    if (!email || !password || (!isLoginMode && !fullName)) {
-      setError("Vui lòng điền đầy đủ tất cả các trường thông tin.");
-      return;
+    try {
+      const response = await fetch("/api/session/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? "Email hoặc mật khẩu không đúng, hoặc tài khoản đang bị khóa."
+            : (body.error?.message ?? "Đăng nhập thất bại."),
+        );
+      setPassword("");
+      await reload();
+      router.replace(getMenuByRole(body.data.role)[0]?.href ?? "/dashboard");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không kết nối được hệ thống.");
+    } finally {
+      setBusy(false);
     }
-
-    if (isLoginMode) {
-      // Giả lập logic đăng nhập thành công
-      if (email.includes("@") && password.length >= 6) {
-        localStorage.setItem("admin_logged_in", "true");
-        localStorage.setItem("admin_user_name", email.trim());
-        localStorage.setItem("admin_user_email", email.trim());
-        router.push("/dashboard/overview");
-      } else {
-        setError("Email không hợp lệ hoặc mật khẩu phải có ít nhất 6 ký tự.");
-      }
-    } else {
-      // Giả lập logic đăng ký tài khoản thành công
-      setSuccessMsg(
-        "Đã thử giao diện đăng ký. Không có tài khoản thật được tạo. Đang chuyển sang đăng nhập demo...",
-      );
-      setTimeout(() => {
-        setIsLoginMode(true);
-        setSuccessMsg("");
-      }, 1500);
-    }
-  };
-
+  }
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
-        {/* Tiêu đề thương hiệu */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
-            SpaceX Agent Hub
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {isLoginMode
-              ? "Đăng nhập vào hệ thống quản trị"
-              : "Đăng ký tài khoản quản trị viên mới"}
-          </p>
-          <p className="mt-3 rounded bg-amber-50 p-2 text-sm text-amber-800">
-            Demo giao diện: email bất kỳ và mật khẩu từ 6 ký tự. Chưa xác thực tài khoản hoặc phân quyền thật.
-          </p>
-        </div>
-
-        {/* Thông báo lỗi hoặc thành công */}
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
-            {error}
-          </div>
-        )}
-        {successMsg && (
-          <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-600 border border-green-200">
-            {successMsg}
-          </div>
-        )}
-
-        {/* Form xác thực */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLoginMode && (
-            <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-                Họ và tên
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nguyễn Văn A"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Địa chỉ Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@spacex.com"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Mật khẩu
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 shadow-sm cursor-pointer"
-          >
-            {isLoginMode ? "Đăng nhập" : "Đăng ký tài khoản"}
-          </button>
-        </form>
-
-        {/* Chuyển đổi giữa Đăng nhập và Đăng ký */}
-        <div className="mt-6 text-center text-sm text-slate-600">
-          {isLoginMode ? (
-            <p>
-              Chưa có tài khoản hệ thống?{" "}
-              <button
-                onClick={() => {
-                  setIsLoginMode(false);
-                  setError("");
-                }}
-                className="font-semibold text-blue-600 hover:underline"
-              >
-                Đăng ký ngay
-              </button>
-            </p>
-          ) : (
-            <p>
-              Đã có tài khoản quản trị?{" "}
-              <button
-                onClick={() => {
-                  setIsLoginMode(true);
-                  setError("");
-                }}
-                className="font-semibold text-blue-600 hover:underline"
-              >
-                Đăng nhập
-              </button>
-            </p>
-          )}
-        </div>
+    <div className="entry hub-theme">
+      <div className="ascend entry-planet" aria-hidden="true">
+        <Planet />
       </div>
+      <header className="entry-header">
+        <Brand />
+        <Link href="/" className="entry-back">
+          <span aria-hidden="true">←</span>Trang chủ
+        </Link>
+      </header>
+      <main className="entry-main">
+        <div className="entry-intro">
+          <h1>
+            Tiếp tục
+            <br />
+            <em>công việc.</em>
+          </h1>
+          <p>
+            Không gian điều phối tuyển sinh của SpaceX Việt Nam. Đúng vai trò,
+            đúng chi nhánh của bạn.
+          </p>
+        </div>
+        <section className="entry-form-panel" aria-labelledby="login-title">
+          <h2 id="login-title">Đăng nhập Agent Hub</h2>
+          <form onSubmit={submit} className="entry-form" aria-busy={busy}>
+            <label htmlFor="login-email">
+              Email nhân viên
+              <input
+                id="login-email"
+                name="email"
+                required
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <div>
+              <label htmlFor="login-password">Mật khẩu</label>
+              <div className="entry-password">
+                <input
+                  id="login-password"
+                  name="password"
+                  required
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  maxLength={256}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  aria-controls="login-password"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  onClick={() => setShowPassword((value) => !value)}
+                >
+                  {showPassword ? "Ẩn" : "Hiện"}
+                </button>
+              </div>
+            </div>
+            {error && (
+              <p role="alert" className="entry-error">
+                {error}
+              </p>
+            )}
+            <button disabled={busy} type="submit" className="entry-submit">
+              {busy ? "Đang đăng nhập…" : "Đăng nhập"}
+              <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+          <p className="entry-help">
+            Liên hệ quản lý để được cấp hoặc khôi phục tài khoản.
+          </p>
+        </section>
+      </main>
+      <footer className="entry-footer">
+        SpaceX Việt Nam · Không gian làm việc dành cho nhân viên
+      </footer>
     </div>
   );
 }

@@ -5,13 +5,14 @@ import { useState, useEffect } from "react";
 import { courseService, Course } from "../../../lib/services/courses";
 import { financeService, Transaction } from "../../../lib/services/finance";
 import { mailboxService, Message } from "../../../lib/services/mailbox";
-import { leadService, Lead } from "../../../lib/services/leads";
+import { allPages, stages, type LeadView } from "../../../lib/services/crm";
 
 export default function OverviewPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadView[]>([]);
+  const [leadLoadError, setLeadLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
 
@@ -23,7 +24,7 @@ export default function OverviewPage() {
         courseService.getAllCourses(),
         financeService.getAllTransactions(),
         mailboxService.getAllMessages(),
-        leadService.getAllLeads(),
+        allPages<LeadView>("crm/leads"),
       ] as const);
 
       if (!isMounted) return;
@@ -62,7 +63,9 @@ export default function OverviewPage() {
 
       if (leadsResult.status === "fulfilled") {
         setLeads(leadsResult.value);
+        setLeadLoadError(false);
       } else {
+        setLeadLoadError(true);
         console.error(
           "Lỗi khi tải leads cho trang tổng quan:",
           leadsResult.reason,
@@ -96,7 +99,7 @@ export default function OverviewPage() {
 
   const unreadMessagesCount = messages.filter((m) => m.unread).length;
   const registeredLeadsCount = leads.filter(
-    (l) => l.status === "Đã đăng ký",
+    (l) => l.stage === "QUALIFIED",
   ).length;
 
   return (
@@ -144,10 +147,10 @@ export default function OverviewPage() {
             Học viên tiềm năng (Leads)
           </p>
           <h3 className="text-3xl font-bold text-slate-800">
-            {isLoading ? "..." : leads.length}
+            {isLoading ? "..." : leadLoadError ? "Chưa xác minh" : leads.length}
           </h3>
           <p className="text-xs text-amber-600 font-medium">
-            Đã chuyển đổi: {registeredLeadsCount} học viên
+            {leadLoadError ? "Không thể tải dữ liệu CRM" : `Đủ nhu cầu: ${registeredLeadsCount} lead`}
           </p>
         </div>
 
@@ -206,7 +209,7 @@ export default function OverviewPage() {
             Học viên đăng ký tư vấn gần đây
           </div>
           <div className="divide-y divide-slate-100 max-h-[300px] overflow-y-auto">
-            {leads.length === 0 ? (
+            {isLoading || leadLoadError ? <p className="p-6 text-sm" role={leadLoadError ? "alert" : "status"}>{leadLoadError ? "Không thể tải dữ liệu CRM." : "Đang tải lead…"}</p> : leads.length === 0 ? (
               <p className="p-6 text-center text-slate-400 italic text-sm">
                 Chưa có học viên tiềm năng nào.
               </p>
@@ -218,14 +221,14 @@ export default function OverviewPage() {
                 >
                   <div>
                     <p className="font-semibold text-slate-800">
-                      {lead.fullName}
+                      {lead.contactName}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Quan tâm: {lead.courseName}
+                      Quan tâm: {courses.find(course => course.id === lead.courseId)?.name ?? "Chưa chọn khóa"}
                     </p>
                   </div>
                   <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">
-                    {lead.status}
+                    {stages[lead.stage]}
                   </span>
                 </div>
               ))

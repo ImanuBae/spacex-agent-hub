@@ -1,5 +1,11 @@
 # Quy ước bàn giao cho hai dev — L-01
 
+**Cập nhật đợt 1 (27/10/2026):** [contract IAM/Org/Gateway/Portal](huong-dan-dot-1.md)
+là quy ước hiện hành cho xác thực, phiên và tích hợp. Những đoạn bên dưới nói
+"chưa có IAM", mock role hoặc rewrite thẳng Catalog mô tả bản bàn giao Catalog
+cũ; nay Portal dùng BFF cookie HttpOnly → Gateway, Gateway/service xác minh JWT
+và phiên IAM. API/schema Catalog, envelope và quy ước event bên dưới vẫn áp dụng.
+
 ## Phạm vi và quyền sở hữu
 
 - Lead: `packages/`, `templates/`, cấu hình gốc, hạ tầng và CI.

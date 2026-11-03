@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import RoadmapState from "../components/RoadmapState";
 
 export default function ReconciliationPage() {
   return (
@@ -14,9 +15,11 @@ export default function ReconciliationPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 min-h-[400px]">
-        {/* Nội dung danh sách/bảng đối soát sẽ kết nối API tại đây */}
-      </div>
+      <RoadmapState
+        description="Đối soát giao dịch đang nằm trong lộ trình phát triển. Danh sách tài chính hiện tại là bản mẫu, chưa hỗ trợ xác nhận đối soát."
+        href="/dashboard/finance"
+        label="Xem bản mẫu tài chính"
+      />
     </div>
   );
 }

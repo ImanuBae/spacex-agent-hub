@@ -17,6 +17,8 @@
     "demo:messaging": "node --env-file-if-exists=.env dist/messaging-demo.js"
   },
   "dependencies": {
+    "@spacex/auth": "*",
+    "@spacex/http": "*",
     "@spacex/config": "*",
     "@spacex/contracts": "*",
     "@spacex/logger": "*",

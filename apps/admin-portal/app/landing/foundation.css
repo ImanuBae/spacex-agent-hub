@@ -1,0 +1,151 @@
+.lp,
+.entry {
+  --lp-ground: #f5f5f3;
+  --lp-ink: #191b1c;
+  --lp-muted: #55585b;
+  --lp-accent: #191b1c;
+  --lp-soft: #e5e5e2;
+  --lp-white: #fff;
+  --lp-dark: #191b1c;
+  --lp-signal: #276445;
+  --lp-focus: #3872a5;
+  --lp-focus-on-dark: #a9cfeb;
+  --lp-action-hover: #36393c;
+  --lp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color: var(--lp-ink);
+  background: var(--lp-ground);
+  color-scheme: light;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+}
+.lp *,
+.entry * {
+  box-sizing: border-box;
+}
+.lp :is(h1, h2, h3, p),
+.entry :is(h1, h2, h3, p) {
+  margin: 0;
+}
+.lp a,
+.entry a {
+  color: inherit;
+  text-decoration: none;
+}
+.lp :is(button, input, select),
+.entry :is(button, input) {
+  font: inherit;
+}
+.lp :is(button, summary),
+.entry button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.lp :focus-visible,
+.entry :focus-visible {
+  outline: 3px solid var(--lp-focus);
+  outline-offset: 5px;
+}
+.lp ::selection,
+.entry ::selection {
+  background: #cbd5dd;
+  color: var(--lp-ink);
+}
+.lp-frame {
+  width: calc(100% - 64px);
+  max-width: 1760px;
+  margin-inline: auto;
+}
+.lp-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.lp-brand > span:first-child {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.065em;
+  line-height: 1;
+}
+.lp-brand-name {
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.lp-button {
+  display: inline-flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 28px;
+  min-height: 50px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lp-ink);
+  color: var(--lp-white) !important;
+  font-size: 17px;
+  font-weight: 500;
+  transition:
+    transform 120ms var(--lp-ease),
+    background 180ms ease;
+}
+.lp-button:hover {
+  background: var(--lp-action-hover);
+}
+.lp-button:active {
+  transform: scale(0.97);
+}
+.lp-button > span {
+  font-size: 24px;
+  line-height: 1;
+  transition: transform 220ms var(--lp-ease);
+}
+.lp-button:hover > span {
+  transform: translate(2px, -2px);
+}
+.lp-button-light {
+  background: var(--lp-white);
+  color: var(--lp-ink) !important;
+}
+.lp-button-light:hover {
+  background: var(--lp-soft);
+}
+@media (max-width: 700px) {
+  .lp-frame {
+    width: calc(100% - 40px);
+  }
+  .lp-brand {
+    gap: 10px;
+  }
+  .lp-brand > span:first-child {
+    font-size: 26px;
+  }
+  .lp-brand-name {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp *,
+  .entry * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .lp-button:active {
+    transform: none;
+  }
+  .lp-button:hover > span {
+    transform: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .lp,
+  .entry {
+    --lp-muted: #303234;
+    --lp-soft: #dcdedc;
+  }
+}

@@ -45,6 +45,63 @@ jobs:
       - run: npm run db:migrate --workspace=@spacex/catalog
       - run: npm run db:seed --workspace=@spacex/catalog
       - run: npm run test:db --workspace=@spacex/catalog
+  stage1:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: stage1_test
+          POSTGRES_DB: stage1_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stage1_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      STAGE1_TEST_DATABASE_URL: postgresql://postgres:stage1_test@127.0.0.1:5432/stage1_test
+      CRM_TEST_DATABASE_URL: postgresql://postgres:stage1_test@127.0.0.1:5432/stage1_test
+      STAGE1_PORTAL_TEST: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:db --workspace=@spacex/identity
+      - run: npm run test:crm:db
+  classes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: class_test
+          POSTGRES_DB: class_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d class_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      CLASS_TEST_DATABASE_URL: postgresql://postgres:class_test@127.0.0.1:5432/class_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:class:db
   messaging:
     runs-on: ubuntu-latest
     services:
@@ -71,3 +128,43 @@ jobs:
       - run: npm test --workspace=@spacex/messaging
         env:
           RABBITMQ_TEST_URL: amqp://spacex:spacex_dev@127.0.0.1:5672
+  reliability:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: reliability_test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      rabbitmq:
+        image: rabbitmq:4-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: spacex
+          RABBITMQ_DEFAULT_PASS: spacex_test
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MESSAGING_TEST_DATABASE_URL: postgresql://postgres:reliability_test@127.0.0.1:5432/postgres
+      RABBITMQ_TEST_URL: amqp://spacex:spacex_test@127.0.0.1:5672
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:db --workspace=@spacex/messaging

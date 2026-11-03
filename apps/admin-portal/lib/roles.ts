@@ -23,7 +23,9 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Tổng quan", href: "/dashboard/overview" },
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
-        { label: "Khóa học & lịch", href: "/dashboard/courses" },
+        { label: "Khóa học & gói", href: "/dashboard/courses" },
+        { label: "Lớp học và lịch", href: "/dashboard/schedule" },
+        { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
         { label: "Tài chính", href: "/dashboard/finance" },
         { label: "Tổ chức", href: "/dashboard/organization" },
         { label: "Audit", href: "/dashboard/audit" },
@@ -33,7 +35,9 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Tổng quan chi nhánh", href: "/dashboard/overview" },
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
-        { label: "Khóa học & lịch", href: "/dashboard/courses" },
+        { label: "Khóa học & gói", href: "/dashboard/courses" },
+        { label: "Lớp học và lịch", href: "/dashboard/schedule" },
+        { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
         { label: "Tài chính chi nhánh", href: "/dashboard/finance" },
       ];
     case "admissions":

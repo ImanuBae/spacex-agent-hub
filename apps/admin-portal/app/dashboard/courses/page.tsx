@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "../../../src/context/AuthContext";
 import CourseModal from "./CourseModal";
+import PackagesPanel from "./PackagesPanel";
+import CatalogSearch from "./CatalogSearch";
+import { api, type Branch } from "../../../lib/services/classes";
 import { courseService } from "../../../lib/services/courses";
 import type { Course, CourseInput } from "../../../lib/services/courses";
 
@@ -9,7 +13,10 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(value) + " đ";
 
 export default function CoursesPage() {
+  const { user } = useAuth();
+  const canEdit = user?.role === "center_director";
   const [courses, setCourses] = useState<Course[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -19,11 +26,11 @@ export default function CoursesPage() {
   useEffect(() => {
     let isMounted = true;
 
-    courseService
-      .getAllCourses()
-      .then((data) => {
+    Promise.all([courseService.getAllCourses(), api<Branch[]>("branches")])
+      .then(([data, branchResponse]) => {
         if (isMounted) {
           setCourses(data);
+          setBranches(branchResponse.data);
           setLoadError(null);
         }
       })
@@ -85,25 +92,26 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="mx-auto w-full space-y-6">
+    <div className="ops mx-auto w-full space-y-6">
       {/* Top Banner / Header */}
-      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-800">
             Quản lý khóa học & Catalog
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Thêm mới, chỉnh sửa và theo dõi danh sách khóa học hệ thống.
+            {canEdit ? "Thêm mới, chỉnh sửa và theo dõi danh sách khóa học hệ thống." : "Bạn có quyền xem danh mục. Chỉ giám đốc trung tâm được thay đổi khóa học và giá."}
           </p>
         </div>
 
         <button
+          disabled={!canEdit}
           type="button"
           onClick={() => {
             setSelectedCourse(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="text-lg leading-none">+</span>
           Thêm khóa học mới
@@ -111,8 +119,9 @@ export default function CoursesPage() {
       </section>
 
       {/* Search & Stats Bar */}
-      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-md">
+          <label htmlFor="course-search">Tìm khóa học</label>
           <input
             id="course-search"
             type="text"
@@ -124,15 +133,17 @@ export default function CoursesPage() {
         </div>
 
         <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2.5 sm:min-w-44">
-          <span className="text-sm text-slate-500">Tổng số khóa học</span>
+          <span className="text-sm text-slate-500">Khóa học theo bộ lọc</span>
           <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-bold text-blue-700">
             {filteredCourses.length}
           </span>
         </div>
       </section>
 
+      <CatalogSearch courses={courses} branches={branches} />
+      <PackagesPanel courses={courses} canEdit={canEdit} />
       {/* Main Table Section */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex flex-col gap-1 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-semibold text-slate-800">
             Danh sách khóa học
@@ -145,12 +156,12 @@ export default function CoursesPage() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold  text-slate-500">
                 <th className="py-4 px-4 w-[16%]">Mã khóa học</th>
                 <th className="py-4 px-4 w-[20%]">Tên khóa học</th>
                 <th className="py-4 px-4 w-[24%]">Mô tả</th>
                 <th className="py-4 px-4 w-[12%]">Cấp độ</th>
-                <th className="py-4 px-4 w-[14%]">Học phí</th>
+                <th className="num py-4 px-4 w-[14%]">Học phí</th>
                 <th className="py-4 px-4 w-[10%]">Trạng thái</th>
                 <th className="py-4 px-4 w-[10%] text-center">Thao tác</th>
               </tr>
@@ -173,7 +184,7 @@ export default function CoursesPage() {
                     role="alert"
                     className="px-5 py-16 text-center text-red-600"
                   >
-                    Không thể tải danh sách khóa học: {loadError}
+                    Không thể tải danh sách khóa học: {loadError} <button onClick={() => window.location.reload()}>Thử lại</button>
                   </td>
                 </tr>
               ) : filteredCourses.length === 0 ? (
@@ -192,7 +203,7 @@ export default function CoursesPage() {
                     key={course.id}
                     className="transition-colors hover:bg-slate-50"
                   >
-                    <td className="px-4 py-4 font-mono font-semibold text-slate-700 text-xs">
+                    <td className="px-4 py-4 font-semibold text-slate-700 text-xs">
                       {course.code}
                     </td>
                     <td className="px-4 py-4 font-semibold text-slate-800">
@@ -206,7 +217,7 @@ export default function CoursesPage() {
                     <td className="px-4 py-4 capitalize text-slate-600">
                       {course.level}
                     </td>
-                    <td className="px-4 py-4 font-semibold text-blue-600 whitespace-nowrap">
+                    <td className="px-4 py-4 num font-semibold whitespace-nowrap">
                       {formatCurrency(course.priceVnd)}
                     </td>
                     <td className="px-4 py-4">
@@ -220,12 +231,13 @@ export default function CoursesPage() {
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
+                          disabled={!canEdit}
                           type="button"
                           onClick={() => {
                             setSelectedCourse(course);
                             setIsModalOpen(true);
                           }}
-                          className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+                          className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Sửa
                         </button>

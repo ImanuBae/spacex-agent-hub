@@ -1,7 +1,12 @@
 # Nghiệm thu sau sửa tích hợp — 26/10/2026
 
 Nhánh local: `fix/dev-handoff`, tích hợp FE-03 `e006573` và BE-03 `06f06ba`.
-Đối chiếu phạm vi trong `phan-cong-den-2026-10-20.md` và hợp đồng L-01.
+Đối chiếu phân công đợt 20/10 và hợp đồng L-01 trong
+[quy ước phát triển](quy-uoc-phat-trien.md). Phân công/bàn giao/review cũ
+đã được dọn khỏi bộ tài liệu hiện hành; có thể tra bản đã commit trong lịch sử Git.
+Kế hoạch tiếp theo dùng [Product Plan v2](product-plan-v2.md) và
+[phân công task v2](phan-cong-task-v2.md). Biên bản này giữ nguyên phạm vi
+và kết quả nghiệm thu lịch sử, không xác nhận các task v2 đã hoàn tất.
 
 ## Kết quả theo mã việc
 
@@ -71,8 +76,7 @@ không đóng toàn bộ WEB-1/WEB-4/CAT-1 hoặc toàn bộ MVP.
 - Chạy lại check: 32/32 task qua; DB mới chạy migration/seed và test:db
   26/26 qua. Chạy lại Chrome: tạo/xem, validation, restart API/DB, đủ 7 role,
   mobile và tắt mock/production đều qua. Không phát hiện lỗi chức năng mới.
-- Hoàn chỉnh [bàn giao Lead](ban-giao-lead.md) và
-  [checklist phân công](phan-cong-den-2026-10-20.md), bỏ các trạng thái cũ
+- Hoàn chỉnh bàn giao Lead và checklist phân công của đợt cũ, bỏ các trạng thái cũ
   nói chưa có Portal/Catalog hoặc L-04 vẫn chờ tích hợp. Giữ lịch sử kiểm tra
   18/10 riêng với kết quả 26/10.
 - Hai mục quy trình vẫn chưa xác minh: kết quả GitHub Actions/PR trên remote

@@ -3,6 +3,9 @@ dist/
 .next/
 .turbo/
 coverage/
+.local/
+.playwright-cli/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

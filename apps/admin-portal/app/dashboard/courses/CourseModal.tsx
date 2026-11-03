@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OperationDialog } from "../components/OperationUI";
 import type { FormEvent } from "react";
 import type {
   Course,
@@ -25,6 +26,7 @@ export default function CourseModal({
     initialData?.description ?? "",
   );
   const [goal, setGoal] = useState(initialData?.goal ?? "");
+  const [policyText, setPolicyText] = useState(initialData?.policyText ?? "");
   const [level, setLevel] = useState<Course["level"]>(
     initialData?.level ?? "beginner",
   );
@@ -58,6 +60,7 @@ export default function CourseModal({
         code,
         name,
         description,
+        policyText,
         goal,
         level,
         deliveryModes,
@@ -79,53 +82,43 @@ export default function CourseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-xs">
-      <div className="my-auto w-full max-w-lg space-y-6 rounded-2xl bg-white p-6 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <h3 className="text-lg font-bold text-slate-800">
-            {initialData ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Đóng biểu mẫu"
-            className="cursor-pointer font-semibold text-slate-400 hover:text-slate-600"
-          >
-            ✕
-          </button>
-        </div>
-
+    <OperationDialog title={initialData ? "Chỉnh sửa khóa học" : "Thêm khóa học mới"} onClose={onClose}>
         {submitError && (
           <div
             role="alert"
-            className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+            className="whitespace-pre-wrap rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
           >
             Lưu khóa học thất bại: {submitError}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="course-policy">Chính sách áp dụng cho khóa học</label>
+            <textarea id="course-policy" value={policyText} onChange={event => setPolicyText(event.target.value)} rows={3} maxLength={10000} />
+            <p className="muted">Thay đổi có hiệu lực ngay và được lưu thành phiên bản mới.</p>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label
                 htmlFor="course-code"
-                className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+                className="mb-1 block text-xs font-semibold text-slate-600"
               >
                 Mã khóa học
               </label>
               <input
-                id="course-code"
+                required id="course-code"
                 type="text"
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
                 placeholder="VD: PROG-01"
-                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
               />
             </div>
             <div>
               <label
                 htmlFor="course-status"
-                className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+                className="mb-1 block text-xs font-semibold text-slate-600"
               >
                 Trạng thái
               </label>
@@ -135,7 +128,7 @@ export default function CourseModal({
                 onChange={(event) =>
                   setStatus(event.target.value as Course["status"])
                 }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm"
               >
                 <option value="draft">Draft (Bản nháp)</option>
                 <option value="active">Active (Hoạt động)</option>
@@ -147,17 +140,17 @@ export default function CourseModal({
           <div>
             <label
               htmlFor="course-name"
-              className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+              className="mb-1 block text-xs font-semibold text-slate-600"
             >
               Tên khóa học
             </label>
             <input
-              id="course-name"
+              required id="course-name"
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="VD: Lập trình JavaScript"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
             />
           </div>
 
@@ -165,7 +158,7 @@ export default function CourseModal({
             <div>
               <label
                 htmlFor="course-level"
-                className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+                className="mb-1 block text-xs font-semibold text-slate-600"
               >
                 Cấp độ
               </label>
@@ -175,7 +168,7 @@ export default function CourseModal({
                 onChange={(event) =>
                   setLevel(event.target.value as Course["level"])
                 }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm"
               >
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
@@ -185,18 +178,18 @@ export default function CourseModal({
             <div>
               <label
                 htmlFor="course-price"
-                className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+                className="mb-1 block text-xs font-semibold text-slate-600"
               >
                 Học phí (VNĐ)
               </label>
               <input
                 id="course-price"
                 type="number"
-                step="any"
+                step="1" min="0" required
                 value={priceVnd}
                 onChange={(event) => setPriceVnd(event.target.value)}
                 placeholder="VD: 1500000"
-                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
               />
             </div>
           </div>
@@ -204,7 +197,7 @@ export default function CourseModal({
           <div>
             <label
               htmlFor="course-goal"
-              className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+              className="mb-1 block text-xs font-semibold text-slate-600"
             >
               Mục tiêu khóa học
             </label>
@@ -213,12 +206,12 @@ export default function CourseModal({
               rows={2}
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
             />
           </div>
 
           <fieldset>
-            <legend className="mb-2 block text-xs font-semibold uppercase text-slate-600">
+            <legend className="mb-2 block text-xs font-semibold text-slate-600">
               Hình thức học
             </legend>
             <div className="flex gap-5 text-sm text-slate-700">
@@ -241,7 +234,7 @@ export default function CourseModal({
           <div>
             <label
               htmlFor="course-description"
-              className="mb-1 block text-xs font-semibold uppercase text-slate-600"
+              className="mb-1 block text-xs font-semibold text-slate-600"
             >
               Mô tả
             </label>
@@ -250,7 +243,7 @@ export default function CourseModal({
               rows={3}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm"
             />
           </div>
 
@@ -258,20 +251,19 @@ export default function CourseModal({
             <button
               type="button"
               onClick={onClose}
-              className="cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
             >
               Hủy bỏ
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="cursor-pointer rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+              className="cursor-pointer rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
             >
               {isSubmitting ? "Đang lưu..." : "Lưu khóa học"}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </OperationDialog>
   );
 }

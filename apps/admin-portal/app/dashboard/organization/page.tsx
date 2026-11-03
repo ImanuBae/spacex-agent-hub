@@ -1,379 +1,98 @@
-// apps/admin-portal/app/dashboard/organization/page.tsx
 "use client";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { ApiError, request } from "../../../lib/request";
+import { roleLabels, type UserRole } from "../../../lib/roles";
 
-import { useState, useEffect } from "react";
-import type { FormEvent } from "react";
-import {
-  organizationService,
-  Department,
-} from "../../../lib/services/organization";
+interface Branch { id: string; code: string; name: string; kind: string; active: boolean; }
+interface Department { id: string; branchId: string; name: string; description: string; active: boolean; }
+interface Account { id: string; email: string; name: string; role: UserRole; branchIds: string[]; active: boolean; }
+interface Employee { id: string; accountId: string; branchId: string; departmentId: string | null; name: string; title: string; teacherProfile: string | null; active: boolean; }
+interface Sync { id: string; employeeId: string; role: string; branchIds: string[]; status: string; }
+const control = "rounded border border-slate-300 bg-white p-2 text-sm";
+const button = "rounded bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-50";
+const fetchOrganization = () => Promise.all([
+  request<Branch[]>("/api/v1/branches"), request<Department[]>("/api/v1/departments"), request<Account[]>("/api/v1/accounts"), request<Employee[]>("/api/v1/employees"), request<Sync[]>("/api/v1/access-sync"),
+]);
 
 export default function OrganizationPage() {
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(
-    null,
-  );
-  const [deletingDepartmentId, setDeletingDepartmentId] = useState<
-    number | null
-  >(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    manager: "",
-    memberCount: 1,
-    description: "",
-  });
-
-  const loadDepartments = async () => {
-    try {
-      const data = await organizationService.getAllDepartments();
-      setDepartments(data);
-    } catch (error) {
-      console.error("Lỗi tải danh sách phòng ban:", error);
-      setErrorMessage(
-        error instanceof Error
-          ? `Không thể tải danh sách phòng ban: ${error.message}`
-          : "Không thể tải danh sách phòng ban.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let isActive = true;
-
-    organizationService
-      .getAllDepartments()
-      .then((data) => {
-        if (isActive) setDepartments(data);
-      })
-      .catch((error) => {
-        console.error("Lỗi tải danh sách phòng ban:", error);
-        if (isActive) {
-          setErrorMessage(
-            error instanceof Error
-              ? `Không thể tải danh sách phòng ban: ${error.message}`
-              : "Không thể tải danh sách phòng ban.",
-          );
-        }
-      })
-      .finally(() => {
-        if (isActive) setIsLoading(false);
-      });
-
-    return () => {
-      isActive = false;
-    };
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [syncs, setSyncs] = useState<Sync[]>([]);
+  const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  const [branchId, setBranchId] = useState(""); const [accountId, setAccountId] = useState("");
+  const [operation, setOperation] = useState<{ key: string; employeeId: string; role: string; branchIds: string[] } | null>(null);
+  const load = useCallback(async () => {
+    const [b, d, a, e, s] = await fetchOrganization();
+    setBranches(b); setDepartments(d); setAccounts(a); setEmployees(e); setSyncs(s);
   }, []);
-
-  const openCreateModal = () => {
-    setEditingDepartmentId(null);
-    setFormData({ name: "", manager: "", memberCount: 1, description: "" });
-    setErrorMessage("");
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (department: Department) => {
-    setEditingDepartmentId(department.id);
-    setFormData({
-      name: department.name,
-      manager: department.manager,
-      memberCount: department.memberCount,
-      description: department.description,
-    });
-    setErrorMessage("");
-    setIsModalOpen(true);
-  };
-
-  const handleSave = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const name = formData.name.trim();
-    const manager = formData.manager.trim();
-    if (!name || !manager) {
-      alert("Vui lòng điền đầy đủ tên phòng ban và trưởng bộ phận!");
-      return;
-    }
-    if (!Number.isInteger(formData.memberCount) || formData.memberCount < 1) {
-      setErrorMessage("Số lượng nhân sự phải là số nguyên lớn hơn 0.");
-      return;
-    }
-
+  useEffect(() => { void fetchOrganization().then(([b, d, a, e, s]) => { setBranches(b); setDepartments(d); setAccounts(a); setEmployees(e); setSyncs(s); }).catch(e => setMessage(e.message)); }, []);
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true); setMessage("");
+    try { await action(); await load(); setMessage("Đã lưu."); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "Thao tác thất bại."); }
+    finally { setBusy(false); }
+  }
+  const write = (path: string, data: unknown, method = "POST") => request(path, { method, body: JSON.stringify(data) });
+  const values = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); return new FormData(e.currentTarget); };
+  async function applyAccess(op: NonNullable<typeof operation>) {
+    setBusy(true); setMessage("");
     try {
-      setErrorMessage("");
-      setIsSaving(true);
-      const departmentData = {
-        name,
-        manager,
-        memberCount: formData.memberCount,
-        description: formData.description.trim(),
-      };
-      if (editingDepartmentId === null) {
-        await organizationService.createDepartment(departmentData);
-      } else {
-        await organizationService.updateDepartment(
-          editingDepartmentId,
-          departmentData,
-        );
-      }
-      setFormData({ name: "", manager: "", memberCount: 1, description: "" });
-      setEditingDepartmentId(null);
-      setIsModalOpen(false);
-      await loadDepartments();
-    } catch (error) {
-      console.error(
-        editingDepartmentId === null
-          ? "Lỗi tạo phòng ban:"
-          : "Lỗi cập nhật phòng ban:",
-        error,
-      );
-      setErrorMessage(
-        error instanceof Error
-          ? `Không thể ${editingDepartmentId === null ? "tạo" : "cập nhật"} phòng ban: ${error.message}`
-          : `Không thể ${editingDepartmentId === null ? "tạo" : "cập nhật"} phòng ban.`,
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (confirm("Bạn có chắc chắn muốn xóa phòng ban này?")) {
-      try {
-        setErrorMessage("");
-        setDeletingDepartmentId(id);
-        await organizationService.deleteDepartment(id);
-        await loadDepartments();
-      } catch (error) {
-        console.error("Lỗi xóa phòng ban:", error);
-        setErrorMessage(
-          error instanceof Error
-            ? `Không thể xóa phòng ban: ${error.message}`
-            : "Không thể xóa phòng ban.",
-        );
-      } finally {
-        setDeletingDepartmentId(null);
-      }
-    }
-  };
-
-  return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6">
-      {/* Tiêu đề trang & Nút thêm mới */}
-      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-            Quản lý Tổ chức & Phòng ban
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Quản lý cơ cấu phòng ban, đội ngũ nhân sự và phân bổ công việc trong
-            trung tâm.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition cursor-pointer"
-        >
-          + Thêm phòng ban
-        </button>
-      </section>
-
-      {errorMessage && !isModalOpen && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
-          {errorMessage}
-        </p>
-      )}
-
-      {/* Danh sách phòng ban dạng lưới thẻ (Grid) */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {isLoading ? (
-          <p className="col-span-2 text-center text-slate-400 italic py-16">
-            Đang tải dữ liệu tổ chức...
-          </p>
-        ) : departments.length === 0 ? (
-          <p className="col-span-2 text-center text-slate-400 italic py-16">
-            Chưa có thông tin phòng ban nào.
-          </p>
-        ) : (
-          departments.map((dept) => (
-            <div
-              key={dept.id}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-800">
-                    {dept.name}
-                  </h3>
-                  <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-semibold">
-                    {dept.memberCount} nhân sự
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600">{dept.description}</p>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-sm">
-                <span className="text-slate-500">
-                  Trưởng bộ phận:{" "}
-                  <strong className="text-slate-700">{dept.manager}</strong>
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(dept)}
-                    disabled={deletingDepartmentId !== null || isSaving}
-                    className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-100 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(dept.id)}
-                    disabled={deletingDepartmentId !== null || isSaving}
-                    className="px-3 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {deletingDepartmentId === dept.id ? "Đang xóa..." : "Xóa"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </section>
-
-      {/* Modal thêm mới phòng ban */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-bold text-slate-800">
-                {editingDepartmentId === null
-                  ? "Thêm phòng ban mới"
-                  : "Chỉnh sửa phòng ban"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setErrorMessage("");
-                }}
-                disabled={isSaving}
-                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
-              >
-                &times;
-              </button>
-            </div>
-
-            {errorMessage && (
-              <p
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              >
-                {errorMessage}
-              </p>
-            )}
-
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-                  Tên phòng ban
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Phòng Truyền thông"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-                  Trưởng bộ phận
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Họ tên quản lý"
-                  value={formData.manager}
-                  onChange={(e) =>
-                    setFormData({ ...formData, manager: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-                  Số lượng nhân sự
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.memberCount}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      memberCount: Number(e.target.value),
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">
-                  Mô tả chức năng
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Mô tả ngắn gọn nhiệm vụ phòng ban..."
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setErrorMessage("");
-                  }}
-                  disabled={isSaving}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSaving
-                    ? "Đang lưu..."
-                    : editingDepartmentId === null
-                      ? "Thêm phòng ban"
-                      : "Lưu thay đổi"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      const result = await request<{ status: string }>(`/api/v1/employees/${op.employeeId}/access`, { method: "PUT", headers: { "idempotency-key": op.key }, body: JSON.stringify({ role: op.role, branchIds: op.branchIds }) });
+      setMessage(result.status === "applied" ? "Đã gán quyền; phiên cũ đã bị thu hồi." : "Đang chờ IAM. Giữ nguyên yêu cầu và bấm thử lại.");
+      if (result.status === "applied") setOperation(null);
+      await load();
+    } catch (e) { if (e instanceof ApiError && e.status >= 400 && e.status < 500) setOperation(null); setMessage(e instanceof Error ? e.message : "Lỗi gán quyền"); }
+    finally { setBusy(false); }
+  }
+  return <div className="space-y-6">
+    <h1 className="text-2xl font-bold">Tổ chức và tài khoản nhân viên</h1>
+    {message && <p role="status" className="rounded border bg-white p-3">{message}</p>}
+    <section className="space-y-3 rounded bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold">Trung tâm và chi nhánh</h2>
+      <ul className="space-y-2">{branches.map(b => <li key={b.id} className="flex flex-wrap items-center gap-3"><span>{b.code} — {b.name} ({b.active ? "Hoạt động" : "Ngừng hoạt động"})</span><button disabled={busy} className={control} onClick={() => void run(() => write(`/api/v1/branches/${b.id}`, { code: b.code, name: b.name, kind: b.kind, active: !b.active }, "PUT"))}>{b.active ? "Ngừng hoạt động" : "Kích hoạt"}</button></li>)}</ul>
+      <form className="flex flex-wrap gap-2" onSubmit={e => { const f = values(e); void run(() => write("/api/v1/branches", { code: f.get("code"), name: f.get("name"), kind: "branch" })); }}>
+        <input required name="code" aria-label="Mã chi nhánh" placeholder="Mã chi nhánh" className={control} /><input required name="name" aria-label="Tên chi nhánh" placeholder="Tên chi nhánh" className={control} /><button disabled={busy} className={button}>Thêm chi nhánh</button>
+      </form>
+    </section>
+    <section className="space-y-3 rounded bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold">Phòng ban</h2>
+      <ul>{departments.map(d => <li key={d.id}>{d.name} — {branches.find(b => b.id === d.branchId)?.name}</li>)}</ul>
+      <form className="flex flex-wrap gap-2" onSubmit={e => { const f = values(e); void run(() => write("/api/v1/departments", { branchId: f.get("branchId"), name: f.get("name"), description: f.get("description") })); }}>
+        <select required name="branchId" aria-label="Chi nhánh phòng ban" className={control}><option value="">Chọn chi nhánh</option>{branches.filter(b => b.active).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+        <input required name="name" aria-label="Tên phòng ban" placeholder="Tên phòng ban" className={control} /><input name="description" aria-label="Mô tả phòng ban" placeholder="Mô tả" className={control} /><button disabled={busy} className={button}>Thêm phòng ban</button>
+      </form>
+    </section>
+    <section className="space-y-3 rounded bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold">Cấp tài khoản</h2>
+      <p className="text-sm text-slate-600">Tài khoản mới chưa có phạm vi chi nhánh. Tạo hồ sơ nhân sự rồi gán quyền bên dưới. Ngừng hồ sơ nhân sự không thay thế khóa tài khoản.</p>
+      <form className="flex flex-wrap gap-2" onSubmit={e => { const f = values(e); const form = e.currentTarget; void run(async () => { await write("/api/v1/accounts", { name: f.get("name"), email: f.get("email"), password: f.get("password") }); form.reset(); }); }}>
+        <input required name="name" aria-label="Tên tài khoản" placeholder="Họ tên" className={control} /><input required type="email" name="email" aria-label="Email tài khoản" placeholder="Email" className={control} /><input required minLength={12} maxLength={256} type="password" name="password" autoComplete="new-password" aria-label="Mật khẩu cấp mới" placeholder="Mật khẩu từ 12 ký tự" className={control} /><button disabled={busy} className={button}>Cấp tài khoản</button>
+      </form>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{accounts.map(a => <tr key={a.id} className="border-t"><td className="p-2">{a.email}</td><td>{roleLabels[a.role]}</td><td>{a.active ? "Hoạt động" : "Đã khóa"}</td><td><button disabled={busy} className={control} onClick={() => void run(() => write(`/api/v1/accounts/${a.id}/status`, { active: !a.active }, "PUT"))}>{a.active ? "Khóa" : "Mở khóa"}</button></td></tr>)}</tbody></table></div>
+    </section>
+    <section className="space-y-3 rounded bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold">Hồ sơ nhân sự / giảng viên</h2>
+      <form className="flex flex-wrap gap-2" onSubmit={e => { const f = values(e); void run(() => write("/api/v1/employees", { accountId, branchId, departmentId: f.get("departmentId") || null, name: accounts.find(a => a.id === accountId)?.name, title: f.get("title"), teacherProfile: f.get("teacherProfile") || null })); }}>
+        <select required value={accountId} onChange={e => setAccountId(e.target.value)} aria-label="Tài khoản nhân sự" className={control}><option value="">Chọn tài khoản</option>{accounts.filter(a => a.active && !employees.some(e => e.accountId === a.id)).map(a => <option key={a.id} value={a.id}>{a.email}</option>)}</select>
+        <select required value={branchId} onChange={e => setBranchId(e.target.value)} aria-label="Chi nhánh nhân sự" className={control}><option value="">Chọn chi nhánh</option>{branches.filter(b => b.active).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
+        <select key={branchId} name="departmentId" aria-label="Phòng ban nhân sự" className={control}><option value="">Không có phòng ban</option>{departments.filter(d => d.branchId === branchId && d.active).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+        <input name="title" aria-label="Chức danh" placeholder="Chức danh" className={control} /><input name="teacherProfile" aria-label="Chuyên môn giảng viên" placeholder="Chuyên môn giảng viên (nếu có)" className={control} /><button disabled={busy} className={button}>Thêm nhân sự</button>
+      </form>
+      <ul>{employees.map(e => <li key={e.id} className="flex flex-wrap items-center gap-2 border-t py-2"><span>{e.name} — {e.title} — {e.teacherProfile ?? ""} ({e.active ? "Hoạt động" : "Ngừng"})</span><button disabled={busy} className={control} onClick={() => void run(() => write(`/api/v1/employees/${e.id}`, { accountId: e.accountId, branchId: e.branchId, departmentId: e.departmentId, name: e.name, title: e.title, teacherProfile: e.teacherProfile, active: !e.active }, "PUT"))}>{e.active ? "Ngừng hồ sơ" : "Kích hoạt hồ sơ"}</button></li>)}</ul>
+    </section>
+    <section className="space-y-3 rounded bg-white p-4 shadow">
+      <h2 className="text-lg font-semibold">Gán vai trò và phạm vi chi nhánh</h2>
+      <form className="flex flex-wrap gap-2" onSubmit={e => { const f = values(e); const op = { key: crypto.randomUUID(), employeeId: String(f.get("employeeId")), role: String(f.get("role")), branchIds: f.getAll("branchIds").map(String) }; setOperation(op); void applyAccess(op); }}>
+        <select required name="employeeId" aria-label="Nhân sự gán quyền" className={control}><option value="">Chọn nhân sự</option>{employees.filter(e => e.active).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select>
+        <select name="role" aria-label="Vai trò cấp" className={control}>{Object.entries(roleLabels).filter(([r]) => r !== "student" && r !== "ai_agent").map(([r, label]) => <option key={r} value={r}>{label}</option>)}</select>
+        <fieldset className="flex flex-wrap gap-2"><legend className="text-sm">Phạm vi (bao gồm chi nhánh chính của nhân sự)</legend>{branches.filter(b => b.active).map(b => <label key={b.id}><input type="checkbox" name="branchIds" value={b.id} /> {b.name}</label>)}</fieldset>
+        <button disabled={busy || operation !== null} className={button}>Gán quyền</button>
+      </form>
+      {operation && <button disabled={busy} className={button} onClick={() => void applyAccess(operation)}>Thử lại yêu cầu {operation.key}</button>}
+      <p className="text-sm">Yêu cầu chờ đồng bộ: {syncs.filter(s => s.status === "pending").length}. Trạng thái applied nghĩa là IAM đã cấp quyền và thu hồi phiên cũ.</p>
+      {syncs.filter(s => s.status === "pending").map(s => <button key={s.id} disabled={busy} className={control} onClick={() => { const op = { key: s.id, employeeId: s.employeeId, role: s.role, branchIds: s.branchIds }; setOperation(op); void applyAccess(op); }}>Thử lại yêu cầu chờ {s.id}</button>)}
+    </section>
+  </div>;
 }

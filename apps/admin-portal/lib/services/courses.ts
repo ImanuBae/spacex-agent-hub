@@ -6,6 +6,7 @@ export interface CourseInput {
   code: string;
   name: string;
   description: string;
+  policyText?: string;
   goal: string;
   level: CourseLevel;
   deliveryModes: CourseDeliveryMode[];
@@ -91,6 +92,7 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") window.dispatchEvent(new Event("hub:unauthorized"));
     const errorBody =
       typeof body === "object" && body !== null && "error" in body
         ? (body as { error?: ApiErrorBody }).error
@@ -121,10 +123,12 @@ async function request<T>(
 
 export const courseService = {
   getAllCourses: async (): Promise<Course[]> => {
-    const { data } = await request<Course[]>(
-      `${COURSES_URL}?page=1&pageSize=100`,
-    );
-    return data;
+    const courses: Course[] = [];
+    for (let page = 1; ; page++) {
+      const response = await request<Course[]>(`${COURSES_URL}?page=${page}&pageSize=100`);
+      courses.push(...response.data);
+      if (response.data.length < 100) return courses;
+    }
   },
 
   createCourse: async (data: CourseInput): Promise<Course> => {

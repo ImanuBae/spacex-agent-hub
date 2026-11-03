@@ -1,0 +1,12 @@
+import pg from "pg";
+import { loadConfig } from "@spacex/config";
+import { authConfig } from "@spacex/auth";
+import { createLogger } from "@spacex/logger";
+import { createOrgApp } from "./app.js";
+const config = loadConfig({ ...process.env, SERVICE_NAME: "org", PORT: process.env.PORT ?? "4003" });
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
+const logger = createLogger("org");
+pool.on("error", error => logger.error("database.idle_error", { errorName: error.name }));
+const server = createOrgApp(pool, authConfig()).listen(config.PORT, config.HOST);
+for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => { server.close(() => { void pool.end().then(() => process.exit(0)); }); setTimeout(() => process.exit(1), 10000).unref(); });

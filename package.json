@@ -12,14 +12,20 @@
     "templates/service"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=!@spacex/service-template",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "check": "turbo run lint typecheck test build",
     "dev:template": "npm run build && npm run dev --workspace=@spacex/service-template",
-    "demo:messaging": "npm run build && npm run demo:messaging --workspace=@spacex/service-template"
+    "demo:messaging": "npm run build && npm run demo:messaging --workspace=@spacex/service-template",
+    "demo:class": "node scripts/demo-class.mjs",
+    "test:class:db": "npm run test:db --workspace=@spacex/class-schedule",
+    "test:reliability": "npm run test:db --workspace=@spacex/messaging",
+    "test:stage2:browser": "node scripts/test-stage2-browser.mjs",
+    "test:crm:db": "npm run test:db --workspace=@spacex/crm",
+    "test:crm:browser": "node scripts/test-crm-browser.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

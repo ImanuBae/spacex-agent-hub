@@ -1,0 +1,22 @@
+﻿.crm { display: grid; gap: 20px; }
+.hub-theme.hub-crm-shell { background-image: none; --hub-line: #1b2232; --hub-line-strong: #343d50; }
+.hub-theme .crm button.primary { background: var(--hub-ink); color: var(--hub-bg); border-radius: 6px; }
+.hub-theme .crm .ops-panel { background: var(--hub-bg); backdrop-filter: none; }
+.crm h1 { font-size: 24px; }
+.crm-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.crm-filters label { display: grid; gap: 6px; font-size: 13px; flex: 1 1 160px; }
+.crm-filters input, .crm-filters select { width: 100%; min-width: 0; }
+.crm-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto; align-items: center; gap: 20px; padding: 16px 0; border-top: 1px solid var(--hub-line); }
+.crm-row p { margin: 4px 0 0; }
+.crm-person { text-align: left; font-weight: 600; }
+.crm-row > *, .crm-note, .crm-consent { overflow-wrap: anywhere; min-width: 0; }
+.crm-note { white-space: pre-wrap; }
+.crm-consent { border-top: 1px solid var(--hub-line); padding: 12px 0; }
+.crm-check { display: flex; gap: 10px; align-items: baseline; }
+.ops .crm-check input { width: auto; }
+@media (max-width: 700px) {
+  .crm-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .crm > .ops-heading { align-items: start; }
+  .crm-filters label { flex-basis: 100%; }
+  .crm-row > button { justify-self: start; }
+}

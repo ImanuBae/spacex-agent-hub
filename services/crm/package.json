@@ -1,0 +1,11 @@
+{
+  "name": "@spacex/crm", "version": "0.0.0", "private": true, "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit", "lint": "eslint src",
+    "test": "vitest run src/contracts.test.ts", "test:db": "node scripts/test-db.mjs",
+    "dev": "node --env-file-if-exists=.env --watch dist/index.js", "start": "node --env-file-if-exists=.env dist/index.js",
+    "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts"
+  },
+  "dependencies": { "@spacex/auth": "*", "@spacex/contracts": "*", "@spacex/http": "*", "@spacex/config": "*", "@spacex/logger": "*", "@spacex/messaging": "*", "express": "^5.1.0", "pg": "^8.23.1", "zod": "^4.6.7" },
+  "devDependencies": { "@types/express": "^5.0.0", "@types/pg": "^8.23.1", "tsx": "^4.23.15" }
+}

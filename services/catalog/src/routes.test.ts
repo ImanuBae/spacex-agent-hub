@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { createServer } from "node:http";
+import { signAccessToken, verifyAccessToken, type AuthConfig } from "@spacex/auth";
 import { like } from "drizzle-orm";
 import { createApp } from "./app.js";
 import type * as ClientModule from "./db/client.js";
@@ -25,6 +27,8 @@ const packageBody = (courseId: string, suffix: string, overrides: object = {}) =
 
 describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
     let server: Server;
+    let identity: Server;
+    let token: string;
     let base: string;
     let client: typeof ClientModule;
     let courseA: { id: string; code: string; createdAt: string; updatedAt: string };
@@ -32,7 +36,7 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
 
     async function call(method: string, path: string, body?: unknown) {
         const response = await fetch(`${base}${path}`, {
-            method, headers: { "content-type": "application/json" },
+            method, headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
             body: body === undefined ? undefined : JSON.stringify(body),
         });
         return { status: response.status, body: await response.json() };
@@ -42,7 +46,15 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
         process.env.DATABASE_URL = testDatabaseUrl;
         client = await import("./db/client.js");
         const { registerCatalogRoutes } = await import("./routes.js");
-        const app = createApp("catalog-test", registerCatalogRoutes);
+        const config: AuthConfig = { secret: "catalog-test-secret-at-least-thirty-two-bytes", issuer: "catalog-test", audience: "catalog-test", identityUrl: "" };
+        identity = createServer(async (req, res) => {
+            try { const claims = await verifyAccessToken(req.headers.authorization!.slice(7), config); res.setHeader("content-type", "application/json"); res.end(JSON.stringify({ data: claims })); }
+            catch { res.writeHead(401); res.end(); }
+        });
+        await new Promise<void>(resolve => identity.listen(0, "127.0.0.1", resolve));
+        config.identityUrl = `http://127.0.0.1:${(identity.address() as AddressInfo).port}`;
+        token = await signAccessToken({ id: GHOST, role: "center_director", branchIds: [] }, GHOST, config);
+        const app = createApp("catalog-test", app => registerCatalogRoutes(app, config));
         await new Promise<void>(resolve => { server = app.listen(0, "127.0.0.1", () => resolve()); });
         base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
         courseA = (await call("POST", "/api/v1/courses", courseBody("a"))).body.data;
@@ -55,6 +67,7 @@ describe.skipIf(!testDatabaseUrl)("catalog CRUD API (PostgreSQL)", () => {
         await client.db.delete(courses).where(like(courses.code, `${prefix}%`));
         await client.pool.end();
         await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+        await new Promise<void>(resolve => identity.close(() => resolve()));
     });
 
     describe("courses", () => {

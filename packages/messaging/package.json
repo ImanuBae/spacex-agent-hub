@@ -9,13 +9,16 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run src --passWithNoTests",
+    "test:db": "node scripts/test-db.mjs",
     "lint": "eslint src"
   },
   "dependencies": {
     "@spacex/contracts": "*",
-    "amqplib": "^0.10.9"
+    "amqplib": "^0.10.9",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.10.7"
+    "@types/amqplib": "^0.10.7",
+    "@types/pg": "^8.23.1"
   }
 }

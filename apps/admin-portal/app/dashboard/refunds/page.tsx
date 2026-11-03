@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import RoadmapState from "../components/RoadmapState";
 
 export default function RefundsPage() {
   return (
@@ -12,9 +13,11 @@ export default function RefundsPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 min-h-[400px]">
-        {/* Nội dung danh sách yêu cầu hoàn tiền sẽ kết nối API tại đây */}
-      </div>
+      <RoadmapState
+        description="Tiếp nhận và duyệt hoàn tiền đang nằm trong lộ trình phát triển. Phiên bản hiện tại chưa thực hiện hoàn tiền hoặc thay đổi trạng thái giao dịch."
+        href="/dashboard/finance"
+        label="Xem bản mẫu tài chính"
+      />
     </div>
   );
 }

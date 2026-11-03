@@ -6,8 +6,11 @@ export const courses = pgTable(
     {
         id: uuid("id").primaryKey().defaultRandom(),
         code: varchar("code", { length: 50 }).notNull().unique(),
+        policyVersion: integer("policy_version").notNull().default(1),
+        effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
         name: varchar("name", { length: 200 }).notNull(),
         description: text("description").notNull().default(""),
+        policyText: text("policy_text").notNull().default(""),
         goal: varchar("goal", { length: 500 }).notNull(),
         level: varchar("level", { length: 20 }).notNull(),
         deliveryModes: text("delivery_modes").array().notNull(),
@@ -36,8 +39,11 @@ export const coursePackages = pgTable(
             .notNull()
             .references(() => courses.id, { onDelete: "restrict" }),
         code: varchar("code", { length: 50 }).notNull().unique(),
+        policyVersion: integer("policy_version").notNull().default(1),
+        effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull().defaultNow(),
         name: varchar("name", { length: 200 }).notNull(),
         sessionCount: integer("session_count").notNull(),
+        policyText: text("policy_text").notNull().default(""),
         priceVnd: bigint("price_vnd", { mode: "number" }).notNull(),
         status: varchar("status", { length: 20 }).notNull().default("draft"),
         createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -1,48 +1,34 @@
-# Admin Portal — FE-01/02/03
+# Admin Portal — đợt 1
 
-Next.js workspace `@spacex/admin-portal`, cổng local 3000. Yêu cầu Node 22+,
-npm 10+ và Catalog/PostgreSQL cho màn hình khóa học. Chạy các lệnh dưới đây
-từ **root monorepo**; `npm run dev` ở root khởi động tất cả service.
+Next.js workspace `@spacex/admin-portal`, cổng local 3000. Portal dùng IAM,
+Org, Gateway và Catalog thật. Cấu hình, migration/seed và contract:
+[hướng dẫn đợt 1](../../docs/huong-dan-dot-1.md).
 
-## Cài và chạy
+Từ root, sau khi các backend đã được cấu hình/chạy:
 
 ```powershell
-npm ci
-# Chỉ copy khi chưa có file; không ghi đè cấu hình cá nhân.
+# Chỉ copy nếu chưa tồn tại; cập nhật biến thiếu trong file cũ, không ghi đè.
 Copy-Item apps/admin-portal/.env.example apps/admin-portal/.env.local
 npm run dev --workspace=@spacex/admin-portal
 ```
 
-Mở `http://localhost:3000/login`. Cấu hình trong `.env.local`:
+`.env.local` cần GATEWAY_URL=http://127.0.0.1:4000 và
+PORTAL_ORIGIN=http://localhost:3000. Mở đúng origin này tại `/login`, dùng
+account seed của IAM; không có đăng ký public hoặc bộ chọn role giả.
+NEXT_PUBLIC_ENABLE_MOCK và CATALOG_API_URL cũ không bật/tắt phiên đăng nhập thật.
 
-```dotenv
-NEXT_PUBLIC_ENABLE_MOCK=true
-CATALOG_API_URL=http://127.0.0.1:4001
-```
+Phiên nằm trong cookie HttpOnly/SameSite Strict, Secure trong production.
+Frontend gọi `/api/session/*` và `/api/v1/*` cùng origin; route handler server
+nối Gateway, tự refresh và không trả token cho JavaScript. LocalStorage không
+cấp quyền. Login sai/khóa tài khoản hiển thị lỗi; hết phiên trở về login;
+403 báo thiếu quyền; mất kết nối có thao tác thử lại. Production cần HTTPS.
 
-`CATALOG_API_URL` là biến server, chỉ chứa origin Catalog. Trình duyệt gọi
-`/api/v1/*` cùng origin, Next rewrite sang Catalog; không cần CORS.
-Không dùng `NEXT_PUBLIC_API_URL`. Restart Next sau khi đổi cấu hình.
-Hướng dẫn DB, migration, seed và backend: [Catalog](../../services/catalog/README.md).
-
-## Mock và giới hạn
-
-Mock chỉ bật khi chạy `next dev` và `NEXT_PUBLIC_ENABLE_MOCK=true`. Đặt `false`
-hoặc bỏ biến để tắt; login/dashboard hiển thị thông báo chưa bật demo.
-Production luôn tắt mock, kể cả khi biến bằng true.
-
-Đăng nhập demo bằng email hợp lệ bất kỳ và mật khẩu từ 6 ký tự. Không xác thực
-tài khoản thật; đăng ký chỉ mô phỏng giao diện, không tạo tài khoản. Bộ chọn
-role trên sidebar chỉ đổi menu, không cấp quyền backend. Student/AI Agent
-không có menu Admin. Quyền/menu theo [L-01](../../docs/quy-uoc-phat-trien.md).
-
-Khóa học dùng **Catalog API/PostgreSQL thật**. Tài chính, hộp thư, lead, tổ chức,
-profile và audit vẫn là giao diện/mock localStorage. Đối soát, hoàn tiền,
-giờ rảnh, danh sách lớp mới có khung trang. Chưa có IAM, JWT, Gateway hoặc
-giới hạn dữ liệu theo chi nhánh; chỉ demo local. Đợt này hỗ trợ tạo/xem/sửa
-khóa, không hỗ trợ xóa khóa hay giao diện gói học.
-
-## Kiểm tra bàn giao
+Sidebar và quyền vào trang lấy role từ IAM. Catalog có tạo/xem/sửa khóa,
+chỉ giám đốc trung tâm có nút sửa được bật; backend kiểm lại quyền. Trang
+Tổ chức cho giám đốc trung tâm quản lý chi nhánh, phòng ban, cấp account,
+hồ sơ nhân sự/giảng viên và gán quyền qua Org → IAM; yêu cầu pending có thể retry.
+Các trang chat/lead/tài chính/audit/lịch khác vẫn là mock/khung được gắn thông báo.
+Giao diện gói học, Student Portal và luồng nghiệp vụ M1 chưa thuộc đợt này.
 
 ```powershell
 npm run lint --workspace=@spacex/admin-portal
@@ -51,14 +37,7 @@ npm test --workspace=@spacex/admin-portal
 npm run build --workspace=@spacex/admin-portal
 ```
 
-1. Chạy Catalog và Portal dev. Tạo khóa với code duy nhất, tên/mục tiêu,
-   cấp độ, hình thức, giá VND nguyên không âm; khóa xuất hiện ngay trong danh sách.
-2. Reload trang; restart Catalog rồi reload: khóa vẫn được đọc từ DB.
-3. Gửi tên trống hoặc giá âm; form giữ mở và hiển thị lỗi validation kèm trường
-   sai. Gửi code trùng để xem 409; tắt Catalog rồi reload để xem lỗi tải API.
-4. Đổi đủ 7 role. Tuyển sinh có hộp thư, lead, xem khóa/lịch, không tài chính.
-   Kế toán không chat. Các menu kế toán/giảng viên không dẫn tới 404.
-5. Kiểm tra desktop và rộng 390px: mở/đóng sidebar, cuộn form và bảng. Tắt
-   mock rồi restart Next để kiểm tra trang thông báo.
-
-`build` kiểm tra bản production; dùng `dev` với mock để demo đến khi có IAM thật.
+Kiểm phiên/cookie/CSRF, Gateway và dữ liệu PostgreSQL bằng suite `test:db`
+của Identity có STAGE1_PORTAL_TEST=1 theo hướng dẫn đợt 1. Suite chạy Next
+production thật; thêm STAGE1_BROWSER_PATH để kiểm cả giao diện với Chrome/Edge
+có sẵn theo hướng dẫn. Khi không đặt đường dẫn browser, suite chỉ kiểm HTTP/BFF.
