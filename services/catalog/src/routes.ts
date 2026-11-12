@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { and, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
-import { authenticate, allowRoles, authConfig, type AuthConfig } from "@spacex/auth";
+import { authenticateDomain, principal, allowRoles, authConfig, type AuthConfig } from "@spacex/auth";
 import { CourseInput, CoursePackageInput, ListQuery } from "@spacex/contracts";
 import { HttpError } from "./app.js";
 import { db, pool } from "./db/client.js";
@@ -38,7 +38,15 @@ function throwPackageError(error: unknown): never {
 
 
 export function registerCatalogRoutes(app: Express, config: AuthConfig = authConfig()) {
-    app.use("/api/v1", authenticate(config), allowRoles("center_director", "branch_director", "admissions", "teacher", "ai_agent"));
+    app.use("/api/v1", authenticateDomain(config, "catalog", "catalog:read", /^\/(courses|packages)$|^\/packages\/[^/]+\/quote$/), allowRoles("center_director", "branch_director", "admissions", "teacher", "ai_agent"));
+    app.use("/api/v1", (req, res, next) => {
+        const delegation = principal(res).delegation;
+        if (delegation) {
+            if ((req.query.status !== undefined && req.query.status !== "active") || (req.query.sellable !== undefined && req.query.sellable !== "true"))
+                throw new HttpError(403, "FORBIDDEN", "Only active offers are delegated");
+        }
+        next();
+    });
     app.use("/api/v1", (req, res, next) => {
         if (["GET", "HEAD"].includes(req.method)) { next(); return; }
         allowRoles("center_director")(req, res, next);
@@ -57,7 +65,8 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
     });
 
     app.get("/api/v1/courses", async (req, res) => {
-        const { page, pageSize, status, search, branchId, mode, level, goal, minPriceVnd, maxPriceVnd, sellable } = CatalogQuery.parse(req.query);
+        const delegation = principal(res).delegation;
+        const { page, pageSize, status, search, branchId, mode, level, goal, minPriceVnd, maxPriceVnd, sellable } = CatalogQuery.parse(delegation ? { ...req.query, branchId: delegation.branchId, status: "active", sellable: "true" } : req.query);
         const budget = minPriceVnd !== undefined || maxPriceVnd !== undefined;
         const where = and(status ? eq(courses.status, status) : undefined, search ? ilike(courses.name, `%${search}%`) : undefined, goal ? ilike(courses.goal, `%${goal}%`) : undefined, level ? eq(courses.level, level) : undefined, branchId ? sql`(cardinality(${courses.branchIds})=0 OR ${branchId}::uuid=ANY(${courses.branchIds}))` : undefined, mode ? sql`${mode}=ANY(${courses.deliveryModes})` : undefined,
             sellable === "true" ? eq(courses.status, "active") : undefined,
@@ -70,7 +79,7 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
             .limit(pageSize)
             .offset((page - 1) * pageSize);
         const [totalRow] = await db.select({ total: count() }).from(courses).where(where);
-        res.json({ data: rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 } });
+        res.json({ data: delegation?.source === "guest" ? rows.map(r => ({ id: r.id, name: r.name, goal: r.goal, level: r.level, deliveryModes: r.deliveryModes, policyText: r.policyText, policyVersion: r.policyVersion })) : rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 }, readAt: new Date().toISOString() });
     });
 
     app.get("/api/v1/courses/:id", async (req, res) => {
@@ -114,7 +123,8 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
     });
 
     app.get("/api/v1/packages", async (req, res) => {
-        const { page, pageSize, courseId, status, search, minPriceVnd, maxPriceVnd, sellable, goal, branchId, mode, level } = CatalogQuery.parse(req.query);
+        const delegation = principal(res).delegation;
+        const { page, pageSize, courseId, status, search, minPriceVnd, maxPriceVnd, sellable, goal, branchId, mode, level } = CatalogQuery.parse(delegation ? { ...req.query, branchId: delegation.branchId, status: "active", sellable: "true" } : req.query);
         const where = and(courseId ? eq(coursePackages.courseId, courseId) : undefined, status ? eq(coursePackages.status, status) : undefined, search ? ilike(coursePackages.name, `%${search}%`) : undefined,
             minPriceVnd !== undefined ? sql`${coursePackages.priceVnd}>=${minPriceVnd}` : undefined,
             maxPriceVnd !== undefined ? sql`${coursePackages.priceVnd}<=${maxPriceVnd}` : undefined,
@@ -133,7 +143,7 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
             .limit(pageSize)
             .offset((page - 1) * pageSize);
         const [totalRow] = await db.select({ total: count() }).from(coursePackages).where(where);
-        res.json({ data: rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 } });
+        res.json({ data: delegation?.source === "guest" ? rows.map(r => ({ id: r.id, courseId: r.courseId, name: r.name, sessionCount: r.sessionCount, priceVnd: r.priceVnd, policyText: r.policyText, policyVersion: r.policyVersion })) : rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 }, readAt: new Date().toISOString() });
     });
 
     app.get("/api/v1/packages/:id", async (req, res) => {
@@ -155,7 +165,9 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
     }
     app.get("/api/v1/packages/:id/quote", async (req, res) => {
         const id = IdParam.parse(req.params.id);
-        const { rows } = await pool.query("SELECT p.id AS \"packageId\",p.course_id AS \"courseId\",p.price_vnd AS \"priceVnd\",p.session_count AS \"sessionCount\",p.policy_version AS \"packageVersion\",c.policy_version AS \"courseVersion\",p.policy_text AS \"packagePolicy\",c.policy_text AS \"coursePolicy\",p.effective_at AS \"effectiveAt\",statement_timestamp() AS \"quotedAt\" FROM course_packages p JOIN courses c ON c.id=p.course_id WHERE p.id=$1 AND p.status='active' AND c.status='active'", [id]);
+        const branchId = principal(res).delegation?.branchId ?? null;
+        const { rows } = await pool.query("SELECT p.id AS \"packageId\",p.course_id AS \"courseId\",p.price_vnd AS \"priceVnd\",p.session_count AS \"sessionCount\",p.policy_version AS \"packageVersion\",c.policy_version AS \"courseVersion\",p.policy_text AS \"packagePolicy\",c.policy_text AS \"coursePolicy\",p.effective_at AS \"effectiveAt\",statement_timestamp() AS \"quotedAt\" FROM course_packages p JOIN courses c ON c.id=p.course_id WHERE p.id=$1 AND p.status='active' AND c.status='active' AND ($2::uuid IS NULL OR cardinality(c.branch_ids)=0 OR $2::uuid=ANY(c.branch_ids))", [id, branchId]);
+        if (!rows[0] && branchId) throw new HttpError(403, "FORBIDDEN", "Offer outside delegated branch or inactive");
         if (!rows[0]) throw new HttpError(409, "NOT_SELLABLE", "Course/package not active");
         res.json({ data: { ...rows[0], priceVnd: Number(rows[0].priceVnd), currency: "VND" } });
     });

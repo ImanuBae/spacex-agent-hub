@@ -1,0 +1,9 @@
+{
+  "workflowId": "WF-CLASS-CANCEL",
+  "workflowVersion": 1,
+  "eventType": "class.cancellation_approved",
+  "operation": "classes.cancel",
+  "file": "workflows/n8n/iam-command-smoke.json",
+  "sha256": "13e9a21a8e15443f381b0584d7342e2bb465c24d7f3feeacf90d4c985f57de2d",
+  "active": false
+}

@@ -5,13 +5,14 @@ import { AccessInput, AccountInput, LoginInput, type Role } from "@spacex/contra
 import { bearer, verifyAccessToken, signAccessToken, allowRoles, principal, checkBranch, type AuthConfig, type Principal } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 import { hashPassword, verifyPassword, refreshHash } from "./password.js";
+import { registerMachineRoutes, type MachineAuthority } from "./machine.js";
 
 interface Account { id: string; email: string; name: string; role: Role; branch_ids: string[]; active: boolean; password_hash: string; locked_until: Date | null; }
 const view = (a: Account) => ({ id: a.id, email: a.email, name: a.name, role: a.role, branchIds: a.branch_ids, active: a.active });
 const Id = z.uuid();
 const invalid = () => new HttpError(401, "UNAUTHORIZED", "Invalid credentials or session");
 
-export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string) {
+export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string, machines?: MachineAuthority) {
   async function audit(db: Pool | PoolClient, actor: string | null, action: string, target: string | null) {
     await db.query("INSERT INTO identity_audit(id,actor_id,action,target_id) VALUES($1,$2,$3,$4)", [randomUUID(), actor, action, target]);
   }
@@ -29,6 +30,7 @@ export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string
     return claims;
   }
   return createApp("identity", app => {
+    registerMachineRoutes(app, pool, live, machines);
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM accounts LIMIT 1"); res.json({ status: "ok" }); });
     app.post("/api/v1/auth/login", async (req, res) => {
       const input = LoginInput.parse(req.body);

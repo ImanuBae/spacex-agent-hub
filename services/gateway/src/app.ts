@@ -1,7 +1,7 @@
 import { authenticate, type AuthConfig } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 
-export function createGatewayApp(config: AuthConfig, targets: { catalog: string; org: string; classes?: string; crm?: string }) {
+export function createGatewayApp(config: AuthConfig, targets: { catalog: string; org: string; classes?: string; crm?: string; conversation?: string }) {
   // Single-instance limit, keyed by verified actor or socket IP. Never trust
   // client-supplied forwarding headers. Multi-replica hosting needs shared storage.
   const windows = new Map<string, { start: number; count: number }>();
@@ -20,6 +20,7 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
     app.use("/api/v1", async (req, res, next) => {
       const path = req.originalUrl.split("?")[0];
       const publicAuth = req.method === "POST" && ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"].includes(path);
+      if (/^\/api\/v1\/chat\/(session|messages|history|revoke)$/.test(path)) { limit(`chat:${req.socket.remoteAddress}`, 300); next(); return; }
       if (publicAuth) { limit(`auth:${req.socket.remoteAddress}`, 60); next(); return; }
       await authenticate(config)(req, res, next);
     });
@@ -30,7 +31,8 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
         : /^\/api\/v1\/(courses|packages)(\/|$)/.test(path) ? targets.catalog
         : /^\/api\/v1\/(branches|departments|employees|teachers|access-sync)(\/|$)/.test(path) ? targets.org
         : /^\/api\/v1\/(classes|rooms|holds|hold-fixtures|teacher-time|operations)(\/|$)/.test(path) ? targets.classes
-        : /^\/api\/v1\/crm(\/|$)/.test(path) ? targets.crm : undefined;
+        : /^\/api\/v1\/crm(\/|$)/.test(path) ? targets.crm
+        : /^\/api\/v1\/(chat|conversations)(\/|$)/.test(path) ? targets.conversation : undefined;
       if (!target) throw new HttpError(404, "NOT_FOUND", "Unknown API route");
       res.locals.routePattern = `/api/v1/${path.split("/")[3]}/*`;
       const headers: Record<string, string> = { "x-correlation-id": res.locals.correlationId, traceparent: res.locals.traceparent };

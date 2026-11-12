@@ -1,0 +1,72 @@
+{
+  "id": "N8N-03-IAM-read-smoke",
+  "workflowVersion": 1,
+  "n8nWorkflowId": "N8N03IamReadSmoke",
+  "n8nWorkflowVersionId": "04a0c0db-f607-40a8-9b25-9638344ec806",
+  "path": "iam-read-smoke.json",
+  "sha256": "6960488d9cb294952ff08e1dd8179b30448baa2d54f3bdee6679ae5f8aa2f404",
+  "trigger": "manual CLI execute; synthetic backend event, not WF-01?12",
+  "inputSchemaVersion": 1,
+  "subflows": [],
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    }
+  ],
+  "images": {
+    "n8n": "docker.n8n.io/n8nio/n8n:2.46.4@sha256:4384b9ff20a78bc1708c35ce7864f84f724611de7801fb36d715998db7c000f1",
+    "postgres": "postgres:17.7-alpine@sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2"
+  },
+  "credentialAliases": [
+    {
+      "id": "N8N02BridgeMachine",
+      "name": "bridge-smoke-machine",
+      "type": "httpHeaderAuth",
+      "source": "real IAM /internal/iam/machine/token; no human session in n8n",
+      "audience": "automation-bridge",
+      "expectedScopes": [
+        "automation:claim",
+        "automation:checkpoint",
+        "automation:result",
+        "automation:authorize"
+      ]
+    }
+  ],
+  "domainAuthorization": {
+    "source": "Bridge /authorize -> actual IAM issuer; 30s job/operation/lease-bound token",
+    "audiences": [
+      "catalog",
+      "class-schedule"
+    ],
+    "scopes": [
+      "catalog:read",
+      "classes:read"
+    ],
+    "operations": [
+      "catalog.read",
+      "classes.read"
+    ],
+    "revocation": "live IAM + Bridge introspection; no cache"
+  },
+  "acceptance": {
+    "command": "npm run test:automation",
+    "machineTests": 12,
+    "regressionN8N02Tests": 11,
+    "smokes": [
+      "N8N02BridgeSmoke",
+      "N8N03IamReadSmoke"
+    ],
+    "evidence": "iam-read-evidence.json"
+  },
+  "businessWorkflows": false,
+  "dependencies": [
+    "human-initiated verified backend context only; Channel/Conversation source integration is N8N-04",
+    "confirmation/approval and business commands closed until owner services exist",
+    "Class delegated sellable=true requires reviewed scoped cross-service exchange"
+  ]
+}

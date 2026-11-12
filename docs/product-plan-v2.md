@@ -1,5 +1,11 @@
 # SpaceX Việt Nam – Agent Hub: Product Plan v2
 
+> **Tài liệu lịch sử.** Từ 04/11/2026, dùng [Product Plan v3](product-plan-v3.md),
+> [phân công v3](phan-cong-task-v3.md) và [đặc tả workflow n8n](n8n-workflows.md)
+> cho kiến trúc, phạm vi demo và lịch hiện hành. V2 giữ baseline nghiệp vụ,
+> mã ticket, C01–C12 và U01–U20 để truy vết theo các phần được v3 dẫn chiếu;
+> lựa chọn provider, lịch và mô tả hiện trạng bên dưới không phải trạng thái live.
+
 Ngày cập nhật: 27/10/2026. Trạng thái: đề xuất sản phẩm và triển khai, chờ customer xác nhận các quyết định tại mục 3. Đây không phải biên bản customer đã duyệt hoặc cam kết triển khai production.
 
 Tài liệu này thay thế nội dung Product Plan v1. Giữ mã G1–G11 và 72 mã ticket cũ để truy vết; bổ sung ticket cho các khoảng trống nghiệp vụ. Mọi thay đổi phạm vi, chính sách và tiêu chí nghiệm thu sau này cần có người quyết định, ngày hiệu lực và phiên bản.

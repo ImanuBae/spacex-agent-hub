@@ -1,5 +1,11 @@
 # Catalog API - BE-01/02/03
 
+N8N-03: delegated RS256 reads call live IAM introspection, restricted to
+`GET /api/v1/courses`, `/packages`, `/packages/:id/quote`. Catalog applies the
+verified context branch in SQL and returns active offers only; history/detail
+and writes remain closed to machine tokens. Human routes retain their existing
+contract. [Authority/runbook](../automation-bridge/README.md#n8n-03-machine-authority-and-delegation).
+
 **Cập nhật đợt 1:** API nay bắt buộc Bearer JWT và phiên IAM còn hiệu lực;
 chỉ `center_director` được POST/PUT khóa/gói. Các vai trò `branch_director`,
 `admissions`, `teacher`, `ai_agent` được đọc danh mục chung; accountant/student

@@ -1,5 +1,28 @@
 # Identity & Access
 
+N8N-04 adds the limited Channel-source `conversation` / `channel:context` policy.
+Its context is verified against the configured Conversation backend and rechecked
+on every guest domain authorization/introspection; no employee session is fabricated.
+Source credential rotation/revocation fences existing source delegations. See the
+[Conversation runbook](../conversation/README.md) and [N8N-04 actual status](../../docs/ban-giao-n8n-04.md).
+
+N8N-03 adds internal IAM machine-principal provisioning, rotation/revocation,
+RS256 issuance and live delegation/command introspection. Existing human APIs
+keep their session contract. Run migration `0002_machine` before enabling it;
+only IAM receives `IAM_MACHINE_PRIVATE_KEY_FILE` (outside the repository).
+`IAM_MACHINE_ISSUER` must match Bridge; `AUTOMATION_BRIDGE_URL` is the fixed,
+trusted internal lease authority. Missing signing configuration fails closed.
+See [machine contract and runbook](../automation-bridge/README.md#n8n-03-machine-authority-and-delegation)
+and [actual evidence/dependencies](../../docs/ban-giao-n8n-03.md).
+
+The `classes.cancel` command additionally checks the confirming actor's current
+session/branch and exposes `/internal/iam/commands/approval-session` only to a
+scoped Class command token. Class supplies the approver account/session from its
+own locked record; a worker's self-declared approval has no authority. The issuer
+uses one timestamp for token iat/exp so a second boundary cannot lengthen its TTL.
+Confirmation, approval, consumption and business invariants belong to Class, not
+IAM. See [the source-owned command protocol](../class-schedule/README.md#n8n-03-confirmed-and-approved-cancellation).
+
 Workspace `@spacex/identity`, local :4002, database `identity_access`.
 Contract, cấu hình, migration/seed và kiểm chứng:
 [hướng dẫn đợt 1](../../docs/huong-dan-dot-1.md).

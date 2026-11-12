@@ -1,0 +1,346 @@
+[
+  {
+    "id": "N8N03IamReadSmoke",
+    "name": "N8N-03 IAM Catalog Class read smoke (synthetic)",
+    "active": false,
+    "nodes": [
+      {
+        "id": "manual",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "read-claim",
+        "name": "Read claim",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          230,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"workflowId\":\"bridge-smoke\",\"workflowVersion\":1}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      },
+      {
+        "id": "catalog-intent",
+        "name": "Catalog intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $json.data.jobId }}/checkpoint",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $json.data.leaseToken, attempt: $json.data.attempt, expectedVersion: $json.data.version, step: 'catalog', operation: { name: 'catalog.read' } }) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      },
+      {
+        "id": "catalog-authorization",
+        "name": "Catalog authorization",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          690,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $json.data.jobId }}/authorize",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $json.data.leaseToken, attempt: $json.data.attempt, operation: 'catalog.read' }) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      },
+      {
+        "id": "catalog-courses",
+        "name": "Catalog courses",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          920,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:4001/api/v1/courses",
+          "options": {
+            "timeout": 10000
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $json.data.accessToken }}"
+              }
+            ]
+          }
+        },
+        "retryOnFail": false
+      },
+      {
+        "id": "class-intent",
+        "name": "Class intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1150,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $('Catalog intent').first().json.data.jobId }}/checkpoint",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $('Catalog intent').first().json.data.leaseToken, attempt: $('Catalog intent').first().json.data.attempt, expectedVersion: $('Catalog intent').first().json.data.version, step: 'classes', operation: { name: 'classes.read' } }) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      },
+      {
+        "id": "class-authorization",
+        "name": "Class authorization",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1380,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $json.data.jobId }}/authorize",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $json.data.leaseToken, attempt: $json.data.attempt, operation: 'classes.read' }) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      },
+      {
+        "id": "class-list",
+        "name": "Class list",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1610,
+          0
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "http://host.docker.internal:4004/api/v1/classes",
+          "options": {
+            "timeout": 10000
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $json.data.accessToken }}"
+              }
+            ]
+          }
+        },
+        "retryOnFail": false
+      },
+      {
+        "id": "read-result",
+        "name": "Read result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1840,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $('Class intent').first().json.data.jobId }}/result",
+          "options": {
+            "timeout": 10000
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $('Class intent').first().json.data.leaseToken, attempt: $('Class intent').first().json.data.attempt, expectedVersion: $('Class intent').first().json.data.version, step: 'read', outcome: 'DONE', resultRef: 'smoke:N8N-03' }) }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth"
+        },
+        "retryOnFail": false,
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "N8N02BridgeMachine",
+            "name": "bridge-smoke-machine"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "Read claim",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read claim": {
+        "main": [
+          [
+            {
+              "node": "Catalog intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Catalog intent": {
+        "main": [
+          [
+            {
+              "node": "Catalog authorization",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Catalog authorization": {
+        "main": [
+          [
+            {
+              "node": "Catalog courses",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Catalog courses": {
+        "main": [
+          [
+            {
+              "node": "Class intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class intent": {
+        "main": [
+          [
+            {
+              "node": "Class authorization",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class authorization": {
+        "main": [
+          [
+            {
+              "node": "Class list",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class list": {
+        "main": [
+          [
+            {
+              "node": "Read result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "timezone": "Asia/Ho_Chi_Minh",
+      "saveDataSuccessExecution": "none",
+      "saveDataErrorExecution": "none",
+      "saveManualExecutions": false
+    },
+    "versionId": "04a0c0db-f607-40a8-9b25-9638344ec806"
+  }
+]

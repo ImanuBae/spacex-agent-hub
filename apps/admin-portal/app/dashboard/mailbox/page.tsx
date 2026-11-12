@@ -1,245 +1,45 @@
-// apps/admin-portal/app/dashboard/mailbox/page.tsx
 "use client";
-
-import { useState, useEffect } from "react";
-import { mailboxService, Message } from "../../../lib/services/mailbox";
-
+import { useEffect, useRef, useState } from "react";
+import { conversations, type Conversation } from "../../../lib/services/conversations";
+import { Messages } from "../../chat/Messages";
 export default function MailboxPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const refreshMessages = async () => {
-    try {
-      setIsLoading(true);
-      setLoadError(null);
-      const data = await mailboxService.getAllMessages();
-      setMessages(data);
-      setSelectedMessage(
-        (current) =>
-          data.find((message) => message.id === current?.id) ?? data[0] ?? null,
-      );
-    } catch (error) {
-      console.error("Lỗi tải hộp thư:", error);
-      setLoadError(
-        error instanceof Error ? error.message : "Không thể tải hộp thư.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    mailboxService
-      .getAllMessages()
-      .then((data) => {
-        if (isMounted) {
-          setMessages(data);
-          setSelectedMessage((current) => current ?? data[0] ?? null);
-          setLoadError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        console.error("Lỗi tải hộp thư:", error);
-        if (isMounted) {
-          setLoadError(
-            error instanceof Error ? error.message : "Không thể tải hộp thư.",
-          );
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+  const [items,setItems] = useState<Conversation[]>([]), [chat,setChat] = useState<Conversation | null>(null), [error,setError] = useState(""), [text,setText] = useState(""), [busy,setBusy] = useState(false);
+  const pending = useRef<{ id: string; text: string; conversationId: string } | null>(null);
+  useEffect(() => { let active = true;
+    const poll = () => conversations.list().then(v => { if (active) setItems(v); }).catch(e => { if (active) setError(e.message); });
+    void poll(); const t = setInterval(() => void poll(), 3000); return () => { active = false; clearInterval(t); };
   }, []);
-
-  const handleSelectMessage = async (msg: Message) => {
-    setActionError(null);
-    if (!msg.unread) {
-      setSelectedMessage(msg);
-      return;
-    }
-
-    try {
-      await mailboxService.markAsRead(msg.id);
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.id === msg.id ? { ...item, unread: false } : item,
-        ),
-      );
-      setSelectedMessage({ ...msg, unread: false });
-    } catch (error) {
-      console.error(`Lỗi đánh dấu tin nhắn #${msg.id} đã đọc:`, error);
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : "Không thể đánh dấu tin nhắn đã đọc.",
-      );
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa tin nhắn này?")) {
-      return;
-    }
-
-    setActionError(null);
-    try {
-      await mailboxService.deleteMessage(id);
-      const remainingMessages = messages.filter((message) => message.id !== id);
-      setMessages(remainingMessages);
-      setSelectedMessage(remainingMessages[0] ?? null);
-    } catch (error) {
-      console.error(`Lỗi xóa tin nhắn #${id}:`, error);
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : "Không thể xóa tin nhắn. Vui lòng thử lại.",
-      );
-    }
-  };
-
-  return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6">
-      {/* Tiêu đề trang */}
-      <section className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-            Hộp thư liên hệ
-          </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Quản lý tin nhắn, câu hỏi và yêu cầu hỗ trợ từ học viên.
-          </p>
-        </div>
-      </section>
-
-      {/* Giao diện 2 cột: Danh sách & Chi tiết */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cột trái: Danh sách tin nhắn */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-1">
-          <div className="p-4 border-b border-slate-200 font-semibold text-slate-800 flex items-center justify-between">
-            <span>Tin nhắn đến</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full font-bold">
-                {messages.filter((m) => m.unread).length} chưa đọc
-              </span>
-              <button
-                type="button"
-                onClick={refreshMessages}
-                disabled={isLoading}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:cursor-wait disabled:opacity-50"
-              >
-                Làm mới
-              </button>
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-            {isLoading ? (
-              <p className="p-6 text-center text-slate-400 italic text-sm">
-                Đang tải hộp thư...
-              </p>
-            ) : loadError ? (
-              <p role="alert" className="p-6 text-center text-red-600 text-sm">
-                Không thể tải hộp thư: {loadError}
-              </p>
-            ) : messages.length === 0 ? (
-              <p className="p-6 text-center text-slate-400 italic text-sm">
-                Hộp thư trống.
-              </p>
-            ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  onClick={() => handleSelectMessage(msg)}
-                  className={`p-4 cursor-pointer transition hover:bg-slate-50 ${
-                    selectedMessage?.id === msg.id
-                      ? "bg-blue-50/55 border-l-4 border-blue-600"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`text-sm ${
-                        msg.unread
-                          ? "text-slate-900 font-bold"
-                          : "text-slate-700 font-medium"
-                      }`}
-                    >
-                      {msg.sender}
-                    </span>
-                    <span className="text-xs text-slate-400">{msg.date}</span>
-                  </div>
-                  <p
-                    className={`text-xs truncate mb-1 ${
-                      msg.unread
-                        ? "font-semibold text-slate-800"
-                        : "text-slate-600"
-                    }`}
-                  >
-                    {msg.subject}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate">
-                    {msg.content}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Cột phải: Nội dung chi tiết tin nhắn */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 lg:col-span-2 flex flex-col justify-between">
-          {actionError && (
-            <p role="alert" className="mb-4 text-sm text-red-600">
-              {actionError}
-            </p>
-          )}
-          {selectedMessage &&
-          messages.some((message) => message.id === selectedMessage.id) ? (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800">
-                    {selectedMessage.subject}
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Từ:{" "}
-                    <span className="font-semibold text-slate-700">
-                      {selectedMessage.sender}
-                    </span>{" "}
-                    ({selectedMessage.email})
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(selectedMessage.id)}
-                  className="px-3.5 py-2 bg-red-50 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition cursor-pointer"
-                >
-                  Xóa tin nhắn
-                </button>
-              </div>
-
-              <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-5 rounded-xl border border-slate-100 min-h-[220px]">
-                {selectedMessage.content}
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full min-h-[300px] text-slate-400 italic text-sm">
-              Chọn một tin nhắn từ danh sách bên trái để xem nội dung chi tiết.
-            </div>
-          )}
-        </div>
-      </div>
+  const selectedId = chat?.id;
+  useEffect(() => { if (!selectedId) return; let active = true;
+    const poll = () => conversations.get(selectedId).then(v => { if (active) setChat(v); }).catch(e => { if (active) setError(e.message); });
+    const t = setInterval(() => void poll(), 3000); return () => { active = false; clearInterval(t); };
+  }, [selectedId]);
+  async function mode(value: "AI" | "HUMAN") { if (!chat) return; setBusy(true);
+    try { setChat(await conversations.mode(chat,value)); setItems(await conversations.list()); setError(""); }
+    catch(e) { setError(`${(e as Error).message} Hãy tải lại hội thoại trước khi thao tác tiếp.`); } finally { setBusy(false); }
+  }
+  async function send(e: React.FormEvent) { e.preventDefault(); if (!chat) return; setBusy(true);
+    if (!pending.current || pending.current.conversationId !== chat.id) pending.current = { id: crypto.randomUUID(), text: text.trim(), conversationId: chat.id };
+    try { await conversations.send(chat,pending.current.id,pending.current.text); pending.current = null; setText(""); setChat(await conversations.get(chat.id)); setError(""); }
+    catch(e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  return <section data-ui className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 sm:p-6">
+    <h1 className="text-2xl font-semibold">Hộp thư tư vấn</h1><p className="mt-2 text-sm text-slate-600">Tiếp quản để trả lời khách; trả lại AI khi đã xử lý xong.</p>
+    {error && <p role="alert" className="my-3 text-sm text-red-700">{error}</p>}
+    <div className="mt-5 grid gap-6 md:grid-cols-[minmax(220px,306px)_minmax(0,1fr)]">
+      <aside className={`${chat ? "hidden md:block" : ""} border-r border-slate-100 pr-4`} aria-label="Hội thoại">
+        <p className="mb-3 text-sm">{items.length} hội thoại trong phạm vi của bạn</p>
+        {!items.length && <p className="text-sm text-slate-600">Chưa có hội thoại. Tin web chat mới sẽ xuất hiện tại đây.</p>}
+        {items.map(c => <button key={c.id} onClick={() => void conversations.get(c.id).then(v => { setChat(v); setError(""); setText(""); }).catch(e => setError(e.message))} className={`block w-full rounded-lg px-3 py-4 text-left ${chat?.id === c.id ? "bg-slate-100" : ""}`}><span className="text-sm font-semibold">Khách · {c.id.slice(0,8)}</span><span className="mt-1 block text-sm text-slate-600">{c.mode === "AI" ? "AI hỗ trợ" : c.ownerId ? "Đã tiếp quản" : "Chờ tư vấn viên"}</span></button>)}
+      </aside>
+      <div className="min-w-0">{!chat ? <p className="py-6 text-slate-600">Chọn hội thoại để xem lịch sử và tiếp quản.</p> : <>
+        <button onClick={() => setChat(null)} className="mb-3 text-sm underline md:hidden">Trở lại danh sách</button>
+        <div className="flex flex-wrap items-center gap-3"><h2 className="mr-auto font-semibold">Khách · {chat.id.slice(0,8)}</h2><button disabled={busy} onClick={() => void mode("HUMAN")} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Tiếp quản</button><button disabled={busy || chat.mode === "AI"} onClick={() => void mode("AI")} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Trả lại AI</button></div>
+        <p role="status" className="mt-3 text-sm">{chat.mode === "AI" ? "AI hỗ trợ" : chat.ownerId ? `Người xử lý: ${chat.ownerId.slice(0,8)}` : "Chờ tư vấn viên"} · phiên bản {chat.version}</p>
+        {chat.errorCode && <p className="mt-2 text-sm text-amber-800">AI cần hỗ trợ: {chat.errorCode}</p>}
+        <Messages messages={chat.messages}/>
+        <form onSubmit={send} className="flex items-end gap-2"><label className="flex-1 text-sm">Trả lời khách<textarea required maxLength={2000} disabled={busy || chat.mode !== "HUMAN"} value={text} onChange={e => { if (!pending.current) setText(e.target.value); }} className="mt-1 block min-h-20 w-full rounded-lg border border-slate-300 p-3"/></label><button disabled={busy || chat.mode !== "HUMAN" || !text.trim()} className="rounded-lg bg-slate-900 px-4 py-3 text-white">Gửi</button></form>
+      </>}</div>
     </div>
-  );
+  </section>;
 }

@@ -1,0 +1,670 @@
+{
+  "status": "LOCAL_READ_ONLY",
+  "humanReviewPending": true,
+  "productionEnabled": false,
+  "sourceCommit": "1446702162e4c06db11cbdba44082a63238ac246",
+  "technicalRun": {
+    "project": "space-agent-automation-test-4b3518f52ceb",
+    "startedAt": "2026-11-08T17:47:30.627Z",
+    "finishedAt": "2026-11-08T17:49:49.298Z",
+    "status": "PASS",
+    "modelDisabledByDesign": true,
+    "integration": {
+      "passed": 11,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "deduplicates redelivery and rolls back both inbox/job on failed creation; pins deployed version",
+          "status": "passed"
+        },
+        {
+          "name": "two workers racing one job get exactly one lease; owner and version fence writes",
+          "status": "passed"
+        },
+        {
+          "name": "limits active leases to two across concurrent workers",
+          "status": "passed"
+        },
+        {
+          "name": "expired worker cannot checkpoint/result, even before recovery; new attempt rejects old token",
+          "status": "passed"
+        },
+        {
+          "name": "SIGKILL/restart preserves checkpoint/key and recovers expired lease from durable DB",
+          "status": "passed"
+        },
+        {
+          "name": "early durable event wakes WAITING once; wrong entity/correlation cannot wake; deadline survives restart",
+          "status": "passed"
+        },
+        {
+          "name": "event concurrent with WAITING registration is never lost",
+          "status": "passed"
+        },
+        {
+          "name": "honors Retry-After, caps technical failures at eight, and retains operation keys through retries",
+          "status": "passed"
+        },
+        {
+          "name": "replay uses live IAM role/session, mandatory reason and CAS; preserves ID/version/key with audit",
+          "status": "passed"
+        },
+        {
+          "name": "rejects missing/wrong audience/scope/workflow/expired machine tokens and public Gateway forwarding",
+          "status": "passed"
+        },
+        {
+          "name": "runtime DB role cannot read IAM/n8n DB or create databases",
+          "status": "passed"
+        }
+      ]
+    },
+    "machine": {
+      "passed": 12,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "IAM issues real bounded tokens; correct job/audience/scope reads Catalog and Class",
+          "status": "passed"
+        },
+        {
+          "name": "rejects signature/audience/scope/expiry, raw domain token and scope escalation",
+          "status": "passed"
+        },
+        {
+          "name": "rejects self-declared actor/role/branch/context and uncheckpointed operations",
+          "status": "passed"
+        },
+        {
+          "name": "binds immutable context to event, workflow version, entity and input refs",
+          "status": "passed"
+        },
+        {
+          "name": "checks current branch/teacher ownership in Class and restricts director delegation to one branch",
+          "status": "passed"
+        },
+        {
+          "name": "fences authorization issuance and consumption after expiry, reclaim and completion",
+          "status": "passed"
+        },
+        {
+          "name": "enforces machine grants and rotates credentials without retaining old tokens",
+          "status": "passed"
+        },
+        {
+          "name": "fails closed if IAM or the configured lease authority is unavailable",
+          "status": "passed"
+        },
+        {
+          "name": "revokes context, account permission and initiating session on the next request",
+          "status": "passed"
+        },
+        {
+          "name": "honors existing IAM access/status administration revocation without an Org bypass",
+          "status": "passed"
+        },
+        {
+          "name": "rejects inactive principals immediately for Bridge, minting and already-issued domain tokens",
+          "status": "passed"
+        },
+        {
+          "name": "keeps missing approvals, business writes, unconfigured authority and public internal routes closed",
+          "status": "passed"
+        }
+      ],
+      "receipt": {
+        "branchA": "f054a2a7-03be-4996-a387-6500827191dd",
+        "branchB": "c7f8810d-c49d-4b7d-adf4-d5e840c856f2",
+        "courseA": "35da9ed7-58d3-4367-a8ef-ffe523733f42",
+        "packageA": "b9d332ec-b22d-410b-ba59-5b4f2e52e569",
+        "ownClass": "85a061fe-7515-4fb9-8bbd-716e5743008a",
+        "revocations": [
+          {
+            "kind": "machine credential rotation",
+            "milliseconds": 3.92,
+            "status": 401
+          },
+          {
+            "kind": "delegation revocation",
+            "milliseconds": 15.54,
+            "status": 403
+          },
+          {
+            "kind": "account permission removal",
+            "milliseconds": 14.43,
+            "status": 403
+          },
+          {
+            "kind": "initiator session logout",
+            "milliseconds": 15.11,
+            "status": 403
+          },
+          {
+            "kind": "existing IAM access-change API",
+            "milliseconds": 17.07,
+            "status": 403
+          },
+          {
+            "kind": "existing IAM account-disable API",
+            "milliseconds": 13.23,
+            "status": 403
+          },
+          {
+            "kind": "machine principal revocation",
+            "milliseconds": 3.52,
+            "status": 401
+          }
+        ],
+        "mechanism": "No authorization cache; next request rechecks IAM DB and Bridge DB. In-flight reads are not cancelled."
+      }
+    },
+    "smoke": {
+      "workflowId": "N8N02BridgeSmoke",
+      "workflowVersion": 1,
+      "executionId": "1",
+      "jobId": "eaeb8e2c-79ce-46de-bbc3-a3dcbce1d63f",
+      "eventId": "995f8590-06db-48eb-bf64-89f6d8f2b7a7",
+      "correlationId": "379ac18b-f105-4a1d-acc3-06b9313fd2e7",
+      "operationKey": "automation:eaeb8e2c-79ce-46de-bbc3-a3dcbce1d63f:smoke",
+      "actions": [
+        "CLAIM",
+        "CHECKPOINT",
+        "DONE"
+      ],
+      "result": "DONE"
+    },
+    "readSmoke": {
+      "workflowId": "N8N03IamReadSmoke",
+      "jobId": "2c44a34b-3bae-4d40-943d-ada8004a849b",
+      "eventId": "20f5e806-1e3a-4738-b5c3-b41fd401a4e0",
+      "executionId": "2",
+      "result": "DONE",
+      "courses": 1,
+      "classes": 2,
+      "authority": "IAM HTTP RS256 issuer + live introspection"
+    },
+    "chatTechnicalChecks": [
+      "durable guest session/history, concurrent inbound dedup and payload conflict",
+      "two guests, foreign branch staff and client-forged context denied",
+      "guest IAM source context, minimized context, real Catalog/Class projections and sellable fail-closed",
+      "concurrent takeover CAS, ownership, late AI blocked and staff outbound/delivery dedup",
+      "expired lease and old attempt blocked at Conversation boundary",
+      "guest revocation blocks reconnect and context minting",
+      "synthetic timeout/quota/tool-error guard fixtures hand off once without fabricated replies",
+      "queued draft dedup and cancellation before guest delivery on takeover (synthetic guard fixture)",
+      "real n8n WF-01/02/03 clean import, per-execution IAM token acquisition, missing-key handoff, durable DONE",
+      "short-lived machine token expires and is reacquired through real IAM",
+      "source credential rotation and principal revocation invalidate already-issued guest domain tokens"
+    ],
+    "browser": {
+      "status": "PASS",
+      "widths": [
+        1440,
+        768,
+        390
+      ],
+      "checks": 5,
+      "realModelAnswerRendered": false
+    }
+  },
+  "modelRun": {
+    "project": "space-agent-automation-test-46d9142368f7",
+    "status": "ASSERTIONS_PASSED_CLEANUP_RECOVERED",
+    "note": "All assertions completed, then harness waited for a second exit event from an already terminated fault-server child. Only this project/process tree was stopped manually. Its DB was reopened for read-only verification of the three fault states. A separate fresh technical run checks cleanup and preservation. No completed harness preservation receipt is claimed for this recovered model run.",
+    "benchmarkReview": "chat-benchmark-review.json",
+    "faults": [
+      {
+        "fault": "quota",
+        "conversationId": "29c62b62-da55-49d7-a20f-1ba280d7194d",
+        "jobId": "936007ed-2587-4ce1-a1e2-20d2a2d17c39",
+        "errorCode": "QUOTA",
+        "traceSha256": "087641be14fe2c83e1a43a24d118c8551466d65c5d9d8e73d2ff65977593c660",
+        "actual": {
+          "id": "29c62b62-da55-49d7-a20f-1ba280d7194d",
+          "mode": "HUMAN",
+          "error_code": "QUOTA",
+          "version": 3,
+          "messages": 1
+        },
+        "injected": true,
+        "modelInference": false
+      },
+      {
+        "fault": "timeout",
+        "conversationId": "a22bd2c0-734d-4e06-a253-c19ae7b6a515",
+        "jobId": "c439c77e-875d-41b1-8967-e1cb0d230d40",
+        "errorCode": "TIMEOUT",
+        "traceSha256": "62af5ddb62eb3972bdf8568408377645cc84e614fe10ade94e8348fa838362b5",
+        "actual": {
+          "id": "a22bd2c0-734d-4e06-a253-c19ae7b6a515",
+          "mode": "HUMAN",
+          "error_code": "TIMEOUT",
+          "version": 3,
+          "messages": 1
+        },
+        "injected": true,
+        "modelInference": false
+      },
+      {
+        "fault": "tool",
+        "conversationId": "2faa09db-c566-435d-996b-5a2deaad523c",
+        "jobId": "aae5f9c7-ab8a-4082-851e-530712f2d3a7",
+        "errorCode": "TOOL_ERROR",
+        "traceSha256": "10ed863c46c8fdebd534e99286b946a007eb7f274560f4c9820aa89da84f0e52",
+        "actual": {
+          "id": "2faa09db-c566-435d-996b-5a2deaad523c",
+          "mode": "HUMAN",
+          "error_code": "TOOL_ERROR",
+          "version": 3,
+          "messages": 1
+        },
+        "injected": true,
+        "modelInference": false
+      }
+    ],
+    "handoff": {
+      "jobId": "c718d3b8-fd5d-4883-b2be-06b788326f7e",
+      "mode": "HUMAN",
+      "status": "DONE"
+    },
+    "browser": {
+      "status": "PASS",
+      "realModelAnswerRendered": true,
+      "widths": [
+        1440,
+        768,
+        390
+      ],
+      "screenshot": "real-ai-inbox.png"
+    }
+  },
+  "benchmark": {
+    "reviewFile": "chat-benchmark-review.json",
+    "status": "LOCAL_PASS",
+    "passed": 10,
+    "failed": 0,
+    "providerCallsForTheseTenCases": 19,
+    "reportedCostUsd": 0,
+    "model": "nvidia/nemotron-3.5-lightning:free",
+    "sourceProjects": [
+      "space-agent-automation-test-3040c1ecca15",
+      "space-agent-automation-test-46d9142368f7"
+    ],
+    "resumedCases": 2
+  },
+  "workspaceCheck": {
+    "passed": 64,
+    "total": 64,
+    "cacheHits": 60,
+    "legacyDbSuitesHaveSkips": true
+  },
+  "contractTests": 4,
+  "parserSelfCheck": true,
+  "childCleanupSelfCheck": true,
+  "preservation": {
+    "personalEnvCount": 6,
+    "envUnchanged": true,
+    "runtimeUnchanged": true,
+    "runtimeBefore": [
+      {
+        "name": "/space-agent-n8n-n8n-1",
+        "startedAt": "2026-11-08T16:18:40.244580718Z"
+      },
+      {
+        "name": "/space-agent-n8n-postgres-1",
+        "startedAt": "2026-11-08T16:18:40.247759688Z"
+      }
+    ],
+    "runtimeAfter": [
+      {
+        "name": "/space-agent-n8n-n8n-1",
+        "startedAt": "2026-11-08T16:18:40.244580718Z"
+      },
+      {
+        "name": "/space-agent-n8n-postgres-1",
+        "startedAt": "2026-11-08T16:18:40.247759688Z"
+      }
+    ],
+    "note": "Docker Desktop was started before this harness; its existing restart-policy containers auto-started. These timestamps are the harness baseline."
+  },
+  "artifacts": {
+    "scripts/n8n-output.mjs": "99af7f2273530702adcd274aee4442a0368a57c56bd6169b8a06ff28283f007d",
+    "infra/automation/compose.test.yml": "8a69f19c873301084baf5f85f78e05494578517cc9de221930bf2c603b660e70",
+    "scripts/test-automation.mjs": "067702404006955603c596dadb121c32fe65044969657e08ca9ccd9a97c677f4",
+    "workflows/n8n/bridge-smoke.json": "b4154323e95f58c2969475bcfab29fe4b4b8dd7840a3d08ddbb2aed85209e776",
+    "services/automation-bridge/src/store.ts": "c8fcbec58c9d306cdcf96ef1cb32efc52d6be1fe25734e252bf81ec9f054e8ef",
+    "services/automation-bridge/src/app.ts": "225dd89f76cb509615cbf00afdcd8fb938edc004fdf8c35b1fc36deb64638a79",
+    "services/automation-bridge/src/auth.ts": "725a02b7f848dfbc73c7d86126ca7944c1a1e66c5693d7b52943bb5ca4b81c96",
+    "services/automation-bridge/src/index.ts": "01f4e4f2624b8e5338e58e572d0266bcbb9cea3128b2e58af0d8c292b0343430",
+    "services/automation-bridge/src/postgres.test.ts": "3ab2c4e094708ec4740fd073e4480a384dde3fb1a5c0c7d669368c197947c52f",
+    "services/automation-bridge/migrations/0001.sql": "7f591153850db2823a8bd12d5a3d7902ba60490de21ce0748dc85c5f1de4bdea",
+    "packages/contracts/src/automation.ts": "ce0e610e926e7d4d4082b015dca6177dcef8d496269b9c3d924cd485646b347c",
+    "packages/contracts/src/events.ts": "6fe1a28330a7ec080e8628c7153dfd2f8c83c22e14ceb49944c93b3223de8dd5",
+    "packages/messaging/src/postgres.ts": "d375b3569c84c0ffd1ca3ab231dc37259cbee3f92bac63d4e2dc28723a963753",
+    "packages/contracts/src/machine.ts": "5866f6458f8a5cbfc3540f9d9e880cc91a7017f8a059fe7171d59517ed9ca0f9",
+    "packages/auth/src/index.ts": "25525225fc96e68a97d2f72d6e9a5ead24412c7c0a9897bf2985804f1e0029a6",
+    "services/identity/src/machine.ts": "6786ac1c21701e969e524d145d3670a3d8c0a8f7aa3cedb87db3ea783876873e",
+    "services/identity/src/app.ts": "40cb473c1413a546a42a550ff38c6ef19b2f97f7d6ec7a3854efb8d51c77d724",
+    "services/identity/src/index.ts": "f154afe8e6150ef6726863f5728212b8d1ad33ea10b0c8c470d36d5327af4e0f",
+    "services/identity/src/migrate.ts": "9776400c1c417c4e9423823d1dd52ae69a75b279815f6026033d548c78519625",
+    "services/identity/migrations/0002_machine.sql": "d5b2f1cc66fda5469024886c35fbd6e9e1d2eb653b385ea7d715fa6d4c9dffa2",
+    "services/catalog/src/routes.ts": "b2e339e6ca8a4ac70d7d85ee0e827118cb0656ee0d817052ccb90e76b7a89752",
+    "services/class-schedule/src/app.ts": "c78cd48c1512b38ef4596315a1bb260c964be367023232630d77d3bbd91fb336",
+    "services/automation-bridge/src/machine.test.ts": "0c4559aeb6fe855d0fec97239576d4ebbdbf4f5296300aa4c4cbbdc6ad93aefd",
+    "workflows/n8n/iam-read-smoke.json": "6960488d9cb294952ff08e1dd8179b30448baa2d54f3bdee6679ae5f8aa2f404",
+    "services/conversation/src/app.ts": "1bc67022afdc254450a73bc646dcc14f2298fbb5a55a265ce36d750f32877c3b",
+    "services/conversation/src/index.ts": "1e167e9974e4b1bb03029cef3942d66aec12cde569b24c8f824d75244f7391d8",
+    "services/conversation/src/migrate.ts": "606a9ee98b38641e0deadf3e3b5d102e31df50274e916f095401db64ac354890",
+    "services/conversation/src/privacy.test.ts": "271ad083755a66eb631d1f041dce74f8e48ccd90722c6f4a4cd30bd946dee247",
+    "services/conversation/src/privacy.ts": "7357eba185a3a267a29b62d81d4207cade717a6fbe296c0cb8b6f4288edfd3ed",
+    "services/conversation/src/workflow.test.ts": "f0d98dd03d6a35d6cbc1fbe5da9801cd2bfedefae66707c4fdbd9a7970ac9e7a",
+    "services/conversation/migrations/0001.sql": "6b0ac584b5f4afed01912b982ce82aae4148b52a92a9881ccdb87e61d76490a9",
+    "apps/admin-portal/app/chat/Messages.tsx": "bc9a146c33c4be3c159bf6868e04de47a171583a63a944649a3895c88a02dcb1",
+    "apps/admin-portal/app/chat/page.tsx": "818fdffc2a96b0c38270741ff7b25980b02bdc4169e1702ffad6db8c53a814c1",
+    "apps/admin-portal/app/api/chat/[action]/route.ts": "a285c21071c253e27b6f8e473d777078dcc9f262d9a9ab25d5656d50b1a3f6a6",
+    "services/identity/migrations/0003_channel.sql": "840ac5ae0c6df1d4fed31285b4ed8445e7b1dddedaded64de3c2df5a77db0456",
+    "packages/contracts/src/conversation.ts": "b096bfc4f50459702545c21dd887c8789e81659413471f6bd69b12ea7a0e8405",
+    "services/gateway/src/app.ts": "8277e1205a08ae474916b75eac7b456514b69d646b64aa291314aaba1d263916",
+    "services/gateway/src/index.ts": "4cf93b65fc9f4d3d73f8637dfd9d236829b0a3fb62787f2ab1dab0963d70b8fc",
+    "apps/admin-portal/app/api/v1/[...path]/route.ts": "76ec1951392dd334d7172ccf49f324679b105b9a90914ce906413c0794a97fd9",
+    "apps/admin-portal/app/dashboard/mailbox/page.tsx": "e833c6a9fa74fccaa906a599587f81063a68ab8a8e2f31bf791500fa3fd23cfa",
+    "apps/admin-portal/app/dashboard/layout.tsx": "deae23d99a63a0d2c05356c788951d7077189cfcf6d8fd0323b59577337556b4",
+    "apps/admin-portal/lib/services/conversations.ts": "f51d908512c002887bbbf8acbaf1175cf083a55e45da5d818f1c158f94a847b3",
+    "scripts/build-chat-workflows.mjs": "71ffb69a41508ab142b4c878975200abdbda0f2fe30d805c29b788935fd61028",
+    "scripts/test-chat.mjs": "0ece34036d239cb7ece4b2134921377426ef4c44d7ecb835a4d777044ec8f61e",
+    "scripts/test-chat-browser.mjs": "4417aac054c3433755f253e2ce7a52deaafc9a80414042c43613294fbcf74984",
+    "workflows/n8n/wf-01.json": "c9a39feef49e1102cadbc86ef5a9dceb3d82a558df7ab0a2c78428c030e7d274",
+    "workflows/n8n/wf-02.json": "2dd4718a7769b5221d88dba7d5ff835729a1d4e6f061cd1da57699c518de860f",
+    "workflows/n8n/wf-03.json": "11d4da5e553b753622686e824cb9ce654ca10cf60066d88c140f917e2b442f90",
+    "workflows/n8n/chat-manifest.json": "7b72fa071aadb7acda8b27e263df28923a0afc6c4c7fb67137d8172e1da4f30e",
+    "workflows/n8n/chat-benchmark.json": "1cb9d4820c820ebe2e4063e0f97b3e80fc302278a8e81e7edaf22a8c6dd855e9"
+  },
+  "retained": {
+    "projects": [
+      {
+        "project": "space-agent-automation-test-a38686042cb1",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-a38686042cb1_bridge_test_data",
+            "kib": 96108
+          },
+          {
+            "name": "space-agent-automation-test-a38686042cb1_n8n_data",
+            "kib": 40
+          },
+          {
+            "name": "space-agent-automation-test-a38686042cb1_postgres_data",
+            "kib": 73336
+          }
+        ],
+        "privateArtifactsBytes": 233633
+      },
+      {
+        "project": "space-agent-automation-test-18787988b1e8",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-18787988b1e8_bridge_test_data",
+            "kib": 95860
+          },
+          {
+            "name": "space-agent-automation-test-18787988b1e8_n8n_data",
+            "kib": 24
+          },
+          {
+            "name": "space-agent-automation-test-18787988b1e8_postgres_data",
+            "kib": 72872
+          }
+        ],
+        "privateArtifactsBytes": 85452
+      },
+      {
+        "project": "space-agent-automation-test-2a750524d1e3",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-2a750524d1e3_bridge_test_data",
+            "kib": 96204
+          },
+          {
+            "name": "space-agent-automation-test-2a750524d1e3_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-2a750524d1e3_postgres_data",
+            "kib": 73412
+          }
+        ],
+        "privateArtifactsBytes": 801601
+      },
+      {
+        "project": "space-agent-automation-test-a4cf3eb6da43",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-a4cf3eb6da43_bridge_test_data",
+            "kib": 96276
+          },
+          {
+            "name": "space-agent-automation-test-a4cf3eb6da43_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-a4cf3eb6da43_postgres_data",
+            "kib": 73416
+          }
+        ],
+        "privateArtifactsBytes": 880265
+      },
+      {
+        "project": "space-agent-automation-test-4abe9bcfe054",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-4abe9bcfe054_bridge_test_data",
+            "kib": 96276
+          },
+          {
+            "name": "space-agent-automation-test-4abe9bcfe054_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-4abe9bcfe054_postgres_data",
+            "kib": 73412
+          }
+        ],
+        "privateArtifactsBytes": 876868
+      },
+      {
+        "project": "space-agent-automation-test-7114b233cb09",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-7114b233cb09_bridge_test_data",
+            "kib": 95884
+          },
+          {
+            "name": "space-agent-automation-test-7114b233cb09_n8n_data",
+            "kib": 32
+          },
+          {
+            "name": "space-agent-automation-test-7114b233cb09_postgres_data",
+            "kib": 73072
+          }
+        ],
+        "privateArtifactsBytes": 167438
+      },
+      {
+        "project": "space-agent-automation-test-d974ab379bc3",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-d974ab379bc3_bridge_test_data",
+            "kib": 96504
+          },
+          {
+            "name": "space-agent-automation-test-d974ab379bc3_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-d974ab379bc3_postgres_data",
+            "kib": 73696
+          }
+        ],
+        "privateArtifactsBytes": 668317
+      },
+      {
+        "project": "space-agent-automation-test-09466448d764",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-09466448d764_bridge_test_data",
+            "kib": 95988
+          },
+          {
+            "name": "space-agent-automation-test-09466448d764_n8n_data",
+            "kib": 40
+          },
+          {
+            "name": "space-agent-automation-test-09466448d764_postgres_data",
+            "kib": 73336
+          }
+        ],
+        "privateArtifactsBytes": 216734
+      },
+      {
+        "project": "space-agent-automation-test-9eca088d650d",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-9eca088d650d_bridge_test_data",
+            "kib": 96640
+          },
+          {
+            "name": "space-agent-automation-test-9eca088d650d_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-9eca088d650d_postgres_data",
+            "kib": 73716
+          }
+        ],
+        "privateArtifactsBytes": 1426075
+      },
+      {
+        "project": "space-agent-automation-test-95190211fadf",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-95190211fadf_bridge_test_data",
+            "kib": 96308
+          },
+          {
+            "name": "space-agent-automation-test-95190211fadf_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-95190211fadf_postgres_data",
+            "kib": 73752
+          }
+        ],
+        "privateArtifactsBytes": 765301
+      },
+      {
+        "project": "space-agent-automation-test-3040c1ecca15",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-3040c1ecca15_bridge_test_data",
+            "kib": 96324
+          },
+          {
+            "name": "space-agent-automation-test-3040c1ecca15_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-3040c1ecca15_postgres_data",
+            "kib": 73760
+          }
+        ],
+        "privateArtifactsBytes": 866127
+      },
+      {
+        "project": "space-agent-automation-test-46d9142368f7",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-46d9142368f7_bridge_test_data",
+            "kib": 96084
+          },
+          {
+            "name": "space-agent-automation-test-46d9142368f7_n8n_data",
+            "kib": 104
+          },
+          {
+            "name": "space-agent-automation-test-46d9142368f7_postgres_data",
+            "kib": 74432
+          }
+        ],
+        "privateArtifactsBytes": 2116109
+      },
+      {
+        "project": "space-agent-automation-test-4b3518f52ceb",
+        "volumes": [
+          {
+            "name": "space-agent-automation-test-4b3518f52ceb_bridge_test_data",
+            "kib": 96300
+          },
+          {
+            "name": "space-agent-automation-test-4b3518f52ceb_n8n_data",
+            "kib": 80
+          },
+          {
+            "name": "space-agent-automation-test-4b3518f52ceb_postgres_data",
+            "kib": 73504
+          }
+        ],
+        "privateArtifactsBytes": 952927
+      }
+    ],
+    "totalVolumes": 39,
+    "totalKiB": 2207352,
+    "privateArtifactsBytes": 10056847,
+    "rootTestArtifacts": [
+      {
+        "file": ".local/n8n04-acceptance-final.log",
+        "bytes": 3400
+      },
+      {
+        "file": ".local/n8n04-acceptance.log",
+        "bytes": 2764
+      },
+      {
+        "file": ".local/n8n04-check-final.log",
+        "bytes": 417394
+      },
+      {
+        "file": ".local/n8n04-check.log",
+        "bytes": 417126
+      },
+      {
+        "file": ".local/n8n04-model-acceptance-final.log",
+        "bytes": 3648
+      },
+      {
+        "file": ".local/n8n04-model-acceptance.log",
+        "bytes": 3162
+      },
+      {
+        "file": ".local/n8n04-model-check-final.log",
+        "bytes": 417428
+      },
+      {
+        "file": ".local/n8n04-model-check.log",
+        "bytes": 417364
+      },
+      {
+        "file": ".local/n8n04-model-probe.json",
+        "bytes": 293
+      },
+      {
+        "file": ".local/n8n04-technical-closeout.log",
+        "bytes": 3400
+      }
+    ],
+    "rootTestArtifactsBytes": 1685979
+  },
+  "historical": true,
+  "appliesToHardenedWorkflow": false,
+  "hardeningEvidence": "workflows/n8n/chat-hardening-evidence.json",
+  "noteForHardeningReview": "Original run/review retained. Not a fresh inference or acceptance of the hardened WF-02 checksum. See the separate hardening receipt; no customer rollout approved."
+}

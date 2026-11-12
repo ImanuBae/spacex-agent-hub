@@ -1,0 +1,137 @@
+{
+  "project": "space-agent-automation-test-6a377fd30014",
+  "startedAt": "2026-11-04T07:22:12.943Z",
+  "sourceCommit": "1446702162e4c06db11cbdba44082a63238ac246",
+  "status": "PASS",
+  "checks": [
+    "isolated Bridge DB/role, separate IAM and n8n DB, repeatable versioned migration",
+    "11 real DB/broker/IAM/process integration tests",
+    "real n8n imported HTTP workflow claim → checkpoint → result; durable DONE and execution receipt"
+  ],
+  "artifacts": {
+    "infra/automation/compose.test.yml": "8a69f19c873301084baf5f85f78e05494578517cc9de221930bf2c603b660e70",
+    "scripts/test-automation.mjs": "87815813378212e03d65ccafdc941efd18481345a384fe4e3d7e7869c088c6e2",
+    "workflows/n8n/bridge-smoke.json": "b4154323e95f58c2969475bcfab29fe4b4b8dd7840a3d08ddbb2aed85209e776",
+    "services/automation-bridge/src/store.ts": "623f87c914cf44bbb51119f64a8004d371aeb1dacb1977d1fdb81b6a1cb3af59",
+    "services/automation-bridge/src/app.ts": "dfc6e9619dedc6f89e58bab06a8a09fd08c9ef3dfb9224f20ffcaa690d909d21",
+    "services/automation-bridge/src/auth.ts": "db1ecbf9cfda56ad14138500e559d3def0e286cbfc35888b8e4ca2287f4dbb75",
+    "services/automation-bridge/src/index.ts": "01f4e4f2624b8e5338e58e572d0266bcbb9cea3128b2e58af0d8c292b0343430",
+    "services/automation-bridge/src/postgres.test.ts": "b562befe33b5859c57caf23a383c63b5fea4df15aac9edb75741a543402a2434",
+    "services/automation-bridge/migrations/0001.sql": "7f591153850db2823a8bd12d5a3d7902ba60490de21ce0748dc85c5f1de4bdea",
+    "packages/contracts/src/automation.ts": "ce0e610e926e7d4d4082b015dca6177dcef8d496269b9c3d924cd485646b347c",
+    "packages/contracts/src/events.ts": "6fe1a28330a7ec080e8628c7153dfd2f8c83c22e14ceb49944c93b3223de8dd5",
+    "packages/messaging/src/postgres.ts": "d375b3569c84c0ffd1ca3ab231dc37259cbee3f92bac63d4e2dc28723a963753"
+  },
+  "runtime": {
+    "node": "v24.2.0",
+    "docker": "29.1.3",
+    "compose": "2.40.3-desktop.1",
+    "postgres": "postgres (PostgreSQL) 17.7",
+    "rabbitmq": "4.3.6",
+    "images": [
+      {
+        "ID": "sha256:4384b9ff20a78bc1708c35ce7864f84f724611de7801fb36d715998db7c000f1",
+        "ContainerName": "space-agent-automation-test-6a377fd30014-n8n-1",
+        "Repository": "docker.n8n.io/n8nio/n8n",
+        "Tag": "",
+        "Platform": "linux/amd64",
+        "Size": 316476280,
+        "LastTagTime": "2026-11-04T06:41:54.955642062Z"
+      },
+      {
+        "ID": "sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd",
+        "ContainerName": "space-agent-automation-test-6a377fd30014-rabbitmq-1",
+        "Repository": "rabbitmq",
+        "Tag": "",
+        "Platform": "linux/amd64",
+        "Size": 120988513,
+        "LastTagTime": "2026-10-13T08:38:30.082648597Z"
+      },
+      {
+        "ID": "sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2",
+        "ContainerName": "space-agent-automation-test-6a377fd30014-postgres-1",
+        "Repository": "postgres",
+        "Tag": "",
+        "Platform": "linux/amd64",
+        "Size": 111084648,
+        "LastTagTime": "2026-11-04T06:39:52.778798177Z"
+      },
+      {
+        "ID": "sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2",
+        "ContainerName": "space-agent-automation-test-6a377fd30014-bridge-db-1",
+        "Repository": "postgres",
+        "Tag": "",
+        "Platform": "linux/amd64",
+        "Size": 111084648,
+        "LastTagTime": "2026-11-04T06:39:52.778798177Z"
+      }
+    ]
+  },
+  "integration": {
+    "passed": 11,
+    "failed": 0,
+    "tests": [
+      {
+        "name": "deduplicates redelivery and rolls back both inbox/job on failed creation; pins deployed version",
+        "status": "passed"
+      },
+      {
+        "name": "two workers racing one job get exactly one lease; owner and version fence writes",
+        "status": "passed"
+      },
+      {
+        "name": "limits active leases to two across concurrent workers",
+        "status": "passed"
+      },
+      {
+        "name": "expired worker cannot checkpoint/result, even before recovery; new attempt rejects old token",
+        "status": "passed"
+      },
+      {
+        "name": "SIGKILL/restart preserves checkpoint/key and recovers expired lease from durable DB",
+        "status": "passed"
+      },
+      {
+        "name": "early durable event wakes WAITING once; wrong entity/correlation cannot wake; deadline survives restart",
+        "status": "passed"
+      },
+      {
+        "name": "event concurrent with WAITING registration is never lost",
+        "status": "passed"
+      },
+      {
+        "name": "honors Retry-After, caps technical failures at eight, and retains operation keys through retries",
+        "status": "passed"
+      },
+      {
+        "name": "replay uses live IAM role/session, mandatory reason and CAS; preserves ID/version/key with audit",
+        "status": "passed"
+      },
+      {
+        "name": "rejects missing/wrong audience/scope/workflow/expired machine tokens and public Gateway forwarding",
+        "status": "passed"
+      },
+      {
+        "name": "runtime DB role cannot read IAM/n8n DB or create databases",
+        "status": "passed"
+      }
+    ]
+  },
+  "smoke": {
+    "workflowId": "N8N02BridgeSmoke",
+    "workflowVersion": 1,
+    "executionId": "1",
+    "jobId": "5ef89b2e-df27-4255-b66d-2db27a8262e4",
+    "eventId": "77248c97-0063-45b9-9b4c-8cfacff7f43d",
+    "correlationId": "c003d6e3-4839-4de7-802b-8b4fbfab3869",
+    "operationKey": "automation:5ef89b2e-df27-4255-b66d-2db27a8262e4:smoke",
+    "actions": [
+      "CLAIM",
+      "CHECKPOINT",
+      "DONE"
+    ],
+    "result": "DONE"
+  },
+  "n8nVersion": "2.46.4",
+  "finishedAt": "2026-11-04T07:23:02.398Z"
+}

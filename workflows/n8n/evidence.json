@@ -1,0 +1,57 @@
+{
+  "project": "space-agent-n8n-smoke-d6f722f25211",
+  "startedAt": "2026-11-04T06:44:29.961Z",
+  "checks": [
+    "fresh PostgreSQL + n8n healthy; pinned runtime version",
+    "empty instance; dedicated runtime role is not superuser",
+    "workflow import and real PostgreSQL credential query",
+    "actual exported JSON reimported under a new ID",
+    "restart both services preserves workflows and decrypts credential for real query",
+    "container recreation preserves volumes, workflows and usable credential"
+  ],
+  "status": "PASS",
+  "sourceCommit": "1446702162e4c06db11cbdba44082a63238ac246",
+  "artifacts": {
+    "infra/n8n/compose.yml": "466f413bb168ccb1793ea23620e1f5418e457586bbc6727cc6151e4af29b759a",
+    "infra/n8n/init.sql": "aaf7cfde9435cce55f4adfa5d88857367cb75633c2227798d5b12e3c45f059fc",
+    "scripts/n8n-local.mjs": "312e644787237c3000a6badb554d1cc96a069ad86365dadca8e8c2ec990a60d2",
+    "workflows/n8n/runtime-smoke.json": "ae4d66804afcadbcb15b3af061bfdfbdad5c812667abc7d5707dfc9e82fe77dd"
+  },
+  "n8nVersion": "2.46.4",
+  "postgresVersion": "postgres (PostgreSQL) 17.7",
+  "beforeRestart": {
+    "workflowId": "N8N01Smoke",
+    "executionId": "1",
+    "row": {
+      "marker": "N8N-01",
+      "db_user": "n8n"
+    }
+  },
+  "exportSha256": "0c1764b26aaf971290fc8c08ff48cac65e8344bb5f93e364573b5d0f1798c827",
+  "roundtripExecution": {
+    "workflowId": "N8N01Roundtrip",
+    "executionId": "2",
+    "row": {
+      "marker": "N8N-01",
+      "db_user": "n8n"
+    }
+  },
+  "afterRestart": {
+    "workflowId": "N8N01Smoke",
+    "executionId": "34",
+    "row": {
+      "marker": "N8N-01",
+      "db_user": "n8n"
+    }
+  },
+  "afterRecreate": {
+    "workflowId": "N8N01Smoke",
+    "executionId": "35",
+    "row": {
+      "marker": "N8N-01",
+      "db_user": "n8n"
+    }
+  },
+  "images": "[{\"ID\":\"sha256:4384b9ff20a78bc1708c35ce7864f84f724611de7801fb36d715998db7c000f1\",\"ContainerName\":\"space-agent-n8n-smoke-d6f722f25211-n8n-1\",\"Repository\":\"docker.n8n.io/n8nio/n8n\",\"Tag\":\"\",\"Platform\":\"linux/amd64\",\"Size\":316476280,\"LastTagTime\":\"2026-11-04T06:41:54.955642062Z\"},{\"ID\":\"sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2\",\"ContainerName\":\"space-agent-n8n-smoke-d6f722f25211-postgres-1\",\"Repository\":\"postgres\",\"Tag\":\"\",\"Platform\":\"linux/amd64\",\"Size\":111084648,\"LastTagTime\":\"2026-11-04T06:39:52.778798177Z\"}]",
+  "finishedAt": "2026-11-04T06:46:19.966Z"
+}

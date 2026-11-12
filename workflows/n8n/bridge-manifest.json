@@ -1,0 +1,35 @@
+{
+  "id": "N8N-02-bridge-smoke",
+  "workflowVersion": 1,
+  "n8nWorkflowVersionId": "6588a478-0dde-43ce-8bdb-864ecdbf6d77",
+  "path": "bridge-smoke.json",
+  "sha256": "b4154323e95f58c2969475bcfab29fe4b4b8dd7840a3d08ddbb2aed85209e776",
+  "inputSchemaVersion": 1,
+  "trigger": "manual (CLI execute)",
+  "subflows": [],
+  "nodes": [
+    {
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2
+    }
+  ],
+  "credentialAliases": [
+    {
+      "name": "bridge-smoke-machine",
+      "id": "N8N02BridgeMachine",
+      "type": "httpHeaderAuth",
+      "scope": "Synthetic bridge-smoke only; automation:claim automation:checkpoint automation:result; audience automation-bridge; RS256 TTL <=300s; isolated test authority"
+    }
+  ],
+  "images": {
+    "n8n": "docker.n8n.io/n8nio/n8n:2.46.4@sha256:4384b9ff20a78bc1708c35ce7864f84f724611de7801fb36d715998db7c000f1",
+    "postgres": "postgres:17.7-alpine@sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2"
+  },
+  "evidence": "bridge-evidence.json",
+  "runbook": "../../services/automation-bridge/README.md",
+  "businessWorkflows": false
+}

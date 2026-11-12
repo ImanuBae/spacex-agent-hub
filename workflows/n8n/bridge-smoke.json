@@ -1,0 +1,52 @@
+[
+  {
+    "id": "N8N02BridgeSmoke",
+    "name": "N8N-02 Bridge smoke (synthetic, no business commands)",
+    "active": false,
+    "nodes": [
+      { "id": "manual", "name": "Manual Trigger", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
+      {
+        "id": "claim", "name": "Bridge claim", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [240, 0],
+        "parameters": {
+          "method": "POST", "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+          "sendBody": true, "specifyBody": "json", "jsonBody": "{\"workflowId\":\"bridge-smoke\",\"workflowVersion\":1}",
+          "options": { "timeout": 10000 }
+        },
+        "retryOnFail": false,
+        "credentials": { "httpHeaderAuth": { "id": "N8N02BridgeMachine", "name": "bridge-smoke-machine" } }
+      },
+      {
+        "id": "checkpoint", "name": "Bridge checkpoint", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [480, 0],
+        "parameters": {
+          "method": "POST", "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $json.data.jobId }}/checkpoint",
+          "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+          "sendBody": true, "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ leaseToken: $json.data.leaseToken, attempt: $json.data.attempt, expectedVersion: $json.data.version, step: 'smoke', operation: { name: 'smoke' } }) }}",
+          "options": { "timeout": 10000 }
+        },
+        "retryOnFail": false,
+        "credentials": { "httpHeaderAuth": { "id": "N8N02BridgeMachine", "name": "bridge-smoke-machine" } }
+      },
+      {
+        "id": "result", "name": "Bridge result", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [720, 0],
+        "parameters": {
+          "method": "POST", "url": "=http://host.docker.internal:4006/internal/automation/jobs/{{ $json.data.jobId }}/result",
+          "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth",
+          "sendBody": true, "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({leaseToken:$json.data.leaseToken,attempt:$json.data.attempt,expectedVersion:$json.data.version,step:'smoke',outcome:'DONE',resultRef:'smoke:N8N-02'}) }}",
+          "options": { "timeout": 10000 }
+        },
+        "retryOnFail": false,
+        "credentials": { "httpHeaderAuth": { "id": "N8N02BridgeMachine", "name": "bridge-smoke-machine" } }
+      }
+    ],
+    "connections": {
+      "Manual Trigger": { "main": [[{ "node": "Bridge claim", "type": "main", "index": 0 }]] },
+      "Bridge claim": { "main": [[{ "node": "Bridge checkpoint", "type": "main", "index": 0 }]] },
+      "Bridge checkpoint": { "main": [[{ "node": "Bridge result", "type": "main", "index": 0 }]] }
+    },
+    "settings": { "executionOrder": "v1", "timezone": "Asia/Ho_Chi_Minh", "saveDataSuccessExecution": "none", "saveDataErrorExecution": "none", "saveManualExecutions": false },
+    "versionId": "6588a478-0dde-43ce-8bdb-864ecdbf6d77"
+  }
+]

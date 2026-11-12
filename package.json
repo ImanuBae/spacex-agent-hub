@@ -12,7 +12,7 @@
     "templates/service"
   ],
   "scripts": {
-    "dev": "turbo run dev --filter=!@spacex/service-template",
+    "dev": "turbo run dev --filter=!@spacex/service-template --filter=!@spacex/automation-bridge --filter=!@spacex/conversation",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -23,6 +23,8 @@
     "demo:class": "node scripts/demo-class.mjs",
     "test:class:db": "npm run test:db --workspace=@spacex/class-schedule",
     "test:reliability": "npm run test:db --workspace=@spacex/messaging",
+    "test:automation": "node scripts/test-automation.mjs",
+    "test:chat": "node scripts/test-chat-local.mjs",
     "test:stage2:browser": "node scripts/test-stage2-browser.mjs",
     "test:crm:db": "npm run test:db --workspace=@spacex/crm",
     "test:crm:browser": "node scripts/test-crm-browser.mjs"

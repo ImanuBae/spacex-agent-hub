@@ -32,7 +32,7 @@ export async function enqueueEvent(client: PoolClient, input: EventEnvelope) {
 }
 
 // Acknowledge the broker only AFTER this durable insert commits.
-export async function receiveEvent(pool: Pool, consumer: string, input: EventEnvelope) {
+export async function receiveEvent(pool: Pool | PoolClient, consumer: string, input: EventEnvelope) {
   if (!/^[a-zA-Z0-9._-]{1,100}$/.test(consumer)) throw new Error("Invalid consumer");
   const event = EventEnvelope.parse(input);
   const { rows } = await pool.query(

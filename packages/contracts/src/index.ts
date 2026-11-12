@@ -5,3 +5,6 @@ export * from "./catalog.js";
 export * from "./organization.js";
 export * from "./classes.js";
 export * from "./crm.js";
+export * from "./automation.js";
+export * from "./machine.js";
+export * from "./conversation.js";

@@ -66,6 +66,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
   const title =
     menu.find((item) => pathname === item.href)?.label ?? "Không gian làm việc";
   const live = [
+    "/dashboard/mailbox",
     "/dashboard/leads",
     "/dashboard/courses",
     "/dashboard/organization",

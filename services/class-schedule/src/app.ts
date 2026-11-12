@@ -9,12 +9,16 @@ import {
   ClassQuery,
   HoldInput,
   RoomInput,
+  DelegatedPrincipal,
 } from "@spacex/contracts";
 import {
-  authenticate,
+  authenticateDomain,
   allowRoles,
   principal,
   checkBranch,
+  authenticate,
+  bearer,
+  iamRequest,
   type AuthConfig,
   type Principal,
 } from "@spacex/auth";
@@ -38,7 +42,7 @@ const missing = () => new HttpError(404, "NOT_FOUND", "Resource not found");
 const fail = (code: string, message: string) =>
   new HttpError(409, code, message);
 const scope = (user: Principal) =>
-  user.role === "center_director" ? null : user.branchIds;
+  user.delegation ? [user.delegation.branchId] : user.role === "center_director" ? null : user.branchIds;
 const holdView = (r: Row, now: Date) => ({
   id: r.id,
   classId: r.class_id,
@@ -376,6 +380,11 @@ export function createClassApp(
       missingConditions: CONDITIONS(row, sessions),
     };
   }
+  function guestView(row: Awaited<ReturnType<typeof view>>) {
+    return { id: row.id, name: row.name, courseId: row.courseId, packageId: row.packageId, mode: row.mode,
+      registrationClosesAt: row.registrationClosesAt, status: row.status, version: row.version,
+      sessions: row.sessions, available: row.available, serverTime: row.serverTime };
+  }
   async function saveSessions(c: PoolClient, id: string, input: ClassInput) {
     if (input.teacherId) await checkTeacherSessions(c, input.teacherId, input.sessions);
     await c.query("DELETE FROM sessions WHERE class_id=$1", [id]);
@@ -391,6 +400,13 @@ export function createClassApp(
         s.startsAt,
         s.endsAt,
       ]);
+  }
+  async function cancelClass(c: PoolClient, row: Row, actor: string, correlation: string) {
+    await expireClass(c, row.id, correlation);
+    if ((await view(c, row)).committed > 0) throw fail("ENROLLMENT_REQUIRED", "Lớp có chỗ đã chốt: cần quy trình Enrollment/hoàn hoặc chuyển lớp trước khi hủy");
+    const holds = (await c.query("UPDATE holds SET status='CANCELLED' WHERE class_id=$1 AND status='HELD' RETURNING id", [row.id])).rows;
+    for (const hold of holds) await audit(c, actor, "hold.cancelled", hold.id, correlation);
+    await c.query("UPDATE sessions SET active=false WHERE class_id=$1", [row.id]);
   }
   return createApp("class-schedule", (app) => {
     app.get("/ready", async (_req, res) => {
@@ -451,10 +467,106 @@ export function createClassApp(
       if (!result) throw fail("HOLD_EXPIRED", "Hold is expired or cancelled");
       res.json({ data: result });
     });
+    const cancellationPayload = ClassTransition.safeExtend({ status: z.literal("CANCELLED") });
+    const cancellationBase = "/api/v1/class-cancellation-requests";
+    app.post("/api/v1/classes/:id/cancellation-requests", authenticate(auth), allowRoles("center_director", "branch_director"), async (req, res) => {
+      const user = principal(res), classId = Id.parse(req.params.id), payload = cancellationPayload.parse(req.body);
+      const data = await transaction(pool, async c => {
+        const row = await classRow(c, classId, user, true);
+        if (row.version !== payload.version) throw fail("STALE_VERSION", "Reload class");
+        if (!["DRAFT", "PLANNED", "OPEN"].includes(row.status)) throw fail("INVALID_TRANSITION", "Class cannot be cancelled");
+        const id = randomUUID(), eventId = randomUUID();
+        const delegation = await iamRequest(auth.identityUrl, "/internal/iam/delegations", bearer(req.get("authorization")), {
+          eventId, workflowId: "WF-CLASS-CANCEL", workflowVersion: 1, branchId: row.branch_id,
+          entity: { type: "class", id: classId, version: row.version }, inputRef: id, operations: ["classes.cancel"],
+        }) as { contextRef: string };
+        const result = await c.query(`INSERT INTO class_cancellation_requests(id,class_id,branch_id,actor_id,actor_session_id,context_id,event_id,payload)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,expires_at`, [id, classId, row.branch_id, user.sub, user.sid, delegation.contextRef, eventId, payload]);
+        await audit(c, user.sub, "automation.cancellation_confirmed", id, res.locals.correlationId);
+        return result.rows[0];
+      });
+      res.status(201).json({ data });
+    });
+    for (const action of ["approve", "revoke"] as const) app.post(`${cancellationBase}/:id/${action}`, authenticate(auth), allowRoles("center_director", "branch_director"), async (req, res) => {
+      z.object({}).strict().parse(req.body);
+      const id = Id.parse(req.params.id), user = principal(res);
+      await transaction(pool, async c => {
+        const row = (await c.query("SELECT * FROM class_cancellation_requests WHERE id=$1 FOR UPDATE", [id])).rows[0];
+        if (!row) throw missing();
+        checkBranch(user, row.branch_id);
+        if (row.consumed_at || row.revoked_at || row.expires_at <= new Date()) throw fail("CONFIRMATION_EXPIRED", "Confirmation no longer available");
+        if (action === "revoke") {
+          if (user.sub !== row.actor_id && user.sub !== row.approver_id) throw new HttpError(403, "FORBIDDEN", "Only the confirming or approving actor may revoke");
+          await c.query("UPDATE class_cancellation_requests SET revoked_at=clock_timestamp() WHERE id=$1", [id]);
+        } else {
+          if (user.role !== "branch_director" || user.sub === row.actor_id || row.approver_id) throw new HttpError(403, "FORBIDDEN", "A separate branch director must approve once");
+          await c.query("UPDATE class_cancellation_requests SET approver_id=$2,approver_session_id=$3 WHERE id=$1", [id, user.sub, user.sid]);
+          await enqueueEvent(c, { id: row.event_id, type: "class.cancellation_approved", version: 1, occurredAt: new Date().toISOString(), correlationId: res.locals.correlationId,
+            entityId: row.class_id, entityVersion: row.payload.version,
+            payload: { entity: { type: "class", id: row.class_id, version: row.payload.version }, contextRef: row.context_id, inputRef: id } });
+        }
+        await audit(c, user.sub, `automation.cancellation_${action}`, id, res.locals.correlationId);
+      });
+      res.json({ data: { id, action } });
+    });
+    app.get(`${cancellationBase}/:id`, authenticate(auth), async (req, res) => {
+      const row = (await pool.query("SELECT * FROM class_cancellation_requests WHERE id=$1", [Id.parse(req.params.id)])).rows[0];
+      if (!row) throw missing();
+      const user = principal(res); checkBranch(user, row.branch_id);
+      if (![row.actor_id, row.approver_id].includes(user.sub)) throw new HttpError(403, "FORBIDDEN", "Request belongs to another actor");
+      res.json({ data: { id: row.id, consumedAt: row.consumed_at, revokedAt: row.revoked_at, expiresAt: row.expires_at, result: row.result, jobId: row.job_id } });
+    });
+    app.get("/internal/classes/cancellations/:id", async (req, res) => {
+      const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
+      const user = DelegatedPrincipal.parse(await iamRequest(auth.identityUrl, "/internal/iam/commands/introspect", token, { audience: "class-schedule", scope: "classes:cancel" }));
+      const row = (await pool.query("SELECT * FROM class_cancellation_requests WHERE id=$1", [id])).rows[0], d = user.delegation;
+      if (!row) throw missing();
+      if (d.operation !== "classes.cancel" || d.inputRef !== id || d.entity?.id !== row.class_id || row.actor_id !== user.sub || row.actor_session_id !== user.sid || row.branch_id !== d.branchId)
+        throw new HttpError(403, "FORBIDDEN", "Confirmation binding does not match the operation lookup");
+      res.json({ data: { id, payload: row.payload, consumedAt: row.consumed_at, result: row.result } });
+    });
+    app.post("/internal/classes/cancellations/:id/execute", async (req, res) => {
+      const id = Id.parse(req.params.id), payload = cancellationPayload.parse(req.body), token = bearer(req.get("authorization"));
+      const verify = async () => DelegatedPrincipal.parse(await iamRequest(auth.identityUrl, "/internal/iam/commands/introspect", token, { audience: "class-schedule", scope: "classes:cancel" }));
+      const data = await transaction(pool, async c => {
+        const user = await verify(), d = user.delegation;
+        const source = (await c.query("SELECT class_id FROM class_cancellation_requests WHERE id=$1", [id])).rows[0];
+        if (!source) throw missing();
+        const row = await classRow(c, source.class_id, user, true);
+        const confirmation = (await c.query("SELECT *,clock_timestamp() AS now FROM class_cancellation_requests WHERE id=$1 FOR UPDATE", [id])).rows[0];
+        if (d.operation !== "classes.cancel" || d.inputRef !== id || d.entity?.type !== "class" || d.entity.id !== row.id || d.entity.version !== payload.version ||
+          confirmation.actor_id !== user.sub || confirmation.actor_session_id !== user.sid || confirmation.branch_id !== d.branchId ||
+          confirmation.payload.version !== payload.version || confirmation.payload.status !== payload.status || confirmation.payload.reason !== payload.reason)
+          throw new HttpError(403, "FORBIDDEN", "Confirmation binding does not match the command");
+        if (confirmation.consumed_at) {
+          if (confirmation.job_id !== d.jobId) throw fail("CONFIRMATION_CONSUMED", "Lookup the original operation");
+          return confirmation.result;
+        }
+        if (!confirmation.approver_id || confirmation.revoked_at || confirmation.expires_at <= confirmation.now) throw fail("CONFIRMATION_EXPIRED", "A current separate approval is required");
+        if (row.version !== payload.version) throw fail("STALE_VERSION", "Approval is stale; confirm the current version");
+        if (!["DRAFT", "PLANNED", "OPEN"].includes(row.status)) throw fail("INVALID_TRANSITION", "Class cannot be cancelled");
+        await cancelClass(c, row, user.sub, res.locals.correlationId);
+        // Final live checks while resource/confirmation locks are held; IAM and Class are separate databases.
+        await verify();
+        await iamRequest(auth.identityUrl, "/internal/iam/commands/approval-session", token, { accountId: confirmation.approver_id, sessionId: confirmation.approver_session_id });
+        const consumed = await c.query("UPDATE class_cancellation_requests SET consumed_at=clock_timestamp(),job_id=$2 WHERE id=$1 AND expires_at>clock_timestamp() AND revoked_at IS NULL RETURNING id", [id, d.jobId]);
+        if (!consumed.rowCount) throw fail("CONFIRMATION_EXPIRED", "Confirmation expired before commit");
+        const updated = (await c.query("UPDATE classes SET status='CANCELLED',version=version+1 WHERE id=$1 RETURNING *", [row.id])).rows[0];
+        await c.query("INSERT INTO class_status_changes(id,class_id,version,previous_status,status,reason,actor_id) VALUES($1,$2,$3,$4,'CANCELLED',$5,$6)", [randomUUID(), row.id, updated.version, row.status, payload.reason, user.sub]);
+        await audit(c, user.sub, "class.cancelled", row.id, res.locals.correlationId);
+        const result = await view(c, updated);
+        await c.query("UPDATE class_cancellation_requests SET result=$2 WHERE id=$1", [id, result]);
+        return result;
+      });
+      res.json({ data });
+    });
     app.use(
       "/api/v1",
-      authenticate(auth),
-      allowRoles("center_director", "branch_director", "admissions", "teacher"),
+      authenticateDomain(auth, "class-schedule", "classes:read", /^\/classes(\/[^/]+)?$/),
+      (req, res, next) => {
+        if (principal(res).delegation?.source === "guest") { next(); return; }
+        allowRoles("center_director", "branch_director", "admissions", "teacher")(req, res, next);
+      },
     );
     registerTeacherTime(app, pool, transaction, audit, (req, res) =>
       upstream(config.orgUrl, "/api/v1/teachers", req, res));
@@ -525,6 +637,8 @@ export function createClassApp(
       const q = ClassQuery.parse(req.query),
         user = principal(res);
       if (q.branchId) checkBranch(user, q.branchId);
+      if (user.delegation?.source === "guest" && q.status && q.status !== "OPEN") throw new HttpError(403, "FORBIDDEN", "Only open classes are public");
+      if (user.delegation && q.sellable === "true") throw new HttpError(403, "DELEGATED_SELLABLE_UNAVAILABLE", "Read Catalog offers separately; cross-service token exchange is not enabled");
       let sellableOffers: Row[] | null = null;
       if (q.sellable === "true") {
         const catalogRows = async (resource: string) => {
@@ -574,7 +688,7 @@ export function createClassApp(
           q.packageId ?? null,
           q.branchId ?? null,
           q.mode ?? null,
-          q.status ?? null,
+          user.delegation?.source === "guest" ? "OPEN" : q.status ?? null,
           q.from ?? null,
           q.to ?? null,
           q.sellable === "true",
@@ -594,7 +708,8 @@ export function createClassApp(
             [...params, q.pageSize, (q.page - 1) * q.pageSize],
           )
         ).rows;
-        const data = await Promise.all(rows.map((r) => view(c, r)));
+        const snapshots = await Promise.all(rows.map((r) => view(c, r)));
+        const data = user.delegation?.source === "guest" ? snapshots.map(guestView) : snapshots;
         return {
           data,
           pagination: { page: q.page, pageSize: q.pageSize, total },
@@ -610,7 +725,8 @@ export function createClassApp(
           await classRow(c, Id.parse(req.params.id), principal(res)),
         );
       });
-      res.json({ data });
+      if (principal(res).delegation?.source === "guest" && data.status !== "OPEN") throw new HttpError(403, "FORBIDDEN", "Only open classes are public");
+      res.json({ data: principal(res).delegation?.source === "guest" ? guestView(data) : data });
     });
     app.post(
       "/api/v1/classes",
@@ -784,11 +900,7 @@ export function createClassApp(
             if (input.status === "COMPLETED" && !timing.ended) throw fail("COMPLETION_CONDITIONS", "Lịch học chưa kết thúc");
           }
           if (input.status === "CANCELLED") {
-            await expireClass(c, id, res.locals.correlationId);
-            if ((await view(c, row)).committed > 0) throw fail("ENROLLMENT_REQUIRED", "Lớp có chỗ đã chốt: cần quy trình Enrollment/hoàn hoặc chuyển lớp trước khi hủy");
-            const holds = (await c.query("UPDATE holds SET status='CANCELLED' WHERE class_id=$1 AND status='HELD' RETURNING id", [id])).rows;
-            for (const hold of holds) await audit(c, user.sub, "hold.cancelled", hold.id, res.locals.correlationId);
-            await c.query("UPDATE sessions SET active=false WHERE class_id=$1", [id]);
+            await cancelClass(c, row, user.sub, res.locals.correlationId);
           }
           const updated = (
             await c.query(

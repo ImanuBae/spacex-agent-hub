@@ -1,5 +1,10 @@
 # Phân công task — Lead và hai dev
 
+> **Tài liệu lịch sử.** Từ 04/11/2026, dùng [phân công v3](phan-cong-task-v3.md)
+> và [Product Plan v3](product-plan-v3.md). Mô hình hiện hành là một người chính,
+> hai người hỗ trợ không thường xuyên; lịch và phân công bên dưới giữ để truy vết,
+> không phải kế hoạch triển khai hiện hành.
+
 Cập nhật: 27/10/2026. Căn cứ: [Product Plan v2](product-plan-v2.md). Đây là thứ tự giao việc đề xuất, chưa phải cam kết ngày hoàn thành. Các quyết định customer C01–C12 được theo dõi trong plan.
 
 **Trạng thái sau triển khai:** phần kỹ thuật đợt 1 đã được triển khai và kiểm

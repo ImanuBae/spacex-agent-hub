@@ -1,0 +1,71 @@
+{
+  "project": "space-agent-automation-test-46d9142368f7",
+  "status": "ASSERTIONS_PASSED_CLEANUP_RECOVERED",
+  "note": "All assertions completed, then harness waited for a second exit event from an already terminated fault-server child. Only this project/process tree was stopped manually. Its DB was reopened for read-only verification of the three fault states. A separate fresh technical run checks cleanup and preservation. No completed harness preservation receipt is claimed for this recovered model run.",
+  "benchmarkReview": "chat-benchmark-review.json",
+  "faults": [
+    {
+      "fault": "quota",
+      "conversationId": "29c62b62-da55-49d7-a20f-1ba280d7194d",
+      "jobId": "936007ed-2587-4ce1-a1e2-20d2a2d17c39",
+      "errorCode": "QUOTA",
+      "traceSha256": "087641be14fe2c83e1a43a24d118c8551466d65c5d9d8e73d2ff65977593c660",
+      "actual": {
+        "id": "29c62b62-da55-49d7-a20f-1ba280d7194d",
+        "mode": "HUMAN",
+        "error_code": "QUOTA",
+        "version": 3,
+        "messages": 1
+      },
+      "injected": true,
+      "modelInference": false
+    },
+    {
+      "fault": "timeout",
+      "conversationId": "a22bd2c0-734d-4e06-a253-c19ae7b6a515",
+      "jobId": "c439c77e-875d-41b1-8967-e1cb0d230d40",
+      "errorCode": "TIMEOUT",
+      "traceSha256": "62af5ddb62eb3972bdf8568408377645cc84e614fe10ade94e8348fa838362b5",
+      "actual": {
+        "id": "a22bd2c0-734d-4e06-a253-c19ae7b6a515",
+        "mode": "HUMAN",
+        "error_code": "TIMEOUT",
+        "version": 3,
+        "messages": 1
+      },
+      "injected": true,
+      "modelInference": false
+    },
+    {
+      "fault": "tool",
+      "conversationId": "2faa09db-c566-435d-996b-5a2deaad523c",
+      "jobId": "aae5f9c7-ab8a-4082-851e-530712f2d3a7",
+      "errorCode": "TOOL_ERROR",
+      "traceSha256": "10ed863c46c8fdebd534e99286b946a007eb7f274560f4c9820aa89da84f0e52",
+      "actual": {
+        "id": "2faa09db-c566-435d-996b-5a2deaad523c",
+        "mode": "HUMAN",
+        "error_code": "TOOL_ERROR",
+        "version": 3,
+        "messages": 1
+      },
+      "injected": true,
+      "modelInference": false
+    }
+  ],
+  "handoff": {
+    "jobId": "c718d3b8-fd5d-4883-b2be-06b788326f7e",
+    "mode": "HUMAN",
+    "status": "DONE"
+  },
+  "browser": {
+    "status": "PASS",
+    "realModelAnswerRendered": true,
+    "widths": [
+      1440,
+      768,
+      390
+    ],
+    "screenshot": "real-ai-inbox.png"
+  }
+}

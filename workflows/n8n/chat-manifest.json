@@ -1,0 +1,55 @@
+{
+  "status": "IMPLEMENTED_NOT_ACCEPTED",
+  "model": "nvidia/nemotron-3.5-lightning-20260807:free",
+  "paidFallback": false,
+  "workflows": [
+    {
+      "workflowId": "WF-01",
+      "version": 1,
+      "file": "workflows/n8n/wf-01.json",
+      "sha256": "30a8c3f51b07620d2cfea8a4d90bbb94138a3269271259c0e7fce3849fdd556a",
+      "credential": "WF-01-machine-client"
+    },
+    {
+      "workflowId": "WF-02",
+      "version": 1,
+      "file": "workflows/n8n/wf-02.json",
+      "sha256": "396ea6fb1929bdebfafae75337bd50380d3e970876029241e1b42c4b1dad7782",
+      "credential": "WF-02-machine-client"
+    },
+    {
+      "workflowId": "WF-03",
+      "version": 1,
+      "file": "workflows/n8n/wf-03.json",
+      "sha256": "eae0f30295831c6723029672b052a51f1141ec51f486b45b6d7fda0c05b6dc12",
+      "credential": "WF-03-machine-client"
+    }
+  ],
+  "modelCredential": "llm-free-demo",
+  "bindings": [
+    {
+      "eventType": "channel.message_received",
+      "workflowId": "WF-01",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "conversation.ai_requested",
+      "workflowId": "WF-02",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "conversation.owner_changed",
+      "workflowId": "WF-03",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "conversation.handoff_requested",
+      "workflowId": "WF-03",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    }
+  ]
+}

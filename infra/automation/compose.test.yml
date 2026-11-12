@@ -1,0 +1,31 @@
+# Added to infra/n8n/compose.yml only by scripts/test-automation.mjs, with a fresh project.
+services:
+  bridge-db:
+    image: postgres:17.7-alpine@sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2
+    environment:
+      POSTGRES_USER: automation_test_admin
+      POSTGRES_PASSWORD: ${AUTOMATION_TEST_ADMIN_PASSWORD:?Test harness required}
+      POSTGRES_DB: postgres
+    ports:
+      - '127.0.0.1::5432'
+    volumes:
+      - bridge_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U automation_test_admin -d postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  rabbitmq:
+    image: rabbitmq:4-management@sha256:8dd6e3570ddaa2ef82a6c3a8950e79c1f73893adfbdddbc374fc1f1ac8a0f5dd
+    environment:
+      RABBITMQ_DEFAULT_USER: automation_test
+      RABBITMQ_DEFAULT_PASS: ${AUTOMATION_TEST_BROKER_PASSWORD:?Test harness required}
+    ports:
+      - '127.0.0.1::5672'
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+volumes:
+  bridge_test_data:

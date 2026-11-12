@@ -1,0 +1,59 @@
+[
+  {
+    "id": "N8N01Smoke",
+    "name": "N8N-01 runtime smoke (synthetic, no business data)",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "manual",
+        "name": "Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT 'N8N-01'::text AS marker, current_user::text AS db_user",
+          "options": {}
+        },
+        "id": "query",
+        "name": "Credential query",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.6,
+        "position": [
+          260,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "N8N01Postgres",
+            "name": "runtime-smoke-postgres"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "Credential query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "timezone": "Asia/Ho_Chi_Minh"
+    },
+    "versionId": "e302edbc-5dcf-4d68-b4ec-79a9ba0296bb"
+  }
+]

@@ -1,9 +1,9 @@
-import { SignJWT, jwtVerify } from "jose";
-import { TokenClaims, type Role } from "@spacex/contracts";
+import { SignJWT, jwtVerify, decodeProtectedHeader } from "jose";
+import { TokenClaims, DelegatedPrincipal, type Role } from "@spacex/contracts";
 import { HttpError } from "@spacex/http";
 import type { RequestHandler, Response } from "express";
 
-export interface Principal extends TokenClaims { sid: string; }
+export interface Principal extends TokenClaims { sid: string; delegation?: { branchId: string; jobId: string; operation: "catalog.read" | "classes.read" | "classes.cancel"; source?: "guest"; inputRef?: string; entity?: {type: string; id: string; version?: number} }; }
 export interface AuthConfig { secret: string; issuer: string; audience: string; identityUrl: string; }
 
 export function authConfig(env = process.env): AuthConfig {
@@ -52,6 +52,36 @@ export function authenticate(config: AuthConfig): RequestHandler {
   };
 }
 
+export async function iamRequest(identityUrl: string, path: string, token: string, body: unknown) {
+  let response: globalThis.Response;
+  try {
+    response = await fetch(`${identityUrl}${path}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(5000), redirect: "error" });
+  } catch { throw new HttpError(503, "IDENTITY_UNAVAILABLE", "Identity service unavailable"); }
+  if ([400, 401, 403, 409].includes(response.status)) throw new HttpError(response.status, "AUTHORIZATION_DENIED", "IAM authorization denied");
+  if (!response.ok) throw new HttpError(503, "IDENTITY_UNAVAILABLE", "Identity service unavailable");
+  return (await response.json() as { data: unknown }).data;
+}
+
+export function authenticateDomain(config: AuthConfig, audience: "catalog" | "class-schedule", scope: "catalog:read" | "classes:read", paths: RegExp): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const token = bearer(req.get("authorization"));
+      let algorithm: string | undefined;
+      try { algorithm = decodeProtectedHeader(token).alg; } catch { throw new HttpError(401, "UNAUTHORIZED", "Invalid token"); }
+      if (algorithm !== "RS256") { await authenticate(config)(req, res, next); return; }
+      if (!["GET", "HEAD"].includes(req.method) || !paths.test(req.path) ||
+          (req.body && Object.keys(req.body).length) || ["actorId", "role", "contextRef", "branchIds"].some(k => Object.hasOwn(req.query, k)))
+        throw new HttpError(403, "FORBIDDEN", "Command is outside the delegated read slice");
+      const user = DelegatedPrincipal.parse(await iamRequest(config.identityUrl, "/internal/iam/commands/introspect", token, { audience, scope }));
+      if (req.query.branchId !== undefined && req.query.branchId !== user.delegation.branchId)
+        throw new HttpError(403, "FORBIDDEN", "Branch access denied");
+      res.locals.principal = user;
+      next();
+    } catch (error) { next(error); }
+  };
+}
+
 export function principal(res: Response): Principal {
   if (!res.locals.principal) throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
   return res.locals.principal as Principal;
@@ -66,5 +96,6 @@ export function allowRoles(...roles: Role[]): RequestHandler {
 }
 
 export function checkBranch(user: Principal, branchId: string) {
+  if (user.delegation && user.delegation.branchId !== branchId) throw new HttpError(403, "FORBIDDEN", "Delegated branch access denied");
   if (user.role !== "center_director" && !user.branchIds.includes(branchId)) throw new HttpError(403, "FORBIDDEN", "Branch access denied");
 }
