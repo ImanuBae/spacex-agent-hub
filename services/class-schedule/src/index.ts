@@ -28,6 +28,8 @@ const server = createClassApp(pool, authConfig(), {
     ? Number(process.env.CLASS_DEMO_HOLD_TTL_SECONDS ?? 1200)
     : 1200,
   enrollmentSecret: process.env.ENROLLMENT_SERVICE_SECRET,
+  enrollmentUrl: process.env.ENROLLMENT_URL,
+  paymentUrl: process.env.PAYMENT_URL,
   messagingEnabled: !!process.env.RABBITMQ_URL,
 }).listen(config.PORT, config.HOST);
 let working = false;

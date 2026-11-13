@@ -19,6 +19,7 @@ import {
   authenticate,
   bearer,
   iamRequest,
+  verifyCommand,
   type AuthConfig,
   type Principal,
 } from "@spacex/auth";
@@ -33,8 +34,19 @@ export interface ClassConfig {
   ttlSeconds: number;
   enrollmentSecret?: string;
   messagingEnabled?: boolean;
+  enrollmentUrl?: string;
+  paymentUrl?: string;
 }
 const Id = z.uuid();
+export const EnrollmentCommitInput = z.object({ matchRef: Id }).strict();
+export const EnrollmentSeatInput = z.object({}).strict();
+const seatAuthority = z.object({
+  id: Id, branchId: Id, classId: Id, packageId: Id, learnerId: Id,
+  state: z.string(), classVersion: z.number().int().positive(), quoteCurrent: z.boolean().optional(), matchRef: Id.nullish(),
+  releaseAuthorized: z.boolean().optional(),
+  quote: z.object({ packageId: Id, courseId: Id }).passthrough(),
+}).passthrough();
+const matchAuthority = z.object({ id: Id, enrollmentId: Id, eligible: z.boolean(), late: z.boolean() }).passthrough();
 // pg's untyped row boundary is converted explicitly by the view functions.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -412,6 +424,163 @@ export function createClassApp(
     app.get("/ready", async (_req, res) => {
       await pool.query("SELECT 1 FROM holds LIMIT 1");
       res.json({ status: "ok" });
+    });
+    async function enrollmentAuthority(base: string | undefined, path: string, token: string) {
+      if (!base) throw new HttpError(503, "ENROLLMENT_NOT_CONFIGURED", "Enrollment/Payment authority required");
+      let response: globalThis.Response;
+      try {
+        response = await fetch(`${base}${path}`, {
+          headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000), redirect: "error",
+        });
+      } catch { throw new HttpError(503, "UPSTREAM_UNAVAILABLE", "Cannot validate seat authority"); }
+      if ([400, 401, 403, 404, 409].includes(response.status))
+        throw new HttpError(response.status, "SEAT_AUTHORITY_DENIED", "Enrollment/Payment authority denied");
+      if (!response.ok) throw new HttpError(503, "UPSTREAM_UNAVAILABLE", "Cannot validate seat authority");
+      return (await response.json() as { data: unknown }).data;
+    }
+    function seatActor(user: Principal) {
+      if (!["center_director", "branch_director", "admissions", "accountant"].includes(user.role) &&
+        !(user.role === "ai_agent" && user.delegation?.source === "service" && ["WF-06", "WF-07"].includes(user.delegation.workflowId ?? "")))
+        throw new HttpError(403, "FORBIDDEN", "Current enrollment staff or scoped Payment/expiry service required");
+    }
+    function seatBinding(user: Principal, enrollmentId: string, source: z.infer<typeof seatAuthority>) {
+      seatActor(user);
+      const d = user.delegation;
+      if (!d || d.operation !== "classes.enroll" || d.entity?.type !== "enrollment" || d.entity.id !== enrollmentId ||
+        source.id !== enrollmentId || source.branchId !== d.branchId)
+        throw new HttpError(403, "FORBIDDEN", "Enrollment does not match the delegated resource");
+    }
+    const enrollmentPath = "/internal/classes/enrollments/:id";
+    async function readEnrollmentSeat(id: string, user: Principal, source?: z.infer<typeof seatAuthority>) {
+      seatActor(user);
+      const d = user.delegation;
+      if (!d || d.entity?.type !== "enrollment" || d.entity.id !== id)
+        throw new HttpError(403, "FORBIDDEN", "Seat lookup requires the bound Enrollment");
+      const hold = (await pool.query(`SELECT h.*,clock_timestamp() AS now,c.branch_id FROM holds h
+        JOIN classes c ON c.id=h.class_id WHERE h.enrollment_id=$1 ORDER BY h.created_at DESC LIMIT 1`, [id])).rows[0];
+      if (hold) {
+        checkBranch(user, hold.branch_id);
+        if (source && (hold.class_id !== source.classId || hold.learner_id !== source.learnerId || hold.package_id !== source.packageId))
+          throw fail("ENROLLMENT_MISMATCH", "Persisted seat does not match the Enrollment snapshot");
+      }
+      return { hold: hold ? holdView(hold, hold.now) : null, committed: hold?.status === "COMMITTED" };
+    }
+    for (const audience of ["enrollment", "payment"] as const) app.get(`${enrollmentPath}/${audience}-authority`, async (req, res) => {
+      const id = Id.parse(req.params.id);
+      const user = await verifyCommand(auth, bearer(req.get("authorization")), audience, audience === "enrollment" ? "enrollment:write" : "payment:write");
+      if (user.delegation?.operation !== `${audience}.execute`) throw new HttpError(403, "FORBIDDEN", "Scoped source lookup operation required");
+      res.json({ data: await readEnrollmentSeat(id, user) });
+    });
+    app.get(enrollmentPath, async (req, res) => {
+      const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
+      const user = await verifyCommand(auth, token, "class-schedule", "classes:enroll");
+      const source = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, `/internal/enrollment/enrollments/${id}/seat-authority`, token));
+      seatBinding(user, id, source);
+      res.json({ data: await readEnrollmentSeat(id, user, source) });
+    });
+    for (const action of ["hold", "commit", "release"] as const) app.post(`${enrollmentPath}/${action}`, async (req, res) => {
+      const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
+      const payload = action === "commit" ? EnrollmentCommitInput.parse(req.body) : EnrollmentSeatInput.parse(req.body);
+      const verify = () => verifyCommand(auth, token, "class-schedule", "classes:enroll");
+      const user = await verify();
+      const sourcePath = `/internal/enrollment/enrollments/${id}/seat-authority`;
+      const initial = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, sourcePath, token));
+      seatBinding(user, id, initial);
+      const data = await transaction(pool, async c => {
+        await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`hold-actor:${user.sub}`]);
+        const row = await classRow(c, initial.classId, user, true);
+        const currentUser = await verify();
+        const source = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, sourcePath, token));
+        seatBinding(currentUser, id, source);
+        if (source.classId !== row.id || source.branchId !== row.branch_id || source.packageId !== row.package_id ||
+          source.quote.packageId !== row.package_id || source.quote.courseId !== row.course_id)
+          throw fail("PACKAGE_MISMATCH", "Enrollment snapshot does not match the class offer");
+        const operationKey = `automation:${user.delegation!.jobId}:classes.enroll:${action}`;
+        const previous = (await c.query("SELECT * FROM class_enrollment_operations WHERE operation_key=$1", [operationKey])).rows[0];
+        if (previous) {
+          if (previous.enrollment_id !== id || JSON.stringify(previous.payload) !== JSON.stringify(payload))
+            throw fail("IDEMPOTENCY_CONFLICT", "Operation was used with different input");
+          await verify();
+          return previous.result;
+        }
+        await expireClass(c, row.id, res.locals.correlationId);
+        const now = (await c.query("SELECT clock_timestamp() AS now")).rows[0].now as Date;
+        let committedNow = false;
+        let hold = (await c.query("SELECT * FROM holds WHERE enrollment_id=$1 ORDER BY created_at DESC LIMIT 1 FOR UPDATE", [id])).rows[0];
+        if (hold && (hold.class_id !== row.id || hold.package_id !== source.packageId || hold.learner_id !== source.learnerId))
+          throw fail("ENROLLMENT_MISMATCH", "Persisted seat does not match the Enrollment snapshot");
+        async function available() {
+          if (source.classVersion !== row.version) throw fail("CLASS_CHANGED", "Confirm the current class schedule before taking a seat");
+          if (row.status !== "OPEN") throw fail("NOT_OPEN", "Class is not OPEN");
+          if (row.registration_closes_at <= now) throw fail("REGISTRATION_CLOSED", "Registration cutoff passed");
+          if ((await view(c, row)).missingConditions.length) throw fail("CLASS_INCOMPLETE", "Class is not ready for enrollment");
+          if ((await c.query("SELECT 1 FROM holds WHERE class_id=$1 AND learner_id=$2 AND enrollment_id<>$3 AND status IN ('HELD','COMMITTED')", [row.id, source.learnerId, id])).rowCount)
+            throw fail("DUPLICATE_LEARNER", "Learner already holds or has committed this class");
+          const count = (await c.query("SELECT count(*)::int AS n FROM holds WHERE class_id=$1 AND enrollment_id<>$2 AND status IN ('HELD','COMMITTED')", [row.id, id])).rows[0].n;
+          if (count >= row.capacity) throw fail("SOLD_OUT", "Class has no available seat");
+        }
+        if (action === "hold") {
+          if (!["center_director", "branch_director", "admissions"].includes(user.role))
+            throw new HttpError(403, "FORBIDDEN", "Only confirmed admissions requests may create holds");
+          if (!["PENDING_HOLD", "HELD"].includes(source.state)) throw fail("INVALID_ENROLLMENT_STATE", "Enrollment cannot request a hold");
+          if (source.quoteCurrent !== true) throw fail("QUOTE_CHANGED", "A new confirmation is required for the current offer");
+          await available();
+          if (hold) {
+            if (hold.status !== "HELD" || hold.expires_at <= now) throw fail("HOLD_EXPIRED", "Existing hold is no longer available");
+          } else {
+            const counts = (await c.query(`SELECT count(*) FILTER(WHERE status='HELD' AND expires_at>clock_timestamp())::int AS active,
+              count(*) FILTER(WHERE created_at>clock_timestamp()-interval '1 minute')::int AS recent FROM holds WHERE actor_id=$1`, [user.sub])).rows[0];
+            if (counts.active >= 5 || counts.recent >= 30) throw new HttpError(429, "HOLD_LIMIT", "Actor hold limit reached");
+            hold = (await c.query(`INSERT INTO holds(id,class_id,package_id,learner_id,enrollment_id,actor_id,status,expires_at,operation_key,request_payload)
+              VALUES($1,$2,$3,$4,$5,$6,'HELD',clock_timestamp()+make_interval(secs=>$7),$5,$8) RETURNING *`,
+            [randomUUID(), row.id, source.packageId, source.learnerId, id, user.sub, config.ttlSeconds,
+              { classId: row.id, packageId: source.packageId, learnerId: source.learnerId, enrollmentId: id }])).rows[0];
+            await audit(c, user.sub, "hold.created", hold.id, res.locals.correlationId);
+          }
+        } else if (action === "commit") {
+          const { matchRef } = EnrollmentCommitInput.parse(payload);
+          if (source.state !== "CONFIRMING" || source.matchRef !== matchRef) throw fail("INVALID_ENROLLMENT_STATE", "Enrollment must be confirming the verified match");
+          const match = matchAuthority.parse(await enrollmentAuthority(config.paymentUrl, `/internal/payment/matches/${matchRef}/seat-authority`, token));
+          if (match.id !== matchRef || match.enrollmentId !== id || !match.eligible)
+            throw new HttpError(403, "UNVERIFIED_PAYMENT", "A verified eligible Payment match is required");
+          if (!hold) throw fail("HOLD_REQUIRED", "A paid request must refer to its original hold");
+          if (hold.status !== "COMMITTED") {
+            await available();
+            if (hold.status !== "HELD" && !(hold.status === "EXPIRED" && match.late))
+              throw fail("HOLD_EXPIRED", "Hold cannot be committed");
+            hold = (await c.query(`UPDATE holds SET status='COMMITTED' WHERE id=$1
+              AND (status='HELD' AND expires_at>clock_timestamp() OR $2 AND status IN ('HELD','EXPIRED')) RETURNING *`, [hold.id, match.late])).rows[0];
+            if (!hold) throw fail("HOLD_EXPIRED", "Hold expired before commit; reconcile the late payment");
+            committedNow = true;
+            await audit(c, user.sub, "hold.committed", hold.id, res.locals.correlationId);
+          }
+        } else {
+          if (!source.releaseAuthorized && !["EXPIRED", "CANCELLED", "REFUND_PENDING"].includes(source.state))
+            throw fail("RECONCILIATION_REQUIRED", "Money must be reconciled before releasing the hold");
+          if (hold?.status === "COMMITTED") throw fail("ALREADY_COMMITTED", "A committed seat requires the approved adjustment workflow");
+          if (hold?.status === "HELD") {
+            hold = (await c.query("UPDATE holds SET status='CANCELLED' WHERE id=$1 RETURNING *", [hold.id])).rows[0];
+            await audit(c, user.sub, "hold.cancelled", hold.id, res.locals.correlationId);
+          }
+        }
+        const finalSource = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, sourcePath, token));
+        seatBinding(await verify(), id, finalSource);
+        if (finalSource.classId !== source.classId || finalSource.classVersion !== source.classVersion || finalSource.packageId !== source.packageId || finalSource.learnerId !== source.learnerId ||
+          (action === "hold" && (!["PENDING_HOLD", "HELD"].includes(finalSource.state) || finalSource.quoteCurrent !== true)) ||
+          (action === "commit" && (finalSource.state !== "CONFIRMING" || finalSource.matchRef !== source.matchRef)) ||
+          (action === "release" && !finalSource.releaseAuthorized && !["EXPIRED", "CANCELLED", "REFUND_PENDING"].includes(finalSource.state)))
+          throw fail("ENROLLMENT_CHANGED", "Enrollment authority changed before the seat commit");
+        const finalNow = (await c.query("SELECT clock_timestamp() AS now")).rows[0].now as Date;
+        if ((action === "hold" || committedNow) && row.registration_closes_at <= finalNow)
+          throw fail("REGISTRATION_CLOSED", "Registration cutoff passed before commit");
+        if (action === "hold" && hold.expires_at <= finalNow)
+          throw fail("HOLD_EXPIRED", "Hold expired before commit");
+        const result = hold ? holdView(hold, now) : null;
+        await c.query(`INSERT INTO class_enrollment_operations(operation_key,enrollment_id,action,payload,result)
+          VALUES($1,$2,$3,$4,$5)`, [operationKey, id, action, JSON.stringify(payload), JSON.stringify(result)]);
+        return result;
+      });
+      res.json({ data });
     });
     // Separate service credential. There is deliberately no public /api/v1 commit route.
     app.post("/internal/holds/:id/commit", async (req, res) => {

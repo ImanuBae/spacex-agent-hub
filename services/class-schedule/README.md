@@ -81,3 +81,62 @@ node scripts/test-n8n03-command.mjs
 The harness generates fresh credentials and uses separate application databases;
 it imports an inactive [command smoke](../../workflows/n8n/iam-command-smoke.json)
 and retains private traces and test volumes. See [acceptance](../../docs/acceptance-n8n-03-04.md).
+
+## N8N-05 scoped Enrollment seats
+
+`classes.enroll` uses audience `class-schedule`, scope `classes:enroll`, and a
+live Bridge intent/lease/attempt bound to exactly one Enrollment. These routes
+use real Enrollment/Payment authority APIs and do not read `demo_fixtures`:
+
+| Internal route | Input and durable result |
+| --- | --- |
+| `GET /internal/classes/enrollments/:id` | `{hold:null|holdView,committed:boolean}` after source and current-scope checks |
+| `POST .../:id/hold` | `{}`; source snapshot and current Catalog quote decide learner/class/package; Class gives the server deadline |
+| `POST .../:id/commit` | `{matchRef}`; source must be CONFIRMING that exact verified Payment match |
+| `POST .../:id/release` | `{}`; source must authorize release after money reconciliation; COMMITTED seats require the separate approved adjustment workflow |
+| `GET .../:id/enrollment-authority` | Same seat lookup for the exact bound `enrollment.execute` / `enrollment:write` token, allowing Enrollment to verify actual HELD/COMMITTED state |
+| `GET .../:id/payment-authority` | Same exact-resource lookup for `payment.execute` / `payment:write`, allowing Payment to verify a live hold before QR |
+
+Configure `ENROLLMENT_URL` and `PAYMENT_URL`. The fixed read-only source routes are
+`/internal/enrollment/enrollments/:id/seat-authority` and
+`/internal/payment/matches/:matchRef/seat-authority`. They verify the same Class
+command token and return only its exact resource. No unrestricted service token,
+shared admin or browser-provided price is used. Enrollment authority must provide
+`{id,branchId,classId,classVersion,packageId,learnerId,state,quote,quoteCurrent,matchRef?,releaseAuthorized?}`;
+Payment authority provides `{id,enrollmentId,eligible,late}`.
+
+Class locks the class before every seat mutation, checks source state and live
+IAM/Bridge authority again before commit, then writes seat/result/audit/outbox in
+its own transaction. Operation keys are
+`automation:<jobId>:classes.enroll:<hold|commit|release>`; replay returns the original
+result and changed payload is rejected. Lookup reads current seat state, including
+expiry even while n8n and the Class expiry sweep are stopped. Deadline and registration
+cutoff are checked with Class server time.
+The original confirmed class version must still match when acquiring or committing
+a seat; changing a schedule requires a new confirmation rather than silently changing
+the customer's offer.
+
+An eligible late full-payment match may reuse and commit its original EXPIRED hold
+only after the same atomic capacity/OPEN/schedule/duplicate-learner checks. It neither
+extends the expired hold nor creates another seat. Cancelled or committed holds cannot
+be reacquired by this route. Scoped service actors are limited to WF-06/WF-07; only
+current admissions/director confirmations can create new holds.
+
+Migration `0006_enrollment` adds append-only operation results. Run it through the
+existing migration entry point on a new/copy database. Existing human fixture routes
+and the N8N-03 cancellation command keep their previous contracts.
+
+Focused Class service checks use a dedicated empty PostgreSQL database and labelled
+synthetic upstream authority responses:
+
+```powershell
+# Set CLASS_SEAT_TEST_DATABASE_URL to a new dedicated database owned by its test service role.
+# Set CLASS_SEAT_TEST_REPORT to a private ACL-protected artifact path.
+node services/class-schedule/scripts/test-enrollment-db.mjs
+```
+
+These checks cover last-seat concurrency, replay/payload conflict, Class expiry without
+a worker, late reacquisition/full class, cross-resource/branch/role denial, final
+revocation/cancellation rollback and commit versus release. They are service checks;
+full N8N-05 acceptance additionally requires actual Enrollment/Payment, broker and n8n
+workflow evidence. Keep the test database, volume and artifacts for inspection.
