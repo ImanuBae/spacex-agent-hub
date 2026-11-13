@@ -3,9 +3,9 @@ import { getMenuByRole, type UserRole } from "./roles";
 
 describe("L-01 role menus", () => {
   const expected: Record<UserRole, string[]> = {
-    center_director: ["overview", "mailbox", "leads", "courses", "schedule", "availability", "finance", "organization", "audit"],
-    branch_director: ["overview", "mailbox", "leads", "courses", "schedule", "availability", "finance"],
-    admissions: ["mailbox", "leads", "courses", "schedule"],
+    center_director: ["overview", "mailbox", "leads", "enrollments", "courses", "schedule", "availability", "finance", "organization", "audit"],
+    branch_director: ["overview", "mailbox", "leads", "enrollments", "courses", "schedule", "availability", "finance"],
+    admissions: ["mailbox", "leads", "enrollments", "courses", "schedule"],
     accountant: ["finance", "reconciliation", "refunds"],
     teacher: ["schedule", "availability", "classes"],
     student: [],

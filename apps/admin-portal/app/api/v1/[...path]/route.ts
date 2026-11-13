@@ -4,7 +4,7 @@ import { apiError, authenticatedFetch, checkOrigin } from "../../../../lib/serve
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {
   if (!["GET", "HEAD"].includes(request.method) && !checkOrigin(request)) return apiError(403, "FORBIDDEN", "Invalid origin");
   const { path } = await context.params;
-  if (!["courses", "packages", "accounts", "branches", "departments", "employees", "teachers", "access-sync", "classes", "rooms", "holds", "hold-fixtures", "teacher-time", "operations", "crm", "assignees", "conversations"].includes(path[0]) || path.some(p => !/^[a-zA-Z0-9-]+$/.test(p))) return apiError(404, "NOT_FOUND", "Not found");
+  if (!["courses", "packages", "accounts", "branches", "departments", "employees", "teachers", "access-sync", "classes", "rooms", "holds", "hold-fixtures", "teacher-time", "operations", "crm", "assignees", "conversations", "enrollment-confirmations", "enrollments", "payment-requests"].includes(path[0]) || path.some(p => !/^[a-zA-Z0-9-]+$/.test(p))) return apiError(404, "NOT_FOUND", "Not found");
   const headers: Record<string, string> = { "content-type": "application/json" };
   for (const name of ["idempotency-key", "x-correlation-id", "traceparent"]) { const value = request.headers.get(name); if (value) headers[name] = value; }
   try {

@@ -68,6 +68,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
   const live = [
     "/dashboard/mailbox",
     "/dashboard/leads",
+    "/dashboard/enrollments",
     "/dashboard/courses",
     "/dashboard/organization",
     "/dashboard/schedule",

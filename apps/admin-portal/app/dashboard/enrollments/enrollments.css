@@ -1,0 +1,48 @@
+.enrollment-workspace {
+  /* Two equal columns + 20px gutter fill the existing portal canvas. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+.enrollment-workspace .ops-panel {
+  margin-top: 0;
+}
+.enrollment-workspace h2 {
+  margin-bottom: 16px;
+}
+.enrollment-accept {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  margin: 16px 0;
+}
+.ops .enrollment-accept input {
+  width: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  margin-top: 3px;
+}
+.enrollment-terms {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.enrollment-payment {
+  border-top: 1px solid var(--hub-line);
+  padding-top: 12px;
+  margin: 16px 0;
+}
+.enrollment-qr {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.enrollment-result .ops-actions {
+  margin: 16px 0;
+}
+@media (max-width: 1100px) {
+  .enrollment-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

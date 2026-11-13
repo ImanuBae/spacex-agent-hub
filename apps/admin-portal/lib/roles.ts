@@ -23,6 +23,7 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Tổng quan", href: "/dashboard/overview" },
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
+        { label: "Đăng ký học", href: "/dashboard/enrollments" },
         { label: "Khóa học & gói", href: "/dashboard/courses" },
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
@@ -35,6 +36,7 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Tổng quan chi nhánh", href: "/dashboard/overview" },
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
+        { label: "Đăng ký học", href: "/dashboard/enrollments" },
         { label: "Khóa học & gói", href: "/dashboard/courses" },
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
@@ -44,6 +46,7 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
       return [
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
+        { label: "Đăng ký học", href: "/dashboard/enrollments" },
         { label: "Xem khóa học", href: "/dashboard/courses" },
         { label: "Xem lịch", href: "/dashboard/schedule" },
       ];
