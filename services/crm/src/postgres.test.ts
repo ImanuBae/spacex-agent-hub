@@ -1,5 +1,5 @@
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import type { Server } from "node:http";
@@ -30,6 +30,7 @@ let center: string, director: string, staff: string, second: string, outsider: s
 let staffId: string, secondId: string;
 let bridge: string, chat: string, machineToken: string, directorRefresh: string, store: BridgeStore;
 let sequence = 0;
+const observations: object[] = [];
 async function listen(app: ReturnType<typeof createCrmApp>) {
   const server = app.listen(0, "127.0.0.1"); servers.push(server);
   await new Promise<void>(resolve => server.once("listening", resolve));
@@ -65,6 +66,7 @@ async function command(input: object, token = staff) {
   expect(checkpoint.status).toBe(200);
   const issued = await internal(`/internal/automation/jobs/${job.jobId}/authorize`, { leaseToken: job.leaseToken, attempt: job.attempt, operation: "crm.execute" }, machineToken, bridge);
   expect(issued.status, JSON.stringify(issued.body)).toBe(200);
+  observations.push({ case: expect.getState().currentTestName, action: (input as { action: string }).action, requestId: job.inputRef, eventId: job.eventId, correlationId: job.correlationId, jobId: job.jobId, operationKey: checkpoint.body.data.operationRefs.find((r: { name: string }) => r.name === "crm.execute").operationKey });
   return { requestId: job.inputRef as string, token: issued.body.data.accessToken as string, job: checkpoint.body.data };
 }
 async function finish(job: { jobId: string; leaseToken: string; attempt: number; version: number }, outcome = "DONE") {
@@ -120,6 +122,15 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     courseId = (await call("courses", "POST", { code: "CRM-DEMO", name: "DEMO · Tin học văn phòng", goal: "Excel cho công việc", level: "beginner", deliveryModes: ["online"], priceVnd: 600000, status: "active" }, center)).body.data.id;
   }, 60000);
   afterAll(async () => {
+    if (process.env.CRM_TEST_EVIDENCE_FILE && crm && store) {
+      const requests = (await crm.query("SELECT id,branch_id,actor_id,event_id,context_id,status,result,job_id,payload->>'action' AS action FROM crm_automation_requests ORDER BY created_at,id")).rows;
+      const identities = (await crm.query("SELECT id,branch_id,contact_id,source_ref,source_version,version FROM crm_channel_identities ORDER BY id")).rows;
+      const merges = (await crm.query("SELECT id,branch_id,source_id,target_id,status,report_hash,job_id,result FROM crm_merge_plans ORDER BY created_at,id")).rows;
+      const audit = (await crm.query("SELECT id,action,target_id,branch_id,correlation_id,version FROM crm_audit ORDER BY created_at,id")).rows;
+      const outbox = (await crm.query("SELECT id,event->>'type' AS type,status FROM event_outbox ORDER BY created_at,id")).rows;
+      const jobs = (await store.pool.query("SELECT id,event_id,workflow_id,workflow_version,status,attempt,correlation_id,input_ref,operation_refs FROM automation_jobs ORDER BY created_at,id")).rows;
+      await writeFile(process.env.CRM_TEST_EVIDENCE_FILE, JSON.stringify({ scope: "Synthetic API/PostgreSQL; direct durable-source Bridge ingress, n8n/broker tested separately", observedAt: new Date().toISOString(), observations, requests, identities, merges, audit, outbox, jobs }, null, 2));
+    }
     for (const server of servers.reverse()) await new Promise<void>(resolve => server.close(() => resolve()));
     if (servers.length) await (await import("../../catalog/src/db/client.js")).pool.end();
     for (const pool of pools) await pool.end();

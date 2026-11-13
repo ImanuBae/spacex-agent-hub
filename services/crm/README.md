@@ -97,5 +97,9 @@ Policy này không là chữ ký của khách thật hoặc phê duyệt custome
 
 DB tests mở rộng chạy IAM/Bridge/Conversation/CRM và kiểm cả state/audit/outbox.
 Fixture event được lấy từ CRM outbox rồi ingest qua Bridge backend; bộ kiểm
-n8n/broker tích hợp của N8N-05 là evidence riêng. Import CRM-5, Facebook/Zalo
+n8n/broker tích hợp của N8N-05 là evidence riêng. Có thể đặt
+`CRM_TEST_EVIDENCE_FILE` vào thư mục artifact private đã siết ACL để giữ
+case/request/job/event/correlation/operation refs và snapshot DB đã che trước
+khi suite dọn DB test. Không lưu token hoặc dữ liệu liên hệ vào receipt này.
+Import CRM-5, Facebook/Zalo
 live và xóa tự động xuyên service vẫn ngoài phạm vi này.
