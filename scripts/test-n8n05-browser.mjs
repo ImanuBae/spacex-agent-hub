@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { URL } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright-core";
 
 export async function enrollmentBrowser({ origin, directory, email, password, selection, expectedStatus = "HELD", timeoutMs = 30000 }) {
@@ -58,7 +60,7 @@ export async function enrollmentBrowser({ origin, directory, email, password, se
       assert(response.ok(), "Authorized confirmation lookup remains available");
       current = (await response.json()).data;
       if (current.enrollment?.status === expectedStatus && (expectedStatus !== "HELD" || current.enrollment.paymentRequest)) break;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await delay(1000);
     }
     assert.equal(current.enrollment?.status, expectedStatus, "n8n/backend converged to expected durable state");
     assert.equal(current.enrollment.snapshot.learnerId, selection.learnerId);
@@ -82,7 +84,7 @@ export async function enrollmentBrowser({ origin, directory, email, password, se
     receipt.checks.push("reload and record lookup recover the same backend enrollment");
     for (const width of [1440, 768, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `No document overflow at ${width}`);
+      assert(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth + 1), `No document overflow at ${width}`);
       const name = `enrollments-${width}.png`, file = path.join(dir, name);
       await page.screenshot({ path: file, fullPage: true });
       receipt.screenshots.push({ file: name, sha256: createHash("sha256").update(await readFile(file)).digest("hex") });
@@ -94,6 +96,7 @@ export async function enrollmentBrowser({ origin, directory, email, password, se
   } catch (error) {
     receipt.errorClass = error.name;
     receipt.failure = String(error.message).replaceAll(password, "[REDACTED]").replaceAll(email, "[REDACTED]");
+    // eslint-disable-next-line preserve-caught-error -- Playwright's original cause can expose login credentials; retain the redacted failure privately.
     throw new Error("N8N-05 browser acceptance failed; inspect private enrollment-browser-receipt.json");
   } finally {
     receipt.completedAt = new Date().toISOString();
