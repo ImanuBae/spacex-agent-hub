@@ -24,9 +24,11 @@ export function machineAuth(config: MachineConfig | undefined, scope: string, id
         const result = await jwtVerify(bearer(req.get("authorization")), await importSPKI(config.publicKey, "RS256"), {
           algorithms: ["RS256"], issuer: config.issuer, audience: "automation-bridge",
           requiredClaims: ["sub", "iat", "exp"], maxTokenAge: "5m",
+          clockTolerance: 1,
         });
         claims = Claims.parse(result.payload);
-        if (claims.exp - claims.iat > 300 || claims.exp <= claims.iat) throw new Error("Invalid token lifetime");
+        // Allow one-second issuance jitter across processes, but never extend absolute expiry.
+        if (claims.exp - claims.iat > 300 || claims.exp <= claims.iat || claims.exp <= Math.floor(Date.now() / 1000)) throw new Error("Invalid token lifetime");
       } catch { throw new HttpError(401, "UNAUTHORIZED", "Invalid or expired machine token"); }
       const current = MachineClaims.parse(await iamRequest(identityUrl, "/internal/iam/machine/introspect", bearer(req.get("authorization")), { audience: "automation-bridge", scope }));
       if (current.sub !== claims.sub) throw new HttpError(401, "UNAUTHORIZED", "Invalid machine principal");

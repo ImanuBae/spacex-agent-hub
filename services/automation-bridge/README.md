@@ -274,6 +274,12 @@ never outlive their originating session. Refresh revokes the original session;
 jobs depending on it must fail closed and be reinitiated by a verified backend,
 not have context/session refs edited by replay or SQL.
 
+Machine/command JWT verification permits one second of issuance-clock jitter.
+Both IAM and Bridge separately reject `exp <= now`, so this tolerance does not
+extend expiry. Signature, audience, scope, workflow, credential version and live
+permission/lease checks remain mandatory. The local DB integration suite checks
+near-future issuance, larger future issuance and exact expiry for both token kinds.
+
 Already-admitted reads are not cancelled; there is a normal gap between the live
 check and the DB read. This read-only acceptance is not a transactional authorization
 guarantee for money/seat commands. Those must validate business version, confirmation,

@@ -1,9 +1,9 @@
 # SpaceX Agent Hub — Product Plan v3: n8n điều phối nghiệp vụ
 
 <!-- CURRENT_N8N_LINK -->
-Trạng thái N8N-03/04 hiện hành, acceptance, ngân sách và quyết định agent:
-[ma trận nghiệm thu 12/11/2026](acceptance-n8n-03-04.md).
-N8N-03 ACCEPT local; N8N-04 đang kiểm bản cuối, chưa nghiệm thu. Khách thật/production vẫn đóng.
+Trạng thái hiện hành ngày14/11/2026,acceptance matrix,10ca,hashes,ngân sách và runbook:
+[nghiệm thu N8N-03/04](acceptance-n8n-03-04.md).
+**N8N-03 ACCEPT local; N8N-04 ACCEPT local** —10/10 corpus cuối,8câu trả lời model,2nhánh deterministic;16generation0USD. Agent đã nghiệm thu;production/khách thật/WF-04–12 vẫn đóng.
 
 <details>
 <summary>Lịch sử kiểm chứng đến 11/11/2026 — giữ nguyên receipts và quyết định cũ</summary>
@@ -446,7 +446,7 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | PAY-7 | Thu thủ công/chứng từ | Lập/duyệt | WF-07 | U10, U14 | COND | E0; C04, không giả webhook |
 | PAY-8 | Import tiền lịch sử có nguồn | Import/đối chiếu | WF-11 | U19, U18 | COND | E0; C12, không phát payment mới giả |
 | AG-1 | Bridge/context/mode | Nháp/chế độ | WF-02 | U05, N01 | PARTIAL | N8N-04 AI live chỉ đọc local; ngoài lát cắt còn backlog |
-| AG-2 | Tool API nguồn thật | Nguồn/thời điểm | WF-02 | N05 | PARTIAL | 10/10 model local là lịch sử; checksum cuối đạt synthetic 13/13, benchmark model thật chưa đạt; xem bàn giao N8N-04 |
+| AG-2 | Tool API nguồn thật | Nguồn/thời điểm | WF-02 | N05 | PARTIAL | N8N-04 ACCEPT local: 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; phần ngoài lát cắt vẫn mở; xem acceptance matrix |
 | AG-3 | Hồ sơ nhu cầu | Chat/form | WF-02 | N05 | TODO | E0; tối đa hai câu hỏi/lượt |
 | AG-4 | Xác nhận tạo đơn | Xác nhận mua | WF-02, WF-05 | U08, N04 | TODO | E0; chỉ bật sau Enrollment |
 | AG-5 | Allowlist/guard quyền | Từ chối/handoff | WF-02 | U02, N04 | PARTIAL | N8N-04 injection/allowlist model thật local; chưa rollout rộng |
@@ -486,12 +486,12 @@ Dependency chỉ yêu cầu phần contract/acceptance cần cho lát cắt đan
 | --- | --- | --- | --- |
 | N8N-01 | Local runtime, image ghim, DB/key riêng; export/import và restart smoke | PL-1 | LOCAL — [evidence và phần chưa kiểm](ban-giao-n8n-01.md) |
 | N8N-02 | Bridge inbox/job/claim/lease/checkpoint/result/replay; test dedup và recovery | PL-2, N8N-01 | LOCAL — [11/11 integration + n8n smoke](ban-giao-n8n-02.md); đã [regression bằng IAM thật](ban-giao-n8n-03.md) |
-| N8N-03 | Machine principal, scope/delegation, guard confirmation/approval và test thu hồi quyền | IAM-2/4, N8N-02 | ACCEPT LOCAL — 19/19 command thật + 12/12 IAM/read + 11/11 Bridge; [matrix](acceptance-n8n-03-04.md); production/Enrollment/Payment vẫn đóng |
-| N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | NOT_ACCEPTED — xem [matrix hiện hành](acceptance-n8n-03-04.md); chưa dùng kết quả synthetic thay cho corpus model thật |
-| N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | TODO |
-| N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | TODO |
-| N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | TODO |
-| N8N-08 | VPS/HTTPS, gate provider, registry workflow/credential, clean import/restore, evidence final | Bắt đầu với N8N-01; đóng sau N8N-02–07, CH-3/4, phần backup/restore OPS-1 | TODO |
+| N8N-03 | Machine principal, scope/delegation, guard confirmation/approval và test thu hồi quyền | IAM-2/4, N8N-02 | ACCEPT LOCAL — 19/19 command thật + 13/13 IAM/read + 11/11 Bridge; [matrix](acceptance-n8n-03-04.md); production/Enrollment/Payment vẫn đóng |
+| N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | ACCEPT LOCAL — 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; 16 generation 0 USD; [matrix hiện hành](acceptance-n8n-03-04.md); production/WF-04–12 vẫn đóng |
+| N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | TODO — [readiness và task đề xuất](n8n-readiness.md), chưa mở WF |
+| N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | TODO — [dependency thực](n8n-readiness.md) |
+| N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | TODO — [dependency thực](n8n-readiness.md) |
+| N8N-08 | VPS/HTTPS, gate provider, registry workflow/credential, clean import/restore, evidence final | Bắt đầu với N8N-01; đóng sau N8N-02–07, CH-3/4, phần backup/restore OPS-1 | TODO — [gate còn thiếu](n8n-readiness.md) |
 
 ## 5. Nghiệm thu và quản lý thay đổi
 

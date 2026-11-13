@@ -9,7 +9,7 @@ import path from "node:path";
 import pg from "pg";
 import { withAcceptanceRuntime, lookupFinishedJob } from "./n8n04-runtime.mjs";
 import { parseN8nOutput } from "./n8n-output.mjs";
-import { model, providerAccounting, selectBenchmarkCases } from "./n8n04-benchmark-guard.mjs";
+import { model, providerAccounting, selectBenchmarkCases, authorityFailure, plannedModelRequests } from "./n8n04-benchmark-guard.mjs";
 import { clarificationModel, clarificationText, needsClarification } from "./n8n04-clarification.mjs";
 import { humanRequested, humanRuleModel } from "./n8n04-handoff.mjs";
 
@@ -70,11 +70,13 @@ try {
   assert(prior && seen.size, "Verified provider history is required");
   assert.equal(preflight.authorization.priorRequestAttempts, priorAttempts);
   receipt.boundPriorRequestAttempts = priorAttempts;
+  receipt.plannedModelRequests = plannedModelRequests(tests);
+  if (!preflight.syntheticOnly) assert(receipt.plannedModelRequests <= preflight.authorization.maxRequests, "Insufficient budget for selected functional cases; stop before any inference");
   const allowedChanges = new Set(["scripts/run-n8n04-benchmark.mjs", "scripts/n8n04-benchmark-guard.mjs", "scripts/n8n04-benchmark-guard.test.mjs", "scripts/build-chat-workflows.mjs", "scripts/accept-n8n04.mjs", "scripts/n8n04-fixture.mjs", "scripts/n8n04-acceptance-cases.mjs", "scripts/n8n04-workflow.test.mjs", "scripts/n8n04-clarification.mjs", "workflows/n8n/wf-02.json", "workflows/n8n/chat-manifest.json", "packages/contracts/src/machine.ts", "packages/auth/src/index.ts", "services/identity/src/machine.ts", "services/class-schedule/src/app.ts", "scripts/n8n04-runtime.mjs", "scripts/test-chat-faults.mjs", "services/conversation/src/workflow.test.ts", "scripts/test-automation.mjs", "scripts/test-chat-browser.mjs"]);
   for (const [file, expected] of Object.entries(prior.sourceChecks)) {
     assert(Object.hasOwn(preflight.sourceChecks, file), file);
     if (preflight.sourceChecks[file] !== expected) {
-      assert(allowedChanges.has(file) || ["workflows/n8n/wf-01.json", "workflows/n8n/wf-03.json", "scripts/prepare-authorized-n8n04.mjs", "scripts/n8n04-price-filter.mjs", "scripts/n8n04-price-filter.test.mjs", "services/conversation/src/privacy.ts", "services/conversation/src/privacy.test.ts", "scripts/n8n04-model.mjs", "scripts/test-n8n03-command.mjs", "scripts/n8n04-runtime.test.mjs"].includes(file), `Unreviewed source change: ${file}`);
+      assert(allowedChanges.has(file) || ["workflows/n8n/wf-01.json", "workflows/n8n/wf-03.json", "scripts/prepare-authorized-n8n04.mjs", "scripts/n8n04-price-filter.mjs", "scripts/n8n04-price-filter.test.mjs", "services/conversation/src/privacy.ts", "services/conversation/src/privacy.test.ts", "scripts/n8n04-model.mjs", "scripts/test-n8n03-command.mjs", "scripts/n8n04-runtime.test.mjs", "services/automation-bridge/src/auth.ts", "services/automation-bridge/src/machine.test.ts"].includes(file), `Unreviewed source change: ${file}`);
       assert.deepEqual(preflight.sourceChanges?.[file], { beforeSha256: expected, sha256: preflight.sourceChecks[file] }, file);
     }
   }
@@ -193,10 +195,13 @@ try {
         await waitJob("WF-01"); row.routing = (await execute("WF-01", row.id)).ref;
         await waitJob("WF-02"); const execution = await execute("WF-02", row.id); row.execution = execution.ref;
         const run = execution.result.runData, value = name => run[name]?.[0]?.data?.main?.[0]?.[0]?.json;
+        const deniedAuthority = authorityFailure(run);
+        if (deniedAuthority) { row.authorityFailure = deniedAuthority; await guardControl("/stop", { reason: "AUTHORITY_DENIED" }); }
         row.actual = await chat("/api/v1/chat/history", session.token);
         assert.equal(row.execution.conversationId, session.conversationId);
         assert(!value("Submit draft")?.error && value("Submit draft")?.data, "Draft denied");
         const draft = value("Selected draft"), job = value("Job");
+        if (!deniedAuthority && draft.errorCode === "TOOL_ERROR") await guardControl("/stop", { reason: "TOOL_FAILURE" });
         const clarification = !!run["Clarification answer"];
         const human = !!run["Explicit handoff"];
         assert.equal(human, humanRequested([{ sender: "GUEST", text: row.input }]));

@@ -48,9 +48,10 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     const config = configured();
     let claims: z.infer<typeof MachineClaims>;
     try {
-      const result = await jwtVerify(token, createPublicKey(config.privateKey), { algorithms: ["RS256"], issuer: config.issuer, audience, requiredClaims: ["sub", "iat", "exp", "jti"], maxTokenAge: "5m" });
+      const result = await jwtVerify(token, createPublicKey(config.privateKey), { algorithms: ["RS256"], issuer: config.issuer, audience, requiredClaims: ["sub", "iat", "exp", "jti"], maxTokenAge: "5m", clockTolerance: 1 });
       claims = MachineClaims.parse(result.payload);
-      if (claims.kind !== kind || claims.exp <= claims.iat || claims.exp - claims.iat > (kind === "command" ? 30 : 300)) throw invalid();
+      // Issuance jitter tolerance does not extend expiry or replace live permission/lease checks.
+      if (claims.kind !== kind || claims.exp <= Math.floor(Date.now() / 1000) || claims.exp <= claims.iat || claims.exp - claims.iat > (kind === "command" ? 30 : 300)) throw invalid();
     } catch { throw invalid(); }
     const c = await client(claims.sub);
     if (c.credential_version !== claims.credentialVersion) throw invalid();

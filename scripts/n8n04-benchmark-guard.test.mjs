@@ -3,9 +3,16 @@ import { createServer } from "node:http";
 import { once } from "node:events";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
-import { benchmarkGuard, endpoint, model, providerAccounting, sendProvider, selectBenchmarkCases } from "./n8n04-benchmark-guard.mjs";
+import { benchmarkGuard, endpoint, model, providerAccounting, sendProvider, selectBenchmarkCases, authorityFailure, plannedModelRequests } from "./n8n04-benchmark-guard.mjs";
 
 import { providerSlug, providerName, responseModelId } from "./n8n04-model.mjs";
+import { readFile } from "node:fs/promises";
+test("admission reserves two calls per functional case and zero for declared deterministic branches", async () => {
+  const corpus = JSON.parse(await readFile("workflows/n8n/chat-benchmark.json", "utf8"));
+  assert.equal(plannedModelRequests(corpus), 16);
+  assert.equal(plannedModelRequests(selectBenchmarkCases(corpus, ["VI-01","VI-06","VI-10"])), 2);
+  assert.equal(plannedModelRequests(selectBenchmarkCases(corpus, ["VI-01","VI-10"])), 0);
+});
 test("a new grant selects original corpus rows without changing expectations, duplicates or order", () => {
   const corpus = [{ id: "VI-01", expected: "original" }, { id: "VI-02", expected: "unchanged" }];
   assert.deepEqual(selectBenchmarkCases(corpus), corpus);
@@ -22,6 +29,23 @@ const send = async body => {
   return { status: 200, body: body.max_tokens === 500 ? result() : { ...result(), choices: [{ message: { role: "assistant", content: "Synthetic answer" } }] } };
 };
 const key = "synthetic-provider-secret", capability = "synthetic-local-capability";
+
+test("a source authority rejection closes the batch without forwarding another inference", async () => {
+  const output = code => [{ data: { main: [[{ json: { error: { code } } }]] } }];
+  assert.deepEqual(authorityFailure({ "Catalog courses": output("AUTHORIZATION_DENIED") }), { node: "Catalog courses", code: "AUTHORIZATION_DENIED" });
+  assert.deepEqual(authorityFailure({ "Turn": output("IDENTITY_UNAVAILABLE") }), { node: "Turn", code: "IDENTITY_UNAVAILABLE" });
+  assert.equal(authorityFailure({ "Class list": output("TOOL_ERROR") }), null);
+  let sends = 0, saved;
+  const guard = benchmarkGuard(config, async () => { sends++; return send(planner); }, async state => { saved = structuredClone(state); });
+  await guard.begin("VI-01"); await guard.abort("AUTHORITY_DENIED");
+  assert.equal(saved.stopped, "AUTHORITY_DENIED");
+  assert.equal((await guard.request("VI-01", "planner", planner)).status, 502);
+  assert.equal(sends, 0); assert.equal(guard.state.requests.length, 0);
+  const toolGuard = benchmarkGuard(config, async () => { sends++; return send(planner); });
+  await toolGuard.begin("VI-01"); await toolGuard.abort("TOOL_FAILURE");
+  assert.equal((await toolGuard.request("VI-01", "planner", planner)).status, 502);
+  assert.equal(toolGuard.state.stopped, "TOOL_FAILURE"); assert.equal(sends, 0);
+});
 
 async function attempt(fetchImpl, options = {}, persist) {
   let records = 0;
@@ -180,12 +204,29 @@ test("timeout before headers keeps status unknown", async () => {
 });
 
 test("headers arrive but slow body times out with HTTP status retained", async () => {
-  await localServer((_req, res) => { res.writeHead(200); res.flushHeaders(); const timer = setTimeout(() => res.end("{}"), 1000); res.on("close", () => clearTimeout(timer)); }, async fetchImpl => {
+  await localServer((_req, res) => { res.writeHead(200, { "x-generation-id": "gen-incomplete-body", "x-request-id": "req-incomplete-body", "content-type": "application/json" }); res.flushHeaders(); const timer = setTimeout(() => res.end("{}"), 1000); res.on("close", () => clearTimeout(timer)); }, async fetchImpl => {
     const { guard, row } = await attempt(fetchImpl, { timeoutMs: 150 });
     assert.equal(guard.state.stopped, "PROVIDER_TIMEOUT"); assert.equal(row.failurePhase, "body"); assert.equal(row.httpStatus, 200);
     assert(["AbortError", "TimeoutError"].includes(row.errorName)); assert(row.headersElapsedMs < row.elapsedMs);
     assert.equal(guard.state.providerHeadersObserved, 1); assert.equal(guard.state.providerResponsesObserved, 0); assert.equal(guard.state.modelInferenceObserved, false); assert.equal(guard.state.costUnknown, true);
     assert.equal(row.bodyBytesReceived, 0); assert.equal(row.firstBodyByteElapsedMs, null); assert.equal(row.bodyComplete, false); assert(row.bodyIdleElapsedMs >= 80);
+    assert.equal(row.responseIds["x-generation-id"], "gen-incomplete-body"); assert.equal(row.responseIds["x-request-id"], "req-incomplete-body");
+    assert.equal(row.responseContentType, "application/json"); assert(row.wire.requestEvents.some(e => e.event === "requestBodyWritten"));
+    assert.equal(row.wire.connectionBinding, "REQUEST_SOCKET"); assert.equal(row.wire.observerErrors, 0);
+  });
+});
+
+test("partial body records only byte classes, never heartbeat or response content", async () => {
+  for (const prefix of [" \n \n", ": OPENROUTER PROCESSING\n\n"]) await localServer((_req, res) => {
+    res.writeHead(200, { "content-type": "text/event-stream" }); res.write(prefix);
+    const timer = setTimeout(() => res.end("{}"), 1000); res.on("close", () => clearTimeout(timer));
+  }, async fetchImpl => {
+    const { guard, row } = await attempt(fetchImpl, { timeoutMs: 150 });
+    assert.equal(guard.state.stopped, "PROVIDER_TIMEOUT"); assert.equal(row.bodyBytesReceived, Buffer.byteLength(prefix));
+    assert.equal(row.firstNonWhitespaceKind, prefix.startsWith(":") ? "COMMENT_PREFIX" : null);
+    assert.equal(row.bodyWhitespaceBytes, 4);
+    assert(!JSON.stringify(row).includes("OPENROUTER PROCESSING")); assert.equal(row.responseContentType, "text/event-stream");
+    assert.equal(guard.state.costUsd, null);
   });
 });
 
@@ -293,7 +334,7 @@ test("reasoning usage is numeric-only and an ignored disable instruction stops t
 });
 
 test("runner sums twelve prior attempts without double counting and rejects incomplete history (all I/O mocked)", async t => {
-  for (const mode of ["engine", "reused", "source-race", "prior-undercount", "missing-latest-receipt", "raw-count-mismatch", "cumulative-mismatch", "duplicate-history", "unknown-history"]) await t.test(mode, () => {
+  for (const mode of ["engine", "reused", "source-race", "prior-undercount", "missing-latest-receipt", "raw-count-mismatch", "cumulative-mismatch", "duplicate-history", "unknown-history", "case-budget"]) await t.test(mode, () => {
     const preload = `
       import fs from 'node:fs/promises';
       import cp from 'node:child_process';
@@ -310,6 +351,7 @@ test("runner sums twelve prior attempts without double counting and rejects inco
       const last = { priorRequestAttempts: 3, newProviderRequestAttempts: '${mode}' === 'unknown-history' ? null : 9, cumulativeProviderRequestAttempts: '${mode}' === 'cumulative-mismatch' ? 11 : 12, sourceChecks, rawReceipt: finalRef };
       const evidence = JSON.stringify({ first: { providerRequestAttempts: 1, rawReceipt: ref }, second: { priorRequestAttempts: 1, newProviderRequestAttempts: 2, cumulativeProviderRequestAttempts: 3, sourceChecks, rawReceipt: recent, receipt: session }, last, ...('${mode}' === 'duplicate-history' ? { duplicate: last } : {}) });
       const preflight = { status: 'PREFLIGHT_PASS_INFERENCE_PENDING', authorization: { status: 'NEW_RUN_BUDGET_CONFIRMED', priorRequestAttempts: '${mode}' === 'prior-undercount' ? 3 : 12, maxRequests: 11, totalAuthorizedRequests: 23, maxRequestsPerCase: 2, maxCostUsd: 0, retries: 0, probeRequests: 0, paidFallback: false }, sourceChecks, receiptChecks: '${mode}' === 'missing-latest-receipt' ? [ref, recent, session] : [ref, recent, session, finalRef] };
+      if ('${mode}' === 'case-budget') { preflight.authorization.maxRequests = 1; preflight.authorization.totalAuthorizedRequests = 13; }
       let engine = false;
       const denied = () => { process.stderr.write('OFFLINE_SIDE_EFFECT_DENIED'); throw new Error('OFFLINE_SIDE_EFFECT_DENIED'); };
       fs.readFile = (file, ...args) => {
@@ -341,6 +383,6 @@ test("runner sums twelve prior attempts without double counting and rejects inco
     assert.equal(receipt.status, ["engine", "duplicate-history"].includes(mode) ? "SKIP_ENGINE_UNAVAILABLE" : mode === "source-race" ? "BENCHMARK_STOPPED_SOURCE_INTEGRITY" : "BENCHMARK_STOPPED");
     assert.equal(receipt.finalIntegrity, mode === "source-race" ? "FAIL" : "PASS");
     assert.equal(receipt.providerRequestAttempts, 0); assert.equal(receipt.credentialRead, false);
-    assert.equal(receipt.cumulativeProviderRequestAttempts, ["engine", "reused", "source-race", "duplicate-history"].includes(mode) ? 12 : null);
+    assert.equal(receipt.cumulativeProviderRequestAttempts, ["engine", "reused", "source-race", "duplicate-history", "case-budget"].includes(mode) ? 12 : null);
   });
 });

@@ -1,4 +1,4 @@
-import { modelId } from "./n8n04-model.mjs";
+import { modelId, modelNodeTimeoutMs } from "./n8n04-model.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
@@ -7,6 +7,7 @@ import path from "node:path";
 import { parseN8nOutput } from "./n8n-output.mjs";
 
 // Fault responses are synthetic, never evidence of successful model inference.
+export const faultTimeoutMs = modelNodeTimeoutMs + 2000;
 export async function testChatFaults(h) {
   const port=await h.freePort(),base=`http://host.docker.internal:${port}`,chat=`http://127.0.0.1:${h.chatPort}`;
   const child=spawn(process.execPath,["--input-type=module","-e",`
@@ -17,7 +18,7 @@ export async function testChatFaults(h) {
       if(req.url==='/counts'){res.end(JSON.stringify(counts));return;}
       counts[req.url]=(counts[req.url]??0)+1;
       res.setHeader('content-type','application/json');
-      if(req.url==='/timeout'){setTimeout(()=>res.end('{}'),8000).unref();return;}
+      if(req.url==='/timeout'){setTimeout(()=>res.end('{}'),${faultTimeoutMs}).unref();return;}
       if(req.url==='/quota'){res.statusCode=429;res.end(JSON.stringify({error:{code:429,message:'SYNTHETIC quota fault'}}));return;}
       if(req.url==='/unavailable'){res.statusCode=503;res.end(JSON.stringify({error:{code:'UPSTREAM_UNAVAILABLE'}}));return;}
       if(req.url==='/answer'){res.end(JSON.stringify({model:'test-fixture-not-inference',choices:[{message:{role:'assistant',content:'SYNTHETIC workflow transport check, not model evidence'}}]}));return;}

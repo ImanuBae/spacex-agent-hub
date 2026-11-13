@@ -5,6 +5,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { filterPriceOffers } from "./n8n04-price-filter.mjs";
+import { startWireTrace, responseDiagnostics } from "./n8n04-wire-trace.mjs";
+import { needsClarification } from "./n8n04-clarification.mjs";
+import { humanRequested } from "./n8n04-handoff.mjs";
 import { modelId as model, responseModelId, providerName, providerSlug, temperature, providerTimeoutMs } from "./n8n04-model.mjs";
 export { model };
 
@@ -14,6 +17,22 @@ export function selectBenchmarkCases(corpus, ids = corpus.map(row => row.id)) {
   const selected = corpus.filter(row => ids.includes(row.id));
   assert.deepEqual(selected.map(row => row.id), ids, "Keep corpus order and expected results");
   return selected;
+}
+
+export function plannedModelRequests(cases) {
+  return cases.reduce((count, row) => {
+    const messages = [{ sender: "GUEST", text: row.input }];
+    return count + (humanRequested(messages) || needsClarification(messages) ? 0 : 2);
+  }, 0);
+}
+
+export function authorityFailure(runData) {
+  const denied = new Set(["AUTHORIZATION_DENIED", "FORBIDDEN", "UNAUTHORIZED", "JOB_AUTHORIZATION_DENIED", "STALE_LEASE_OR_VERSION", "OPERATION_INTENT_REQUIRED", "IDENTITY_UNAVAILABLE", "BRIDGE_UNAVAILABLE", "MACHINE_AUTH_NOT_CONFIGURED"]);
+  for (const [node, executions] of Object.entries(runData)) for (const execution of executions) {
+    const code = execution.data?.main?.[0]?.[0]?.json?.error?.code;
+    if (denied.has(code)) return { node, code };
+  }
+  return null;
 }
 
 export const endpoint = "https://openrouter.ai/api/v1/chat/completions";
@@ -31,43 +50,56 @@ const safeError = error => ({ errorName: errorNames.has(error?.name) ? error.nam
 export async function sendProvider(body, { key, capability, observe, fetchImpl = fetch, timeoutMs = providerTimeoutMs, record = async () => {} }) {
   const signal = AbortSignal.timeout(timeoutMs);
   const started = performance.now(), elapsed = () => Math.round(performance.now() - started);
+  const trace = startWireTrace({ signal });
   let phase = "request";
   try {
-    const response = await fetchImpl(endpoint, { method: "POST", redirect: "error", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(body), signal });
-    phase = "record";
-    await observe({ phase: "body", httpStatus: response.status, httpError: response.status !== 200, transportHeadersElapsedMs: elapsed() });
-    phase = "body";
-    const bodyStarted = elapsed(), chunks = [];
-    let bodyBytesReceived = 0, bodyChunksReceived = 0, firstBodyByteElapsedMs = null, lastBodyByteElapsedMs = null, bodyComplete = false;
     try {
-      for await (const chunk of response.body ?? []) {
-        if (!chunk.byteLength) continue;
-        firstBodyByteElapsedMs ??= elapsed(); lastBodyByteElapsedMs = elapsed();
-        bodyBytesReceived += chunk.byteLength; bodyChunksReceived++; chunks.push(chunk);
-      }
-      bodyComplete = true;
-    } finally {
-      const bodyEndElapsedMs = elapsed();
-      // Persist numeric progress once, even on abort; never log chunks or add disk I/O per chunk.
+      const response = await trace.run(() => fetchImpl(endpoint, { method: "POST", redirect: "error", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(body), signal }));
       phase = "record";
-      await observe({ bodyBytesReceived, bodyChunksReceived, firstBodyByteElapsedMs, lastBodyByteElapsedMs, bodyComplete, bodyReadStartedElapsedMs: bodyStarted, bodyEndElapsedMs, bodyReadElapsedMs: bodyEndElapsedMs - bodyStarted, bodyIdleElapsedMs: bodyEndElapsedMs - (lastBodyByteElapsedMs ?? bodyStarted) });
+      await observe({ phase: "body", httpStatus: response.status, httpError: response.status !== 200, transportHeadersElapsedMs: elapsed(), ...responseDiagnostics(response.headers, [key, capability]), wire: trace.snapshot() });
       phase = "body";
+      const bodyStarted = elapsed(), chunks = [];
+      let bodyBytesReceived = 0, bodyChunksReceived = 0, firstBodyByteElapsedMs = null, lastBodyByteElapsedMs = null, bodyComplete = false, bodyWhitespaceBytes = 0, firstNonWhitespaceKind = null;
+      try {
+        for await (const chunk of response.body ?? []) {
+          if (!chunk.byteLength) continue;
+          firstBodyByteElapsedMs ??= elapsed(); lastBodyByteElapsedMs = elapsed();
+          for (const byte of chunk) {
+            if ([9,10,13,32].includes(byte)) bodyWhitespaceBytes++;
+            else firstNonWhitespaceKind ??= [123,91].includes(byte) ? "JSON_OPEN" : byte === 58 ? "COMMENT_PREFIX" : "OTHER";
+          }
+          bodyBytesReceived += chunk.byteLength; bodyChunksReceived++; chunks.push(chunk);
+        }
+        bodyComplete = true;
+      } finally {
+        const bodyEndElapsedMs = elapsed();
+        // Persist numeric progress once, even on abort; never log chunks or add disk I/O per chunk.
+        phase = "record";
+        await observe({ bodyBytesReceived, bodyChunksReceived, firstBodyByteElapsedMs, lastBodyByteElapsedMs, bodyComplete, bodyReadStartedElapsedMs: bodyStarted, bodyEndElapsedMs, bodyReadElapsedMs: bodyEndElapsedMs - bodyStarted, bodyIdleElapsedMs: bodyEndElapsedMs - (lastBodyByteElapsedMs ?? bodyStarted), bodyWhitespaceBytes, firstNonWhitespaceKind });
+        phase = "body";
+      }
+      const text = Buffer.concat(chunks).toString("utf8");
+      phase = "secret_check";
+      // Check raw and decoded text, including escaped secrets, before recording any response.
+      if ([key, capability].some(secret => secret && text.includes(secret))) throw new Error("PROVIDER_RESPONSE_SECRET_DENIED");
+      phase = "json";
+      const result = JSON.parse(text);
+      phase = "secret_check";
+      if ([key, capability].some(secret => secret && JSON.stringify(result).includes(secret))) throw new Error("PROVIDER_RESPONSE_SECRET_DENIED");
+      const usage = result?.usage == null ? null : Object.fromEntries(["cost", "prompt_tokens", "completion_tokens", "total_tokens"].filter(field => typeof result.usage[field] === "number" && Number.isFinite(result.usage[field])).map(field => [field, result.usage[field]]));
+      const reasoningTokens = result?.usage?.completion_tokens_details?.reasoning_tokens;
+      if (usage && Number.isInteger(reasoningTokens) && reasoningTokens >= 0) usage.reasoning_tokens = reasoningTokens;
+      phase = "record";
+      await observe({ phase, responseObserved: true, usage, inferenceObserved: response.status === 200 && !!result?.choices?.[0]?.message });
+      await record({ endpoint, request: body, status: response.status, response: result });
+      return { status: response.status, body: result };
+    } finally {
+      // Record the final wire snapshot before classifying errors, including pre-header aborts.
+      const previousPhase = phase;
+      phase = "record";
+      await observe({ wire: trace.stop() });
+      phase = previousPhase;
     }
-    const text = Buffer.concat(chunks).toString("utf8");
-    phase = "secret_check";
-    // Check raw and decoded text, including escaped secrets, before recording any response.
-    if ([key, capability].some(secret => secret && text.includes(secret))) throw new Error("PROVIDER_RESPONSE_SECRET_DENIED");
-    phase = "json";
-    const result = JSON.parse(text);
-    phase = "secret_check";
-    if ([key, capability].some(secret => secret && JSON.stringify(result).includes(secret))) throw new Error("PROVIDER_RESPONSE_SECRET_DENIED");
-    const usage = result?.usage == null ? null : Object.fromEntries(["cost", "prompt_tokens", "completion_tokens", "total_tokens"].filter(field => typeof result.usage[field] === "number" && Number.isFinite(result.usage[field])).map(field => [field, result.usage[field]]));
-    const reasoningTokens = result?.usage?.completion_tokens_details?.reasoning_tokens;
-    if (usage && Number.isInteger(reasoningTokens) && reasoningTokens >= 0) usage.reasoning_tokens = reasoningTokens;
-    phase = "record";
-    await observe({ phase, responseObserved: true, usage, inferenceObserved: response.status === 200 && !!result?.choices?.[0]?.message });
-    await record({ endpoint, request: body, status: response.status, response: result });
-    return { status: response.status, body: result };
   } catch (error) {
     const diagnostic = safeError(error);
     const timedOut = ["request", "body"].includes(phase) && (signal.aborted || diagnostic.errorName === "TimeoutError" || timeoutCodes.has(diagnostic.causeCode));
@@ -96,7 +128,7 @@ export function benchmarkGuard(config, send, persist = async () => {}) {
   }
   async function request(id, stage, body) {
     const started = performance.now();
-    const row = { caseId: id, stage, startedAt: new Date().toISOString(), forwarded: false, inferenceObserved: false, httpStatus: null, responseObserved: false, phase: "request_validation", transportHeadersElapsedMs: null, bodyBytesReceived: 0, bodyChunksReceived: 0, firstBodyByteElapsedMs: null, lastBodyByteElapsedMs: null, bodyComplete: false, bodyReadStartedElapsedMs: null, bodyReadElapsedMs: null, bodyIdleElapsedMs: null };
+    const row = { caseId: id, stage, startedAt: new Date().toISOString(), forwarded: false, inferenceObserved: false, httpStatus: null, responseObserved: false, phase: "request_validation", transportHeadersElapsedMs: null, bodyBytesReceived: 0, bodyChunksReceived: 0, firstBodyByteElapsedMs: null, lastBodyByteElapsedMs: null, bodyComplete: false, bodyReadStartedElapsedMs: null, bodyReadElapsedMs: null, bodyIdleElapsedMs: null, bodyWhitespaceBytes: 0, firstNonWhitespaceKind: null, responseIds: {}, responseContentType: null };
     const observe = async fields => {
       Object.assign(row, fields, { elapsedMs: Math.round(performance.now() - started) });
       if (fields.httpStatus != null) row.headersElapsedMs = row.elapsedMs;
@@ -184,7 +216,7 @@ export function benchmarkGuard(config, send, persist = async () => {}) {
       await persist(state); busy = false;
     }
   }
-  return { state, begin, request };
+  return { state, begin, request, abort: async reason => { assert(["AUTHORITY_DENIED", "TOOL_FAILURE"].includes(reason)); stop(reason); await persist(state); } };
 }
 
 async function serve() {
@@ -211,6 +243,7 @@ async function serve() {
       const chunks = []; let size = 0;
       for await (const chunk of req) { size += chunk.length; assert(size <= 100000); chunks.push(chunk); }
       const body = JSON.parse(Buffer.concat(chunks).toString());
+      if (req.method === "POST" && req.url === "/stop") { await guard.abort(body.reason); res.end("{}"); return; }
       const match = req.url.match(/^\/(begin|planner|answer)\/(VI-\d{2})$/);
       assert(req.method === "POST" && match);
       if (match[1] === "begin") { await guard.begin(match[2]); res.end("{}"); return; }

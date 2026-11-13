@@ -40,6 +40,12 @@ try {
     assert.equal(row.actual.mode, "HUMAN"); assert.equal(row.actual.errorCode, "TIMEOUT");
     assert.equal(progress.failurePhase, mode === "headers" ? "request" : "body");
     assert.equal(progress.httpStatus, mode === "headers" ? null : 200);
+    assert.equal(progress.wire.requestObserved, true); assert.equal(progress.wire.matchedRequests, 1); assert.equal(progress.wire.observerErrors, 0);
+    assert.equal(progress.wire.connectionBinding, "REQUEST_SOCKET");
+    assert(progress.wire.requestEvents.some(e => e.event === "requestBodyWritten"));
+    assert(progress.wire.requestEvents.some(e => e.event === "clientAbort"));
+    assert.equal(progress.responseIds["x-generation-id"], mode === "headers" ? undefined : `gen-synthetic-${mode}`);
+    assert.equal(progress.firstNonWhitespaceKind, mode === "partial" ? "JSON_OPEN" : null);
     assert.equal(row.dbOutcomes.handoffEvents, 1); assert.equal(row.dbOutcomes.draftReplayStatus, 409); assert.equal(row.dbOutcomes.duplicateInboundNoEffect, true);
     assert.equal(raw.cases.filter(c => c.status === "SKIP").length, 8);
     const transportFile = path.join(path.dirname(raw.providerLedger.file), "synthetic-transport-private.json"), transport = await json(transportFile);
@@ -47,7 +53,7 @@ try {
     assert.equal(transport.events.filter(e => e.type === "loopback-request").length, 1);
     const trace = parseN8nOutput(await readFile(row.execution.file, "utf8")), modelNode = trace.data.resultData.runData["Model tool request"][0];
     const responseAt = Date.parse(transport.events.find(e => e.type === "guard-http-response").at);
-    Object.assign(result, { status: "PASS", transport: await ref(transportFile), syntheticAttempts: 1, httpStatus: progress.httpStatus, failurePhase: progress.failurePhase, modelNodeExecutionMs: modelNode.executionTime, n8nFinishedBeforeGuardResponse: modelNode.startTime + modelNode.executionTime < responseAt });
+    Object.assign(result, { status: "PASS", transport: await ref(transportFile), syntheticAttempts: 1, httpStatus: progress.httpStatus, failurePhase: progress.failurePhase, responseIds: progress.responseIds, wire: progress.wire, modelNodeExecutionMs: modelNode.executionTime, n8nFinishedBeforeGuardResponse: modelNode.startTime + modelNode.executionTime < responseAt });
     if (mode === "n8n-first") assert.equal(result.n8nFinishedBeforeGuardResponse, true);
     console.log(`PASS synthetic transport ${mode}`);
   }

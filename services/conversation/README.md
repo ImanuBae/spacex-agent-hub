@@ -162,10 +162,37 @@ separately. The real provider key stays in the guard process; n8n receives only 
 local capability. Public evidence binds the raw receipt; review actual/expected,
 sources, renderer/template provenance and DB outcomes separately before acceptance.
 
+The pinned request model and response model ID are separate fields in
+`scripts/n8n04-model.mjs`. Current official endpoint metadata reports the canonical
+response alias; generation metadata identifies the dated model and Nvidia endpoint.
+The guard requires that exact response ID, provider and zero cost. A changed ID
+stops the batch; it does not silently accept another model.
+
+For a newly authorized partial batch, preparation accepts original corpus IDs in
+order, for example `node scripts/prepare-authorized-n8n04.mjs 'VI-09'`.
+It still hashes the complete corpus and keeps all ten rows in the receipt. Unselected
+rows remain SKIP and required for acceptance. Each batch needs a new grant/marker;
+this is not a stopped-run resume. A changed canonical/model/prompt needs new evidence
+for affected cases. Follow the current matrix checkpoint and budget before running.
+
 Do not resume a stopped marker or blindly retry a business operation. Preserve
 FAIL/UNKNOWN/SKIP, diagnose/fix/review/test, then use a new authorized grant within
 the remaining budget. Missing usage/cost stays UNKNOWN. On quota exhaustion, save a
 checkpoint/next eligible UTC date; this runbook does not schedule an automatic run.
+
+The live benchmark also stops its local guard on an authority denial/unavailable
+authority or an unexpected tool failure. It saves the exact failing node/code and
+the HUMAN outcome before cleanup. A safe failure is not a passing functional answer.
+
+The guard now records monotonic request/socket timing, DNS/TCP/TLS observations,
+socket reuse, local writes, headers/body progress and aborts. A local write is not
+an upstream acknowledgement; pool connection candidates remain unconfirmed until
+the exact request is bound to its socket. Response generation/request IDs are
+allowlisted and persisted before reading the body, without logging credentials,
+payload chunks or TLS secrets. If the body stalls, use the saved header generation
+ID for a separately recorded official metadata GET. Missing metadata/cost stays
+UNKNOWN. The runner reserves two calls per functional case before starting; the
+current full corpus requires16 attempts. See [diagnostic evidence and continuation](../../docs/n8n04-timeout-diagnostics.md).
 
 <details>
 <summary>Historical unguarded harness instructions — do not use for current budgeted inference</summary>

@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { clarificationModel, clarificationText } from './n8n04-clarification.mjs';
+import { faultTimeoutMs } from './test-chat-faults.mjs';
 
 const workflow = JSON.parse(await readFile(new URL('../workflows/n8n/wf-02.json', import.meta.url), 'utf8'))[0];
 const node = name => workflow.nodes.find(n => n.name === name);
 test('the UTF-8 system instruction agrees with the named selector and its required action field', () => {
+  assert(faultTimeoutMs > node('Model tool request').parameters.options.timeout, 'The timeout fixture must stall beyond the actual node deadline');
   const prompt = new Function('$json', node('Prompt').parameters.jsCode)({ data: { providerAllowed: true, modelReady: true, messages: [] } })[0].json.messages[0].content;
   const body = new Function('$json', `return (${node('Model tool request').parameters.jsonBody.slice(3, -2)});`)({ messages: [] });
   const selector = body.tools[0].function;
@@ -15,6 +17,8 @@ test('the UTF-8 system instruction agrees with the named selector and its requir
   assert(prompt.includes('arguments chỉ có action'));
   assert(!prompt.includes('arguments phải đúng object rỗng'));
   assert(prompt.includes('khách khác')); assert(prompt.includes('priceConstraint'));
+  assert(prompt.includes('không dùng request_handoff thay lời từ chối'));
+  assert(selector.description.includes('Never substitute request_handoff for this refusal'));
 });
 test('single selector preserves handoff and rejects multiple, old, unknown and extra actions', () => {
   const select = (calls) => new Function('$json', node('Tool allowlist').parameters.jsCode)({ choices: [{ message: { tool_calls: calls } }] })[0].json;

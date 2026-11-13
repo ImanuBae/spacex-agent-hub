@@ -1,9 +1,9 @@
 # Đặc tả workflow n8n — WF-01 đến WF-12
 
 <!-- CURRENT_N8N_LINK -->
-Trạng thái N8N-03/04 hiện hành, acceptance, ngân sách và quyết định agent:
-[ma trận nghiệm thu 12/11/2026](acceptance-n8n-03-04.md).
-N8N-03 ACCEPT local; N8N-04 đang kiểm bản cuối, chưa nghiệm thu. Khách thật/production vẫn đóng.
+Trạng thái hiện hành ngày14/11/2026,acceptance matrix,10ca,hashes,ngân sách và runbook:
+[nghiệm thu N8N-03/04](acceptance-n8n-03-04.md).
+**N8N-03 ACCEPT local; N8N-04 ACCEPT local** —10/10 corpus cuối,8câu trả lời model,2nhánh deterministic;16generation0USD. Agent đã nghiệm thu;production/khách thật/WF-04–12 vẫn đóng.
 
 <details>
 <summary>Lịch sử kiểm chứng đến 11/11/2026 — giữ nguyên receipts và quyết định cũ</summary>

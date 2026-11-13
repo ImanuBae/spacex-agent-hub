@@ -146,6 +146,20 @@ describe("N8N-03 IAM machine authority and delegated real Catalog/Class reads", 
     await new Promise(r => setTimeout(r, 1100));
     expect((await call(direct, "/internal/automation/jobs/claim", short, { workflowId: binding.workflowId, workflowVersion: 1 })).status).toBe(401);
   });
+  it("accepts one-second issuance jitter while keeping absolute expiry and future-iat limits", async () => {
+    const job = await createJob(), commandToken = await authorize(job);
+    const mint = (token: string, offset: number, lifetime: number) => {
+      const iat = Math.floor(Date.now() / 1000) + offset;
+      return new SignJWT({ ...decodeJwt(token), iat, exp: iat + lifetime }).setProtectedHeader({ alg: "RS256" }).sign(privateKey);
+    };
+    const route = `/internal/automation/jobs/${job.jobId}`;
+    expect((await call(direct, route, await mint(worker, 1, 60))).status).toBe(200);
+    expect((await call(catalogUrl, "/api/v1/courses", await mint(commandToken, 1, 30))).status).toBe(200);
+    expect((await call(direct, route, await mint(worker, 5, 60))).status).toBe(401);
+    expect((await call(catalogUrl, "/api/v1/courses", await mint(commandToken, 5, 30))).status).toBe(401);
+    expect((await call(direct, route, await mint(worker, -30, 30))).status).toBe(401);
+    expect((await call(catalogUrl, "/api/v1/courses", await mint(commandToken, -30, 30))).status).toBe(401);
+  });
   it("rejects self-declared actor/role/branch/context and uncheckpointed operations", async () => {
     expect((await iamCall("/internal/iam/delegations", worker, {})).status).toBe(401);
     expect((await iamCall("/internal/iam/delegations", staff, { eventId: randomUUID(), entity: { type: "read", id: "test" }, inputRef: "test", workflowId: binding.workflowId, workflowVersion: 1, branchId: branchB, operations: ["catalog.read"] })).status).toBe(403);

@@ -1,4 +1,4 @@
-# Bàn giao N8N-03 — IAM machine authority và lát cắt đọc
+# Bàn giao N8N-03 — IAM authority, đọc và command được phê duyệt
 
 ## Hiện hành — 12/11/2026 (+07:00)
 
@@ -7,10 +7,10 @@
 hiện hành. N8N-03 nay có command nghiệp vụ thực `classes.cancel`, ngoài luồng đọc.
 Không mở Enrollment/Payment, giao dịch thật, production hoặc WF-04–12.
 
-- Regression mới: Bridge **11/11**, IAM/delegation/read **12/12**, hai smoke n8n;
-  receipt `.local/automation/space-agent-automation-test-2fd80f12754b/evidence.json`.
+- Regression mới: Bridge **11/11**, IAM/delegation/read **13/13**, hai smoke n8n;
+  receipt `.local/automation/space-agent-automation-test-d48eea35c640/evidence.json`.
 - Command mới: **19/19 PASS, 0 SKIP**, Class/IAM/Bridge/PostgreSQL/RabbitMQ/n8n
-  thật; receipt `.local/automation/space-agent-n8n04-acceptance-4237338275fa/evidence.json`.
+  thật; receipt `.local/automation/space-agent-n8n04-acceptance-d8bede6425b1/evidence.json`.
   Có 11 source hashes và execution n8n **1**. Hai lượt FAIL trước đó được giữ nguyên.
 - Confirmation được Class tạo sau phiên IAM thật, gắn actor/session/branch/class/
   version/payload, TTL 5 phút. Một branch director khác phê duyệt một lần; n8n
@@ -33,6 +33,12 @@ IAM và Class/Bridge là các DB riêng. Kiểm quyền cuối trong transaction
 là atomic transaction xuyên DB và không hủy một thao tác đã được chấp nhận trước
 thu hồi. Các ca race xác minh thu hồi trong lúc chờ khóa, không chứng minh mọi thứ
 tự tuyến tính hóa giữa nhiều DB. Rollout tiền/chỗ thật vẫn phải có acceptance riêng.
+
+IAM và Bridge cho phép lệch `iat` tối đa một giây giữa process. `exp` vẫn bị kiểm
+nghiêm ngặt ở đúng giây hết hạn, cùng giới hạn TTL, live IAM và lease trong DB.
+Ca mới kiểm cả machine/command: lệch một giây được phép, tương lai xa hơn và token
+chạm expiry bị từ chối. Không khẳng định đây là nguyên nhân đã chứng minh của 401
+lịch sử; receipt lỗi và chẩn đoán vẫn được giữ nguyên.
 
 Chạy lại và API: [Class cancellation runbook](../services/class-schedule/README.md#n8n-03-confirmed-and-approved-cancellation).
 Các mục 04/11 bên dưới là lịch sử; nhận định command chưa tồn tại không còn hiện hành.

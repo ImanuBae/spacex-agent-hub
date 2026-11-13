@@ -3,7 +3,7 @@
   "decision": "ACCEPT",
   "reviewer": "Codex agent",
   "scope": "Local synthetic IAM reads and confirmed/separately approved Class cancellation; no production or Enrollment/Payment approval",
-  "checkedAt": "2026-11-12T11:14:48.509Z",
+  "checkedAt": "2026-11-12T14:33:00.712Z",
   "summary": {
     "passed": 19,
     "failed": 0,
@@ -90,7 +90,7 @@
   "artifacts": {
     "packages/contracts/src/machine.ts": "9b404c7f1ab6a2e3bd9ca3c93a766c9cb7f288465ca5c5750fecd7cab33e1c41",
     "packages/auth/src/index.ts": "402ab17d6b42d586e1c5393415983419b45d7a6c1d60f9f9a6333eeb19b78944",
-    "services/identity/src/machine.ts": "123048169fca1220a34a9860b6f224a99c7aa271b823bac09f317a7e2966c85f",
+    "services/identity/src/machine.ts": "fa36aabcfe03ea566ac267002e350baf256fddb57f32a5dc3cd4626da8f600e7",
     "services/class-schedule/src/app.ts": "0a59bef7f6bd4d0cb85bd724fb4e07edeba8de35e67fb30b8a76f983e3989773",
     "services/class-schedule/src/migrate.ts": "b8717fd56580374b0fd0fd9df2a9cd99940d01f8ad8a2c5d4b18c431f2ea2978",
     "services/class-schedule/migrations/0005_automation.sql": "88a3e0eb1a317b426caf69554e0a8c0d0f32c692bc81f995907ab38f83f66249",
@@ -98,12 +98,14 @@
     "scripts/n8n04-runtime.mjs": "58db7ff549d8a6ef93d961c87c46346e8d1b28f3cbb4df4641d88e0eedb4cadd",
     "scripts/build-iam-command-workflow.mjs": "afc631293f23fee3721cb43126334ad5c09696883d8b1dcbca5e7ed3141c7f2f",
     "workflows/n8n/iam-command-smoke.json": "13e9a21a8e15443f381b0584d7342e2bb465c24d7f3feeacf90d4c985f57de2d",
-    "workflows/n8n/iam-command-manifest.json": "3dc61d1369cbc1077466c2d054e5c7cdf13de0c3836dedbd94e30f550f6a9594"
+    "workflows/n8n/iam-command-manifest.json": "3dc61d1369cbc1077466c2d054e5c7cdf13de0c3836dedbd94e30f550f6a9594",
+    "services/automation-bridge/src/auth.ts": "00c8f1df3a08098a3c68a741ee22f21d216e021a1bbb0503070df8e5bbe05ec6",
+    "services/automation-bridge/src/machine.test.ts": "ce5b13c5c0b3f835b0607dc8cfbe5790508ed6b1947ec6f5fe832d03211d0c61"
   },
   "effect": {
-    "classId": "96088ee8-5d97-4106-9320-cb361d021481",
-    "requestId": "698d51bb-6d1f-45d7-9131-76dd57d7cf1e",
-    "jobId": "d9520b15-29d2-409e-a3d2-0f125d0390f6",
+    "classId": "a7bad454-4f5e-4da9-9f9d-eea6e7e838f6",
+    "requestId": "b4aa22ab-5b9f-4010-8eef-a680426b18cf",
+    "jobId": "55a3d3fb-54ba-4227-876c-9517b41bacd8",
     "counts": {
       "audit": 1,
       "outbox": 1,
@@ -115,29 +117,30 @@
   "n8n": {
     "canonicalFile": "workflows/n8n/iam-command-smoke.json",
     "canonicalSha256": "13e9a21a8e15443f381b0584d7342e2bb465c24d7f3feeacf90d4c985f57de2d",
-    "fixtureSha256": "1c108581227ebcafe29a6aa20bd36fab7389cc3ec4607ce9c7cbfacaa864b1fa",
-    "trace": ".local/automation/space-agent-n8n04-acceptance-4237338275fa/command-execution-private.json",
-    "traceSha256": "771ed61a4031e110cc6fa755619912dea0dabae40b3915e0b102a601d8cb7a16",
+    "fixtureSha256": "86a10bb9f31f2df27438c7f7cd79bc0c4902fa0c5cf3b68af1a1db5308d1db8f",
+    "trace": "D:\\Imanu\\Study\\space-agent-hub\\.local\\automation\\space-agent-n8n04-acceptance-d8bede6425b1\\command-execution-private.json",
+    "traceSha256": "415dd3edea1cf021fbbdc85e3d8f601494145a47eabccfa5b1d64e9d09773d39",
     "executionId": "1",
-    "jobId": "1a11fdf4-1ed6-4011-930b-d024ff38a4f2",
-    "requestId": "34af904f-f013-4ebb-b6bb-d1f4f24f028a",
+    "jobId": "36f583ce-7cf9-4b63-b21e-549d3a471d33",
+    "requestId": "554fcb9e-84a3-4076-8cfc-c62158703e2a",
     "operationLookup": true,
     "activated": false
   },
   "regression": {
     "bridge": 11,
-    "iamRead": 12,
+    "iamRead": 13,
     "status": "PASS",
-    "readExecution": "2"
+    "readExecution": "2",
+    "issuanceJitter": "One second on iat only; explicit strict exp boundary; live permission and lease checks unchanged"
   },
   "receipts": [
     {
-      "file": ".local/automation/space-agent-n8n04-acceptance-4237338275fa/evidence.json",
-      "sha256": "0591d5ba81caa85aab738278ab6bb63417d45c7636b50bfa9eac6c83c539d0d3"
+      "file": ".local/automation/space-agent-n8n04-acceptance-d8bede6425b1/evidence.json",
+      "sha256": "a0490881f97e26c95b1dbc8525c5ccbeb62dde39ec62279d51b9ebf0606ccc93"
     },
     {
-      "file": ".local/automation/space-agent-automation-test-2fd80f12754b/evidence.json",
-      "sha256": "61e0dd8a255188980259008433e5de3a9588b89dc11f81a3303dd453cc9a5129"
+      "file": ".local/automation/space-agent-automation-test-d48eea35c640/evidence.json",
+      "sha256": "a2485127bcfa9c834d54fac62f1c69fd87ca4c64b6d9c579f7bde4aabe481ade"
     }
   ],
   "limits": [
@@ -151,6 +154,10 @@
     {
       "file": ".local/automation/n8n-completion-5edb68dbbaa2/iam-command-before-network.json",
       "sha256": "325b3be61c93617f44a0ce07497bcb57afff455d548cdbc5e2970667e8979f40"
+    },
+    {
+      "file": ".local/automation/n8n-completion-5edb68dbbaa2/iam-command-before-issuance-fix.json",
+      "sha256": "f3695d7b574d0487f163fd69945073be90ba76874b1159b92c4d77b29b9e681d"
     }
   ]
 }

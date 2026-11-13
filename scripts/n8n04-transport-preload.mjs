@@ -36,7 +36,7 @@ if (guard) {
     assert.deepEqual(request.provider, { only: [providerSlug], allow_fallbacks: false, require_parameters: true, max_price: { prompt: 0, completion: 0, request: 0 } });
     assert.equal(request.model, modelId);
     await record({ type: 'loopback-request', stage: request.max_tokens === 500 ? 'planner' : 'answer' });
-    if (mode !== 'headers') { res.writeHead(200); res.flushHeaders(); }
+    if (mode !== 'headers') { res.writeHead(200, { 'content-type': 'application/json', 'x-generation-id': `gen-synthetic-${mode}`, 'x-request-id': `req-synthetic-${mode}` }); res.flushHeaders(); }
     if (mode === 'partial') res.write('{"model":');
     const timer = setTimeout(() => res.end('{}'), 20000);
     res.on('close', () => clearTimeout(timer));

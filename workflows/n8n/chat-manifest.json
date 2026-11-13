@@ -14,7 +14,7 @@
       "workflowId": "WF-02",
       "version": 1,
       "file": "workflows/n8n/wf-02.json",
-      "sha256": "396ea6fb1929bdebfafae75337bd50380d3e970876029241e1b42c4b1dad7782",
+      "sha256": "4407a9b05a74f42bc6dffb9f1c31d4b52876918e6bd0c0ec42cd867cff907b2f",
       "credential": "WF-02-machine-client"
     },
     {
