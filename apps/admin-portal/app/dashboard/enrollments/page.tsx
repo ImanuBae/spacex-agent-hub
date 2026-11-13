@@ -125,7 +125,7 @@ export default function EnrollmentsPage() {
     </div>
     <section className="ops-panel" aria-busy={loading}>
       <div className="ops-heading"><h2>Đăng ký đã tiếp nhận</h2><span className="muted">{loading ? "Đang tải…" : `${rows.length} đăng ký`}</span></div>
-      {!loading && !rows.length ? <p>Chưa có đăng ký trong phạm vi được cấp.</p> : <div className="ops-table-wrap"><table><thead><tr><th>Học viên / lớp</th><th>Chỗ học</th><th className="num">Số tiền</th><th>Tra cứu</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td>{learnerName(row.snapshot.learnerId)}<p className="muted">{className(row.snapshot.classId)}</p></td><td>{enrollmentStates[row.status] ?? row.status}</td><td className="num">{money(row.snapshot.amountDue)}</td><td><button disabled={busy} onClick={() => void lookup(row.confirmationId)}>Xem trạng thái</button></td></tr>)}</tbody></table></div>}
+      {!loading && !rows.length ? <p>Chưa có đăng ký trong phạm vi được cấp.</p> : <div className="ops-table-wrap"><table><thead><tr><th>Học viên / lớp</th><th>Chỗ học</th><th className="num">Số tiền</th><th>Tra cứu</th></tr></thead><tbody>{rows.map(row => <tr key={row.id} data-enrollment-id={row.id}><td>{learnerName(row.snapshot.learnerId)}<p className="muted">{className(row.snapshot.classId)}</p></td><td>{enrollmentStates[row.status] ?? row.status}</td><td className="num">{money(row.snapshot.amountDue)}</td><td><button disabled={busy} onClick={() => void lookup(row.confirmationId)}>Xem trạng thái</button></td></tr>)}</tbody></table></div>}
     </section>
   </div>;
 }
