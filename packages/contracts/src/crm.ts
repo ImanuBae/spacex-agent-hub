@@ -36,6 +36,20 @@ export const ErasureService = z.enum(["CRM", "CONVERSATION", "ENROLLMENT", "PAYM
 export const ErasureTaskUpdate = z.object({ version: z.number().int().positive(), status: z.enum(["DONE", "NOT_APPLICABLE", "BLOCKED"]), evidenceRef: z.string().trim().min(1).max(100) }).strict();
 export const VersionInput = z.object({ version: z.number().int().positive() }).strict();
 
+export const CrmMergeInput = z.object({
+  sourceId: z.uuid(), targetId: z.uuid(), sourceVersion: z.number().int().positive(), targetVersion: z.number().int().positive(),
+  resolutions: z.object({ fullName: z.enum(["SOURCE", "TARGET"]).optional(), phone: z.enum(["SOURCE", "TARGET"]).optional(), email: z.enum(["SOURCE", "TARGET"]).optional(), notes: z.enum(["SOURCE", "TARGET", "BOTH"]).optional() }).strict(),
+}).strict().refine(p => p.sourceId !== p.targetId, "Choose two different profiles");
+export const CrmMergeApproval = z.object({ reportHash: z.string().regex(/^[a-f0-9]{64}$/), evidenceRef: z.string().trim().min(1).max(100) }).strict();
+const ChannelContactInput = z.object({ ...PersonInput.shape }).omit({ branchId: true, kind: true }).strict().refine(p => !!p.phone || !!p.email, "Contact needs a phone or email");
+export const CrmAutomationInput = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("resolve-channel"), conversationId: z.uuid(), contact: ChannelContactInput, consent: ConsentInput.refine(p => p.purpose === "ADMISSIONS" && p.status === "GRANTED", "Only explicit admissions consent belongs to this request").optional(), createLead: z.boolean().default(false) }).strict(),
+  z.object({ action: z.literal("lead.create"), lead: LeadInput }).strict(),
+  z.object({ action: z.literal("lead.claim"), leadId: z.uuid(), version: z.number().int().positive() }).strict(),
+  z.object({ action: z.literal("lead.update"), leadId: z.uuid(), update: LeadUpdate }).strict(),
+  z.object({ action: z.literal("merge.execute"), planId: z.uuid(), reportHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+]);
+
 export type PersonView = PersonInput & { id: string; version: number; status: "ACTIVE" | "ERASED"; createdAt: string };
 export type ConsentView = z.infer<typeof ConsentInput> & { id: string; personId: string; recordedAt: string; actorId: string };
 export type RelationshipView = z.infer<typeof RelationshipInput> & { id: string; version: number; status: "PENDING" | "VERIFIED" | "REJECTED"; evidenceRef: string; fromName: string; learnerName: string };

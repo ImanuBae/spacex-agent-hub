@@ -56,6 +56,46 @@ $env:CRM_INSPECT='1'
 npm run test:crm:browser
 ```
 
-Chưa bao gồm định danh kênh chat thật, gộp hồ sơ CRM-2, import CRM-5,
-Enrollment/Payment hay customer xác nhận chính sách. Không coi phạm vi này
-là hoàn thành toàn bộ đợt 3.
+## N8N-05 / WF-04 local
+
+Migration `0002_automation` bổ sung mapping WEB_CHAT có nguồn Conversation,
+request bất biến và merge plan. Đặt `CONVERSATION_URL`, `ENROLLMENT_URL` trỏ
+đúng service biệt lập. Không đọc DB của service khác.
+
+- `POST /api/v1/crm/automation-requests`, UUID `Idempotency-Key`: action
+  `resolve-channel`, `lead.create`, `lead.claim`, `lead.update`, `merge.execute`.
+  Actor/session được IAM xác minh. `resolve-channel` lấy branch/account/session
+  từ Conversation, không nhận các giá trị này từ client. Backend lưu delegation
+  và phát `crm.requested` qua outbox để WF-04 xử lý.
+- `GET /api/v1/crm/automation-requests/:id` đọc kết quả bền. `PARTIAL` có
+  `contactId`, `identityRef` và `CONSENT_REQUIRED`: giữ hồ sơ vừa tạo, không tạo
+  lead, không tự bật marketing. Consent mới phải qua API có phiên được kiểm.
+- n8n dùng `crm.execute`, audience `crm`, scope `crm:write` và exact request
+  binding để GET `/internal/crm/requests/:id`, rồi POST `.../:id/execute` với
+  body `{}`. Không nhận payload/actor do workflow sửa. Lookup trước retry;
+  cùng request/job trả cùng result. Backend kiểm lại lease/session, nguồn
+  Conversation, branch, consent và ownership dưới khóa trước commit.
+- `POST /api/v1/crm/merge-plans`: hai hồ sơ cùng loại/branch, version hiện hành,
+  lựa chọn SOURCE/TARGET rõ cho trường khác nhau (notes hỗ trợ BOTH). Report
+  lưu dữ liệu/version liên quan, hash và collision. `.../:id/approve` cần hash
+  chính xác và evidence, do quản lý độc lập. Kế hoạch thiếu resolution hoặc
+  đụng lead/relationship không được duyệt. `merge.execute` kiểm lại toàn report
+  và phiên branch director phê duyệt lúc ghi; hai merge xung đột chỉ một thắng.
+  Mapping, lead, relationship chuyển sang hồ sơ đích; hồ sơ nguồn giữ lineage
+  `mergedInto` và lịch sử, không xóa để giả transaction.
+- `GET /api/v1/crm/enrollment-authority?contactId=...&learnerId=...&payerId=...`
+  kiểm ba loại hồ sơ riêng, ADMISSIONS hiện hành và cả hai quan hệ VERIFIED.
+  Internal `/internal/crm/enrollment-authority?enrollmentId=...` lấy các refs
+  từ snapshot Enrollment với command token ràng buộc đúng enrollment, không
+  tin refs do n8n tự khai.
+
+Policy DEMO `CRM-MERGE-v1`, ngày **14/11/2026**, chỉ dữ liệu tổng hợp: merge có
+thể thay ngữ cảnh người nhận consent, nên target phải được ghi consent mới;
+merge tự ghi REVOKED cho từng purpose, không kế thừa grant từ nguồn. Kế hoạch
+merge hết hạn sau 24 giờ; không sửa profile/phiên bản để tái dùng approval cũ.
+Policy này không là chữ ký của khách thật hoặc phê duyệt customer production.
+
+DB tests mở rộng chạy IAM/Bridge/Conversation/CRM và kiểm cả state/audit/outbox.
+Fixture event được lấy từ CRM outbox rồi ingest qua Bridge backend; bộ kiểm
+n8n/broker tích hợp của N8N-05 là evidence riêng. Import CRM-5, Facebook/Zalo
+live và xóa tự động xuyên service vẫn ngoài phạm vi này.

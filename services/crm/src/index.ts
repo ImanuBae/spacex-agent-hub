@@ -10,7 +10,7 @@ const config = loadConfig({ ...process.env, SERVICE_NAME: "crm", PORT: process.e
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 const logger = createLogger("crm");
 pool.on("error", error => logger.error("database.idle_error", { errorName: error.name }));
-const server = createCrmApp(pool, authConfig(), { orgUrl: process.env.ORG_URL ?? "http://127.0.0.1:4003", catalogUrl: process.env.CATALOG_URL ?? "http://127.0.0.1:4001" }).listen(config.PORT, config.HOST);
+const server = createCrmApp(pool, authConfig(), { orgUrl: process.env.ORG_URL ?? "http://127.0.0.1:4003", catalogUrl: process.env.CATALOG_URL ?? "http://127.0.0.1:4001", conversationUrl: process.env.CONVERSATION_URL, enrollmentUrl: process.env.ENROLLMENT_URL }).listen(config.PORT, config.HOST);
 let broker: Awaited<ReturnType<typeof connectBroker>> | undefined;
 let working = false, stopping = false;
 async function dispatch() {
