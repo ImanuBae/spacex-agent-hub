@@ -1,0 +1,971 @@
+[
+  {
+    "id": "N8N05WF04",
+    "name": "WF-04 registration v1",
+    "active": false,
+    "nodes": [
+      {
+        "id": "Manual",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          200
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "Poll",
+        "name": "Poll",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1,
+        "position": [
+          220,
+          200
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "seconds",
+                "secondsInterval": 5
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "Machinetoken",
+        "name": "Machine token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"automation-bridge\",\"scopes\":[\"automation:claim\",\"automation:checkpoint\",\"automation:result\",\"automation:authorize\",\"automation:read\"],\"workflows\":[\"WF-04\"],\"ttlSeconds\":60}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N05WF04Machine",
+            "name": "WF-04-machine-client"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Machineready",
+        "name": "Machine ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          660,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Claim",
+        "name": "Claim",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\"workflowId\":\"WF-04\",\"workflowVersion\":1} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Job",
+        "name": "Job",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          200
+        ],
+        "parameters": {
+          "jsCode": "const job=$json.data;return job&&job.workflowId==='WF-04'&&job.workflowVersion===1&&job.leaseToken&&job.entity?.id&&job.inputRef?[{json:job}]:[];"
+        }
+      },
+      {
+        "id": "CRMexecutefence",
+        "name": "CRM execute fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of []){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'crm-execute',operation:{name:'crm.execute'} }}];"
+        }
+      },
+      {
+        "id": "CRMexecuteintent",
+        "name": "CRM execute intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "CRMexecuteintentready",
+        "name": "CRM execute intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMexecuteauthorize",
+        "name": "CRM execute authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1980,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'crm.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "CRMexecuteauthorized",
+        "name": "CRM execute authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMexecutelookup",
+        "name": "CRM execute lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4005/internal/crm/requests/' + $('Job').first().json.inputRef }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('CRM execute authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "CRMexecutelookupready",
+        "name": "CRM execute lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMexecutecomplete",
+        "name": "CRM execute complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "CRMexecuteneeded",
+        "name": "CRM execute needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3080,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !($json.data?.status === 'DONE') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMexecutemutate",
+        "name": "CRM execute mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3300,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4005/internal/crm/requests/' + $('Job').first().json.inputRef + '/execute' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('CRM execute authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "CRMexecutesaved",
+        "name": "CRM execute saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMexecutebusinessrejection",
+        "name": "CRM execute business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3740,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"CONSENT_REQUIRED\",\"STALE_VERSION\",\"SOURCE_CHANGED\",\"OPERATION_CONFLICT\",\"FORBIDDEN\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "CRMdurable",
+        "name": "CRM durable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3960,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ ['DONE','PARTIAL'].includes($json.data?.status) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Done",
+        "name": "Done",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4180,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"CRM execute intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'DONE',resultRef:'crm-request:'+$('Job').first().json.inputRef }}];"
+        }
+      },
+      {
+        "id": "Retry",
+        "name": "Retry",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4400,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"CRM execute intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'RETRY',resultRef:'crm-request:'+$('Job').first().json.inputRef,errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5 }}];"
+        }
+      },
+      {
+        "id": "Dead",
+        "name": "Dead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4620,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"CRM execute intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'DEAD',resultRef:'crm-request:'+$('Job').first().json.inputRef,errorCode:'BUSINESS_REJECTED' }}];"
+        }
+      },
+      {
+        "id": "Result",
+        "name": "Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4840,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/result' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poll": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine token": {
+        "main": [
+          [
+            {
+              "node": "Machine ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine ready": {
+        "main": [
+          [
+            {
+              "node": "Claim",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claim": {
+        "main": [
+          [
+            {
+              "node": "Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute fence": {
+        "main": [
+          [
+            {
+              "node": "CRM execute intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute intent": {
+        "main": [
+          [
+            {
+              "node": "CRM execute intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute intent ready": {
+        "main": [
+          [
+            {
+              "node": "CRM execute authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute authorize": {
+        "main": [
+          [
+            {
+              "node": "CRM execute authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute authorized": {
+        "main": [
+          [
+            {
+              "node": "CRM execute lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute lookup": {
+        "main": [
+          [
+            {
+              "node": "CRM execute lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute lookup ready": {
+        "main": [
+          [
+            {
+              "node": "CRM execute needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute needed": {
+        "main": [
+          [
+            {
+              "node": "CRM execute mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "CRM execute complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute mutate": {
+        "main": [
+          [
+            {
+              "node": "CRM execute saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute saved": {
+        "main": [
+          [
+            {
+              "node": "CRM execute complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "CRM execute business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute business rejection": {
+        "main": [
+          [
+            {
+              "node": "Dead",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job": {
+        "main": [
+          [
+            {
+              "node": "CRM execute fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM execute complete": {
+        "main": [
+          [
+            {
+              "node": "CRM durable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CRM durable": {
+        "main": [
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Done": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Retry": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dead": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "executionTimeout": 55,
+      "saveDataSuccessExecution": "none",
+      "saveDataErrorExecution": "none",
+      "saveManualExecutions": false
+    },
+    "versionId": "00000000-0000-4000-8000-000000000004"
+  }
+]

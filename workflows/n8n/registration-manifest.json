@@ -1,0 +1,92 @@
+{
+  "status": "IMPLEMENTED_NOT_ACCEPTED",
+  "syntheticOnly": true,
+  "paidFallback": false,
+  "canonicalActive": false,
+  "workflows": [
+    {
+      "workflowId": "WF-04",
+      "version": 1,
+      "id": "N8N05WF04",
+      "file": "workflows/n8n/wf-04.json",
+      "sha256": "02e24ec18aafe0f400a276adcc28d0f970917eaf46c2437f2fbd6296a80646f4",
+      "credential": "WF-04-machine-client",
+      "credentialId": "N8N05WF04Machine",
+      "nodes": 23
+    },
+    {
+      "workflowId": "WF-05",
+      "version": 1,
+      "id": "N8N05WF05",
+      "file": "workflows/n8n/wf-05.json",
+      "sha256": "16defca02fbc409cddb590232b8a1a3930ffadd27c417340633dc9a19cb4a664",
+      "credential": "WF-05-machine-client",
+      "credentialId": "N8N05WF05Machine",
+      "nodes": 105
+    },
+    {
+      "workflowId": "WF-06",
+      "version": 1,
+      "id": "N8N05WF06",
+      "file": "workflows/n8n/wf-06.json",
+      "sha256": "d3f5e0702cf6fb134c9a7a697963f1cbd7e4270257f22bb946a1c661082c9a72",
+      "credential": "WF-06-machine-client",
+      "credentialId": "N8N05WF06Machine",
+      "nodes": 78
+    },
+    {
+      "workflowId": "WF-07",
+      "version": 1,
+      "id": "N8N05WF07",
+      "file": "workflows/n8n/wf-07.json",
+      "sha256": "c705d9931c67b4731d0c0ee7bb7f5241aec3ddcbdb4360042a6d37cd11b755b3",
+      "credential": "WF-07-machine-client",
+      "credentialId": "N8N05WF07Machine",
+      "nodes": 67
+    }
+  ],
+  "bindings": [
+    {
+      "eventType": "crm.requested",
+      "workflowId": "WF-04",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "enrollment.requested",
+      "workflowId": "WF-05",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "payment.matched",
+      "workflowId": "WF-06",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "enrollment.deadline",
+      "workflowId": "WF-07",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "enrollment.cancel_requested",
+      "workflowId": "WF-07",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "payment.review_required",
+      "workflowId": "WF-07",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    },
+    {
+      "eventType": "payment.review_decided",
+      "workflowId": "WF-07",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1
+    }
+  ]
+}

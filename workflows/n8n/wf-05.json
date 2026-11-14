@@ -1,0 +1,4818 @@
+[
+  {
+    "id": "N8N05WF05",
+    "name": "WF-05 registration v1",
+    "active": false,
+    "nodes": [
+      {
+        "id": "Manual",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          200
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "Poll",
+        "name": "Poll",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1,
+        "position": [
+          220,
+          200
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "seconds",
+                "secondsInterval": 5
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "Machinetoken",
+        "name": "Machine token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"automation-bridge\",\"scopes\":[\"automation:claim\",\"automation:checkpoint\",\"automation:result\",\"automation:authorize\",\"automation:read\"],\"workflows\":[\"WF-05\"],\"ttlSeconds\":60}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N05WF05Machine",
+            "name": "WF-05-machine-client"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Machineready",
+        "name": "Machine ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          660,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Claim",
+        "name": "Claim",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\"workflowId\":\"WF-05\",\"workflowVersion\":1} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Job",
+        "name": "Job",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          200
+        ],
+        "parameters": {
+          "jsCode": "const job=$json.data;return job&&job.workflowId==='WF-05'&&job.workflowVersion===1&&job.leaseToken&&job.entity?.id&&job.inputRef?[{json:job}]:[];"
+        }
+      },
+      {
+        "id": "Enrollmentcreatefence",
+        "name": "Enrollment create fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of []){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'enrollment-create',operation:{name:'enrollment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Enrollmentcreateintent",
+        "name": "Enrollment create intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentcreateintentready",
+        "name": "Enrollment create intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentcreateauthorize",
+        "name": "Enrollment create authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1980,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'enrollment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentcreateauthorized",
+        "name": "Enrollment create authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentcreatelookup",
+        "name": "Enrollment create lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment create authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentcreatelookupready",
+        "name": "Enrollment create lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) || $json.error?.code === 'NOT_FOUND' }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentcreatecomplete",
+        "name": "Enrollment create complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Enrollmentcreateneeded",
+        "name": "Enrollment create needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3080,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !(!!$json.data) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentcreatemutate",
+        "name": "Enrollment create mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3300,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id + '/create' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment create authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentcreatesaved",
+        "name": "Enrollment create saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentcreatebusinessrejection",
+        "name": "Enrollment create business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3740,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentalreadydurable",
+        "name": "Enrollment already durable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3960,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ ['NEEDS_CONFIRMATION','CANCELLED','EXPIRED','PAYMENT_REVIEW','REFUND_PENDING','CONFIRMING','CONFIRMED'].includes($json.data?.status) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdfence",
+        "name": "Class hold fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4180,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'class-hold',operation:{name:'classes.enroll'} }}];"
+        }
+      },
+      {
+        "id": "Classholdintent",
+        "name": "Class hold intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4400,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Classholdintentready",
+        "name": "Class hold intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          4620,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdauthorize",
+        "name": "Class hold authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4840,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'classes.enroll'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Classholdauthorized",
+        "name": "Class hold authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          5060,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdlookup",
+        "name": "Class hold lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5280,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Class hold authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Classholdlookupready",
+        "name": "Class hold lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          5500,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdcomplete",
+        "name": "Class hold complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5720,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Classholdneeded",
+        "name": "Class hold needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          5940,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !($json.data?.committed === true || ($json.data?.hold?.status === 'HELD' && Date.parse($json.data.hold.expiresAt) > Date.parse($json.data.hold.serverTime))) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdmutate",
+        "name": "Class hold mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6160,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/enrollments/' + $('Job').first().json.entity.id + '/hold' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Class hold authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Classholdsaved",
+        "name": "Class hold saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          6380,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Classholdbusinessrejection",
+        "name": "Class hold business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          6600,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldfence",
+        "name": "Enrollment held fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6820,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'enrollment-held',operation:{name:'enrollment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Enrollmentheldintent",
+        "name": "Enrollment held intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7040,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentheldintentready",
+        "name": "Enrollment held intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          7260,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldauthorize",
+        "name": "Enrollment held authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7480,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'enrollment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentheldauthorized",
+        "name": "Enrollment held authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          7700,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldlookup",
+        "name": "Enrollment held lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7920,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment held authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentheldlookupready",
+        "name": "Enrollment held lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          8140,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldcomplete",
+        "name": "Enrollment held complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          8360,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Enrollmentheldneeded",
+        "name": "Enrollment held needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          8580,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !($json.data?.status !== 'PENDING_HOLD') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldmutate",
+        "name": "Enrollment held mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          8800,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id + '/held' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment held authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentheldsaved",
+        "name": "Enrollment held saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          9020,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentheldbusinessrejection",
+        "name": "Enrollment held business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          9240,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreatefence",
+        "name": "Payment create fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          9460,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'payment-create',operation:{name:'payment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Paymentcreateintent",
+        "name": "Payment create intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          9680,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Paymentcreateintentready",
+        "name": "Payment create intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          9900,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreateauthorize",
+        "name": "Payment create authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          10120,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'payment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Paymentcreateauthorized",
+        "name": "Payment create authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          10340,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreatelookup",
+        "name": "Payment create lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          10560,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4009/internal/payment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Payment create authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Paymentcreatelookupready",
+        "name": "Payment create lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          10780,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreatecomplete",
+        "name": "Payment create complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          11000,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Paymentcreateneeded",
+        "name": "Payment create needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          11220,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !(!!$json.data) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreatemutate",
+        "name": "Payment create mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          11440,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4009/internal/payment/enrollments/' + $('Job').first().json.entity.id + '/create' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Payment create authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Paymentcreatesaved",
+        "name": "Payment create saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          11660,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Paymentcreatebusinessrejection",
+        "name": "Payment create business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          11880,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentfence",
+        "name": "Enrollment payment fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          12100,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'enrollment-payment',operation:{name:'enrollment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Enrollmentpaymentintent",
+        "name": "Enrollment payment intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          12320,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentpaymentintentready",
+        "name": "Enrollment payment intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          12540,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentauthorize",
+        "name": "Enrollment payment authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          12760,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'enrollment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentpaymentauthorized",
+        "name": "Enrollment payment authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          12980,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentlookup",
+        "name": "Enrollment payment lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          13200,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment payment authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentpaymentlookupready",
+        "name": "Enrollment payment lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          13420,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentcomplete",
+        "name": "Enrollment payment complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          13640,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Enrollmentpaymentneeded",
+        "name": "Enrollment payment needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          13860,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !(!!$json.data?.paymentRequestId) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentmutate",
+        "name": "Enrollment payment mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          14080,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id + '/payment' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment payment authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentpaymentsaved",
+        "name": "Enrollment payment saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          14300,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentpaymentbusinessrejection",
+        "name": "Enrollment payment business rejection",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          14520,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Closefailedpaymentfence",
+        "name": "Close failed payment fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          14740,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'close-failed-payment',operation:{name:'payment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Closefailedpaymentintent",
+        "name": "Close failed payment intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          14960,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Closefailedpaymentintentready",
+        "name": "Close failed payment intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          15180,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Closefailedpaymentauthorize",
+        "name": "Close failed payment authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          15400,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'payment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Closefailedpaymentauthorized",
+        "name": "Close failed payment authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          15620,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Closefailedpaymentlookup",
+        "name": "Close failed payment lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          15840,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4009/internal/payment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Close failed payment authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Closefailedpaymentlookupready",
+        "name": "Close failed payment lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          16060,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Closefailedpaymentcomplete",
+        "name": "Close failed payment complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          16280,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Closefailedpaymentneeded",
+        "name": "Close failed payment needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          16500,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !(!$json.data || ['CANCELLED','EXPIRED'].includes($json.data.status)) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Closefailedpaymentmutate",
+        "name": "Close failed payment mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          16720,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4009/internal/payment/enrollments/' + $('Job').first().json.entity.id + '/close' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Close failed payment authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {reason:'FAILED'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Closefailedpaymentsaved",
+        "name": "Close failed payment saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          16940,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentfailedfence",
+        "name": "Enrollment failed fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          17160,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'enrollment-failed',operation:{name:'enrollment.execute'} }}];"
+        }
+      },
+      {
+        "id": "Enrollmentfailedintent",
+        "name": "Enrollment failed intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          17380,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentfailedintentready",
+        "name": "Enrollment failed intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          17600,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentfailedauthorize",
+        "name": "Enrollment failed authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          17820,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'enrollment.execute'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentfailedauthorized",
+        "name": "Enrollment failed authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          18040,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentfailedlookup",
+        "name": "Enrollment failed lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          18260,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment failed authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentfailedlookupready",
+        "name": "Enrollment failed lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          18480,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentfailedcomplete",
+        "name": "Enrollment failed complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          18700,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Enrollmentfailedneeded",
+        "name": "Enrollment failed needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          18920,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !($json.data?.releaseAuthorized === true) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Enrollmentfailedmutate",
+        "name": "Enrollment failed mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          19140,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4008/internal/enrollment/enrollments/' + $('Job').first().json.entity.id + '/failed' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Enrollment failed authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Enrollmentfailedsaved",
+        "name": "Enrollment failed saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          19360,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Failedreleaseauthorized",
+        "name": "Failed release authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          19580,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.data?.releaseAuthorized === true }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Releasefailedholdfence",
+        "name": "Release failed hold fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          19800,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'release-failed-hold',operation:{name:'classes.enroll'} }}];"
+        }
+      },
+      {
+        "id": "Releasefailedholdintent",
+        "name": "Release failed hold intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          20020,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Releasefailedholdintentready",
+        "name": "Release failed hold intent ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          20240,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ Number.isSafeInteger($json.data?.version) && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Releasefailedholdauthorize",
+        "name": "Release failed hold authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          20460,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'classes.enroll'} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Releasefailedholdauthorized",
+        "name": "Release failed hold authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          20680,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ typeof $json.data?.accessToken === 'string' && !$json.error }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Releasefailedholdlookup",
+        "name": "Release failed hold lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          20900,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/enrollments/' + $('Job').first().json.entity.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Release failed hold authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Releasefailedholdlookupready",
+        "name": "Release failed hold lookup ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          21120,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Releasefailedholdcomplete",
+        "name": "Release failed hold complete",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          21340,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Releasefailedholdneeded",
+        "name": "Release failed hold needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          21560,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !($json.data?.hold == null || ['CANCELLED','EXPIRED'].includes($json.data.hold.status)) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Releasefailedholdmutate",
+        "name": "Release failed hold mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          21780,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/enrollments/' + $('Job').first().json.entity.id + '/release' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Release failed hold authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Releasefailedholdsaved",
+        "name": "Release failed hold saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          22000,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Done",
+        "name": "Done",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          22220,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\",\"Release failed hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'DONE',resultRef:'enrollment:'+$('Job').first().json.entity.id }}];"
+        }
+      },
+      {
+        "id": "Retry",
+        "name": "Retry",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          22440,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\",\"Release failed hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'RETRY',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5 }}];"
+        }
+      },
+      {
+        "id": "Dead",
+        "name": "Dead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          22660,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\",\"Release failed hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'DEAD',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:'BUSINESS_REJECTED' }}];"
+        }
+      },
+      {
+        "id": "Result",
+        "name": "Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          22880,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/result' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 5000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poll": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine token": {
+        "main": [
+          [
+            {
+              "node": "Machine ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine ready": {
+        "main": [
+          [
+            {
+              "node": "Claim",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claim": {
+        "main": [
+          [
+            {
+              "node": "Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create fence": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create intent": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create intent ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create authorize": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create authorized": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create lookup": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create needed": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment create complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create mutate": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create saved": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment create business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create business rejection": {
+        "main": [
+          [
+            {
+              "node": "Dead",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job": {
+        "main": [
+          [
+            {
+              "node": "Enrollment create fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment create complete": {
+        "main": [
+          [
+            {
+              "node": "Enrollment already durable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment already durable": {
+        "main": [
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Class hold fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold fence": {
+        "main": [
+          [
+            {
+              "node": "Class hold intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold intent": {
+        "main": [
+          [
+            {
+              "node": "Class hold intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold intent ready": {
+        "main": [
+          [
+            {
+              "node": "Class hold authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold authorize": {
+        "main": [
+          [
+            {
+              "node": "Class hold authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold authorized": {
+        "main": [
+          [
+            {
+              "node": "Class hold lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold lookup": {
+        "main": [
+          [
+            {
+              "node": "Class hold lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Class hold needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold needed": {
+        "main": [
+          [
+            {
+              "node": "Class hold mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Class hold complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold mutate": {
+        "main": [
+          [
+            {
+              "node": "Class hold saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold saved": {
+        "main": [
+          [
+            {
+              "node": "Class hold complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Class hold business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold business rejection": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment fence",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held fence": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held intent": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held intent ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held authorize": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held authorized": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held lookup": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held needed": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment held complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held mutate": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held saved": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment held business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held business rejection": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment fence",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class hold complete": {
+        "main": [
+          [
+            {
+              "node": "Enrollment held fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create fence": {
+        "main": [
+          [
+            {
+              "node": "Payment create intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create intent": {
+        "main": [
+          [
+            {
+              "node": "Payment create intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create intent ready": {
+        "main": [
+          [
+            {
+              "node": "Payment create authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create authorize": {
+        "main": [
+          [
+            {
+              "node": "Payment create authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create authorized": {
+        "main": [
+          [
+            {
+              "node": "Payment create lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create lookup": {
+        "main": [
+          [
+            {
+              "node": "Payment create lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Payment create needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create needed": {
+        "main": [
+          [
+            {
+              "node": "Payment create mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Payment create complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create mutate": {
+        "main": [
+          [
+            {
+              "node": "Payment create saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create saved": {
+        "main": [
+          [
+            {
+              "node": "Payment create complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Payment create business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create business rejection": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment fence",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment held complete": {
+        "main": [
+          [
+            {
+              "node": "Payment create fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment fence": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment intent": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment intent ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment authorize": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment authorized": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment lookup": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment needed": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment payment complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment mutate": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment saved": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment payment business rejection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment business rejection": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment fence",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Payment create complete": {
+        "main": [
+          [
+            {
+              "node": "Enrollment payment fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment payment complete": {
+        "main": [
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment fence": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment intent": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment intent ready": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment authorize": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment authorized": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment lookup": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment needed": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Close failed payment complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment mutate": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment saved": {
+        "main": [
+          [
+            {
+              "node": "Close failed payment complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed fence": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed intent": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed intent ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed authorize": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed authorized": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed lookup": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed needed": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enrollment failed complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed mutate": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed saved": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Close failed payment complete": {
+        "main": [
+          [
+            {
+              "node": "Enrollment failed fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enrollment failed complete": {
+        "main": [
+          [
+            {
+              "node": "Failed release authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Failed release authorized": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold fence",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold fence": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold intent": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold intent ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold intent ready": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold authorize": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold authorized": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold lookup": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold lookup ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold lookup ready": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold needed": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Release failed hold complete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold mutate": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold saved": {
+        "main": [
+          [
+            {
+              "node": "Release failed hold complete",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Release failed hold complete": {
+        "main": [
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Done": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Retry": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dead": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "executionTimeout": 55,
+      "saveDataSuccessExecution": "none",
+      "saveDataErrorExecution": "none",
+      "saveManualExecutions": false
+    },
+    "versionId": "00000000-0000-4000-8000-000000000005"
+  }
+]
