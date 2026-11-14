@@ -14,7 +14,7 @@ it("rejects forged enrollment states, actor fields and incomplete consent eviden
 it("binds CRM requests to explicit actions and rejects machine-supplied actor/branch/consent claims", () => {
   const input = { action: "resolve-channel", conversationId: id, contact: { fullName: "DEMO Contact", phone: "090 123 4567" }, createLead: true };
   expect(CrmAutomationInput.parse(input)).toMatchObject({ action: "resolve-channel", contact: { phone: "+84901234567" } });
-  for (const field of ["actorId", "branchId", "role", "consentRef", "ownerId"]) expect(CrmAutomationInput.safeParse({ ...input, [field]: id }).success).toBe(false);
+  for (const field of ["actorId", "branchId", "role", "consentRef", "ownerId", "erased", "erasureRequestId", "erasure_request_id"]) expect(CrmAutomationInput.safeParse({ ...input, [field]: id }).success).toBe(false);
   expect(CrmAutomationInput.safeParse({ ...input, consent: true }).success).toBe(false);
   expect(CrmAutomationInput.safeParse({ ...input, consent: { purpose: "MARKETING", status: "GRANTED", statementVersion: "DEMO-v1", statementText: "DEMO marketing", method: "WEB_FORM" } }).success).toBe(false);
   expect(CrmMergeInput.safeParse({ sourceId: id, targetId: id, sourceVersion: 1, targetVersion: 1, resolutions: {} }).success).toBe(false);

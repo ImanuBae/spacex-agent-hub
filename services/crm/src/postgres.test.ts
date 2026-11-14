@@ -57,16 +57,19 @@ async function internal(path: string, body: unknown, token: string, base = auth.
 async function command(input: object, token = staff) {
   const request = await call("crm/automation-requests", "POST", input, token, gateway, randomUUID());
   expect(request.status, JSON.stringify(request.body)).toBe(201);
-  const event = (await crm.query("SELECT event FROM event_outbox WHERE event->>'type'='crm.requested' AND event->'payload'->>'inputRef'=$1", [request.body.data.id])).rows[0].event;
+  return authorizeRequest(request.body.data.id, (input as { action: string }).action);
+}
+async function authorizeRequest(requestId: string, action: string) {
+  const event = (await crm.query("SELECT event FROM event_outbox WHERE event->>'type'='crm.requested' AND event->'payload'->>'inputRef'=$1", [requestId])).rows[0].event;
   await store.ingest(event);
   const claimed = await internal("/internal/automation/jobs/claim", { workflowId: "WF-04", workflowVersion: 1 }, machineToken, bridge);
   expect(claimed.status).toBe(200); const job = claimed.body.data;
-  expect(job.inputRef).toBe(request.body.data.id);
+  expect(job.inputRef).toBe(requestId);
   const checkpoint = await internal(`/internal/automation/jobs/${job.jobId}/checkpoint`, { leaseToken: job.leaseToken, attempt: job.attempt, expectedVersion: job.version, step: "crm", operation: { name: "crm.execute" } }, machineToken, bridge);
   expect(checkpoint.status).toBe(200);
   const issued = await internal(`/internal/automation/jobs/${job.jobId}/authorize`, { leaseToken: job.leaseToken, attempt: job.attempt, operation: "crm.execute" }, machineToken, bridge);
   expect(issued.status, JSON.stringify(issued.body)).toBe(200);
-  observations.push({ case: expect.getState().currentTestName, action: (input as { action: string }).action, requestId: job.inputRef, eventId: job.eventId, correlationId: job.correlationId, jobId: job.jobId, operationKey: checkpoint.body.data.operationRefs.find((r: { name: string }) => r.name === "crm.execute").operationKey });
+  observations.push({ case: expect.getState().currentTestName, action, requestId: job.inputRef, eventId: job.eventId, correlationId: job.correlationId, jobId: job.jobId, operationKey: checkpoint.body.data.operationRefs.find((r: { name: string }) => r.name === "crm.execute").operationKey });
   return { requestId: job.inputRef as string, token: issued.body.data.accessToken as string, job: checkpoint.body.data };
 }
 async function finish(job: { jobId: string; leaseToken: string; attempt: number; version: number }, outcome = "DONE") {
@@ -89,7 +92,7 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     await pools[1].query("INSERT INTO branches(id,code,name,kind) VALUES($1,'CRM-A','DEMO Branch A','branch'),($2,'CRM-B','DEMO Branch B','branch')", [a, b]);
     const crmUrl = new URL(databaseUrl!); crmUrl.pathname = `/${names[3]}`;
     for (let i = 0; i < 2; i++) execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/migrate.ts"], { cwd: `${root}/services/crm`, env: { ...process.env, DATABASE_URL: crmUrl.toString() }, stdio: "pipe" });
-    expect((await crm.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(2);
+    expect((await crm.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(3);
     const catalogUrl = new URL(databaseUrl!); catalogUrl.pathname = `/${names[2]}`; process.env.DATABASE_URL = catalogUrl.toString();
     execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/db/migrate.ts"], { cwd: `${root}/services/catalog`, env: process.env, stdio: "pipe" });
     const { createApp } = await import("../../catalog/src/app.js"), { registerCatalogRoutes } = await import("../../catalog/src/routes.js");
@@ -123,18 +126,40 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
   }, 60000);
   afterAll(async () => {
     if (process.env.CRM_TEST_EVIDENCE_FILE && crm && store) {
-      const requests = (await crm.query("SELECT id,branch_id,actor_id,event_id,context_id,status,result,job_id,payload->>'action' AS action FROM crm_automation_requests ORDER BY created_at,id")).rows;
+      const requests = (await crm.query("SELECT id,branch_id,actor_id,event_id,context_id,status,result,job_id,payload->>'action' AS action,erasure_request_id,payload ? 'contact' AS has_contact_payload,payload ? 'consent' AS has_consent_payload,length(COALESCE(payload->'lead'->>'notes',payload->'update'->>'notes','')) AS notes_length FROM crm_automation_requests ORDER BY created_at,id")).rows;
       const identities = (await crm.query("SELECT id,branch_id,contact_id,source_ref,source_version,version FROM crm_channel_identities ORDER BY id")).rows;
-      const merges = (await crm.query("SELECT id,branch_id,source_id,target_id,status,report_hash,job_id,result FROM crm_merge_plans ORDER BY created_at,id")).rows;
+      const merges = (await crm.query("SELECT id,branch_id,source_id,target_id,status,report_hash,job_id,result,erasure_request_id,report->>'erased' AS report_erased FROM crm_merge_plans ORDER BY created_at,id")).rows;
+      const erasures = (await crm.query("SELECT person_id,branch_id,request_id FROM crm_erasure_tombstones ORDER BY person_id")).rows;
+      const erasureTasks = (await crm.query("SELECT request_id,service,status,version FROM crm_erasure_tasks ORDER BY request_id,service")).rows;
       const audit = (await crm.query("SELECT id,action,target_id,branch_id,correlation_id,version FROM crm_audit ORDER BY created_at,id")).rows;
       const outbox = (await crm.query("SELECT id,event->>'type' AS type,status FROM event_outbox ORDER BY created_at,id")).rows;
       const jobs = (await store.pool.query("SELECT id,event_id,workflow_id,workflow_version,status,attempt,correlation_id,input_ref,operation_refs FROM automation_jobs ORDER BY created_at,id")).rows;
-      await writeFile(process.env.CRM_TEST_EVIDENCE_FILE, JSON.stringify({ scope: "Synthetic API/PostgreSQL; direct durable-source Bridge ingress, n8n/broker tested separately", observedAt: new Date().toISOString(), observations, requests, identities, merges, audit, outbox, jobs }, null, 2));
+      await writeFile(process.env.CRM_TEST_EVIDENCE_FILE, JSON.stringify({ scope: "Synthetic API/PostgreSQL; direct durable-source Bridge ingress, n8n/broker tested separately", observedAt: new Date().toISOString(), observations, requests, identities, merges, erasures, erasureTasks, audit, outbox, jobs }, null, 2));
     }
     for (const server of servers.reverse()) await new Promise<void>(resolve => server.close(() => resolve()));
     if (servers.length) await (await import("../../catalog/src/db/client.js")).pool.end();
     for (const pool of pools) await pool.end();
     if (admin) { for (const name of names) { if (!/^crm_test_[a-f0-9]{32}_(identity|org|catalog|crm|bridge|conversation)$/.test(name)) throw new Error("Unsafe test database"); await admin.query(`DROP DATABASE IF EXISTS ${name}`); } await admin.end(); }
+  });
+  it("upgrades existing erasure tombstones without retaining old immutable snapshot copies", async () => {
+    const name = `crm_test_${randomUUID().replaceAll("-", "")}_crm`, url = new URL(databaseUrl!); url.pathname = `/${name}`;
+    await admin.query(`CREATE DATABASE ${name}`);
+    const legacy = new pg.Pool({ connectionString: url.toString() });
+    try {
+      for (const version of ["0001", "0002_automation"]) await legacy.query(await readFile(`${root}/services/crm/migrations/${version}.sql`, "utf8"));
+      await legacy.query("CREATE TABLE schema_migrations(version text PRIMARY KEY); INSERT INTO schema_migrations VALUES('0001'),('0002_automation')");
+      const sourceId = randomUUID(), targetId = randomUUID(), requestId = randomUUID(), planId = randomUUID(), automationId = randomUUID(), actor = randomUUID(), sid = randomUUID(), reportHash = "a".repeat(64);
+      await legacy.query("INSERT INTO crm_people(id,branch_id,kind,full_name,status) VALUES($1,$3,'CONTACT','Erased','ERASED'),($2,$3,'CONTACT','DEMO Target','ACTIVE')", [sourceId, targetId, a]);
+      await legacy.query("INSERT INTO crm_merge_plans(id,branch_id,source_id,target_id,actor_id,actor_session_id,payload,report,report_hash,status,result) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'EXECUTED',$10)", [planId, a, sourceId, targetId, actor, sid, { sourceId, targetId, sourceVersion: 1, targetVersion: 1, resolutions: {} }, { source: { id: sourceId, fullName: "DEMO legacy private name" }, target: { id: targetId } }, reportHash, { sourceId, targetId }]);
+      await legacy.query("INSERT INTO crm_automation_requests(id,branch_id,actor_id,actor_session_id,event_id,context_id,payload) VALUES($1,$2,$3,$4,$5,$6,$7)", [automationId, a, actor, sid, randomUUID(), randomUUID(), { action: "lead.create", lead: { branchId: a, contactId: sourceId, notes: "DEMO legacy private note" } }]);
+      await legacy.query("INSERT INTO crm_erasure_requests(id,person_id,branch_id,reason,status,requested_by,verified_by) VALUES($1,$2,$3,'SUBJECT_REQUEST','COMPLETED',$4,$4)", [requestId, sourceId, a, actor]);
+      await legacy.query("INSERT INTO crm_erasure_tombstones(person_id,branch_id,request_id) VALUES($1,$2,$3)", [sourceId, a, requestId]);
+      for (let i = 0; i < 2; i++) execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/migrate.ts"], { cwd: `${root}/services/crm`, env: { ...process.env, DATABASE_URL: url.toString() }, stdio: "pipe" });
+      expect((await legacy.query("SELECT report,report_hash,status,result,erasure_request_id FROM crm_merge_plans WHERE id=$1", [planId])).rows[0]).toEqual({ report: { erased: true }, report_hash: reportHash, status: "EXECUTED", result: { sourceId, targetId }, erasure_request_id: requestId });
+      expect((await legacy.query("SELECT payload->'lead'->>'notes' AS notes,erasure_request_id FROM crm_automation_requests WHERE id=$1", [automationId])).rows[0]).toEqual({ notes: "", erasure_request_id: requestId });
+      await expect(legacy.query("UPDATE crm_automation_requests SET payload='{}' WHERE id=$1", [automationId])).rejects.toThrow("append only");
+      expect((await legacy.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(3);
+    } finally { await legacy.end(); await admin.query(`DROP DATABASE ${name}`); }
   });
   it("protects direct and Gateway calls; enforces role/branch on reads and writes", async () => {
     const p = await person();
@@ -387,6 +412,87 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     const winnerIndex = results[0].status === 200 ? 0 : 1;
     expect((await internal(`/internal/crm/requests/${prepared[winnerIndex].requestId}/execute`, {}, prepared[winnerIndex].token, direct)).body.data.result).toEqual(result);
     for (let i = 0; i < prepared.length; i++) await finish(prepared[i].job, results[i].status === 200 ? "DONE" : "DEAD");
+  });
+  it("scrubs stored CRM payloads and approved reports only through verified erasure and fences consumed and pending commands", async () => {
+    const pii = { fullName: "DEMO Erasure Snapshot Contact", phone: "+84908887766", email: "erase-snapshot@crm.test", notes: "DEMO private payload note" };
+    const guest = await internal("/api/v1/chat/session", { consent: true }, "", chat);
+    const input = { action: "resolve-channel", conversationId: guest.body.data.conversationId, contact: pii, createLead: false, consent: { purpose: "ADMISSIONS", status: "GRANTED", statementVersion: "DEMO-ERASE-v1", statementText: "DEMO private consent prose", method: "WEB_FORM" } };
+    const resolved = await command(input), resolvedResult = await internal(`/internal/crm/requests/${resolved.requestId}/execute`, {}, resolved.token, direct);
+    expect(resolvedResult.status).toBe(200);
+    const contactId = resolvedResult.body.data.result.contactId, pending = await call("crm/automation-requests", "POST", input, staff, gateway, randomUUID());
+    expect(pending.status).toBe(201);
+    const created = await command({ action: "lead.create", lead: { branchId: a, contactId, source: "WEB_CHAT", notes: "DEMO private lead-create note" } });
+    const createdResult = await internal(`/internal/crm/requests/${created.requestId}/execute`, {}, created.token, direct);
+    expect(createdResult.status).toBe(200);
+    await finish(created.job);
+    const leadId = createdResult.body.data.result.leadId;
+    const edited = await call("crm/automation-requests", "POST", { action: "lead.update", leadId, update: { version: 1, stage: "CONTACTED", ownerId: staffId, notes: "DEMO private lead-update note" } }, staff, gateway, randomUUID());
+    expect(edited.status).toBe(201);
+    const target = await person(), planned = await call("crm/merge-plans", "POST", { sourceId: contactId, targetId: target.id, sourceVersion: 1, targetVersion: 1, resolutions: { fullName: "TARGET", phone: "TARGET", email: "TARGET", notes: "TARGET" } }, center, gateway, randomUUID());
+    expect(planned.status).toBe(201);
+    const untouched = await call("crm/automation-requests", "POST", { action: "lead.create", lead: { branchId: a, contactId: target.id, source: "PHONE", notes: "DEMO unrelated payload" } }, staff, gateway, randomUUID());
+    expect(untouched.status).toBe(201);
+    const { id: planId, reportHash } = planned.body.data;
+    expect((await call(`crm/merge-plans/${planId}/approve`, "POST", { reportHash, evidenceRef: "DEMO-ERASURE-PLAN-PROOF" }, director)).status).toBe(200);
+    const merged = await command({ action: "merge.execute", planId, reportHash }, center), commands = [resolved, merged], ids = [resolved.requestId, pending.body.data.id, created.requestId, edited.body.data.id, merged.requestId];
+    const request = await call("crm/erasure-requests", "POST", { personId: contactId, reason: "SUBJECT_REQUEST" }, staff, gateway, randomUUID()), erasureId = request.body.data.id;
+    expect((await call(`crm/erasure-requests/${erasureId}/anonymize`, "POST", { version: 1 }, director)).status).toBe(409);
+    expect((await crm.query("SELECT payload FROM crm_automation_requests WHERE id=$1", [resolved.requestId])).rows[0].payload.contact).toEqual(pii);
+    const verified = await call(`crm/erasure-requests/${erasureId}/decision`, "POST", { version: 1, decision: "VERIFIED", method: "REGISTERED_CONTACT_CALLBACK", evidenceRef: "DEMO-ERASURE-IDENTITY" }, director);
+    expect(verified.status).toBe(200);
+    expect((await call("crm/automation-requests", "POST", input, staff, gateway, randomUUID())).body.error.code).toBe("PRIVACY_LOCKED");
+    const erased = await call(`crm/erasure-requests/${erasureId}/anonymize`, "POST", { version: verified.body.data.version }, director);
+    expect(erased.status, JSON.stringify(erased.body)).toBe(200);
+    expect(erased.body.data.tasks.find((task: { service: string }) => task.service === "CRM").status).toBe("DONE");
+    expect(erased.body.data.status).toBe("PROCESSING");
+    const stored = (await crm.query("SELECT * FROM crm_automation_requests WHERE id=ANY($1::uuid[])", [ids])).rows;
+    expect(stored).toHaveLength(5); expect(stored.filter(row => row.erasure_request_id !== erasureId).map(row => row.payload.action)).toEqual([]);
+    const history = await call(`crm/merge-plans/${planId}`, "GET", undefined, center);
+    expect(history.body.data).toMatchObject({ report: { erased: true }, reportHash, status: "REVOKED" });
+    const detail = await call(`crm/people/${contactId}`);
+    const serialized = JSON.stringify({ stored, history: history.body, detail: detail.body });
+    for (const original of [...Object.values(pii), input.consent.statementText, "DEMO private lead-create note", "DEMO private lead-update note"]) expect(serialized).not.toContain(original);
+    const counts = (await crm.query("SELECT (SELECT count(*) FROM crm_people)::int AS people,(SELECT count(*) FROM crm_leads)::int AS leads,(SELECT count(*) FROM crm_automation_requests)::int AS requests")).rows[0];
+    for (const requestId of ids.slice(0, 4)) {
+      const lookup = await call(`crm/automation-requests/${requestId}`);
+      expect(lookup.body.data.erased).toBe(true);
+      expect(JSON.stringify(lookup.body)).not.toContain(pii.fullName);
+    }
+    for (const prepared of commands) expect((await internal(`/internal/crm/requests/${prepared.requestId}/execute`, {}, prepared.token, direct)).body.error.code).toBe("PERSON_ERASED");
+    for (const [payload, token] of [[input, staff], [{ action: "lead.create", lead: { branchId: a, contactId, source: "PHONE", notes: pii.notes } }, staff], [{ action: "lead.update", leadId, update: { version: 2, stage: "LOST", ownerId: staffId, notes: pii.notes } }, staff], [{ action: "merge.execute", planId, reportHash }, center]] as const)
+      expect((await call("crm/automation-requests", "POST", payload, token, gateway, randomUUID())).body.error.code).toBe("PERSON_ERASED");
+    expect((await crm.query("SELECT (SELECT count(*) FROM crm_people)::int AS people,(SELECT count(*) FROM crm_leads)::int AS leads,(SELECT count(*) FROM crm_automation_requests)::int AS requests")).rows[0]).toEqual(counts);
+    expect((await crm.query("SELECT id,contact_id FROM crm_channel_identities WHERE contact_id=$1", [contactId])).rows).toEqual([{ id: resolvedResult.body.data.result.identityRef, contact_id: contactId }]);
+    expect((await crm.query("SELECT action FROM crm_audit WHERE target_id=$1 ORDER BY created_at", [planId])).rows.map(row => row.action)).toEqual(["crm.merge.planned", "crm.merge.approved"]);
+    await expect(crm.query("UPDATE crm_automation_requests SET payload=payload || '{\"contact\":{\"fullName\":\"forged\"}}'::jsonb,erasure_request_id=$2 WHERE id=$1", [resolved.requestId, erasureId])).rejects.toThrow("append only");
+    await expect(crm.query("UPDATE crm_merge_plans SET report=$2,report_hash=$3 WHERE id=$1", [planId, planned.body.data.report, "0".repeat(64)])).rejects.toThrow("append only");
+    await expect(crm.query("SELECT crm_scrub_automation_history($1,$2)", [target.id, erasureId])).rejects.toThrow("append only");
+    expect((await crm.query("SELECT payload->'lead'->>'notes' AS notes,erasure_request_id FROM crm_automation_requests WHERE id=$1", [untouched.body.data.id])).rows[0]).toEqual({ notes: "DEMO unrelated payload", erasure_request_id: null });
+    for (const prepared of commands) await finish(prepared.job, "DEAD");
+    for (const [requestId, action] of [[pending.body.data.id, "resolve-channel"], [edited.body.data.id, "lead.update"]]) {
+      const prepared = await authorizeRequest(requestId, action);
+      expect((await internal(`/internal/crm/requests/${requestId}/execute`, {}, prepared.token, direct)).body.error.code).toBe("PERSON_ERASED");
+      await finish(prepared.job, "DEAD");
+    }
+  });
+  it("scrubs merge lead and relationship snapshots when an associated learner is erased", async () => {
+    const source = await person(), target = await person(), learner = await person("LEARNER", { phone: "" }); await consent(source.id);
+    const relationship = await call("crm/relationships", "POST", { fromPersonId: source.id, learnerId: learner.id, kind: "OTHER" }, staff, gateway, randomUUID());
+    expect((await call(`crm/relationships/${relationship.body.data.id}/decision`, "POST", { version: 1, status: "VERIFIED", evidenceRef: "DEMO-private-learner-evidence" }, director)).status).toBe(200);
+    expect((await lead(source.id, { learnerId: learner.id, notes: "DEMO private learner lead note" })).status).toBe(201);
+    const planned = await call("crm/merge-plans", "POST", { sourceId: source.id, targetId: target.id, sourceVersion: 1, targetVersion: 1, resolutions: { fullName: "TARGET", phone: "TARGET" } }, center, gateway, randomUUID());
+    const { id, reportHash } = planned.body.data;
+    expect(planned.body.data.report.relationships[0].evidence_ref).toBe("DEMO-private-learner-evidence");
+    expect((await call(`crm/merge-plans/${id}/approve`, "POST", { reportHash, evidenceRef: "DEMO-SNAPSHOT-APPROVAL" }, director)).status).toBe(200);
+    const prepared = await command({ action: "merge.execute", planId: id, reportHash }, center);
+    const request = await call("crm/erasure-requests", "POST", { personId: learner.id, reason: "SUBJECT_REQUEST" }, staff, gateway, randomUUID()), erasureId = request.body.data.id;
+    const verified = await call(`crm/erasure-requests/${erasureId}/decision`, "POST", { version: 1, decision: "VERIFIED", method: "VERIFIED_REPRESENTATIVE", evidenceRef: "DEMO-LEARNER-IDENTITY" }, director);
+    expect((await call(`crm/erasure-requests/${erasureId}/anonymize`, "POST", { version: verified.body.data.version }, director)).status).toBe(200);
+    const history = await call(`crm/merge-plans/${id}`, "GET", undefined, center);
+    expect(history.body.data).toMatchObject({ status: "REVOKED", report: { erased: true }, reportHash });
+    expect((await internal(`/internal/crm/requests/${prepared.requestId}/execute`, {}, prepared.token, direct)).body.error.code).toBe("PERSON_ERASED");
+    expect((await crm.query("SELECT status FROM crm_people WHERE id=ANY($1::uuid[])", [[source.id, target.id]])).rows.every(row => row.status === "ACTIVE")).toBe(true);
+    await finish(prepared.job, "DEAD");
   });
   it("rejects a merge when the independent approver session is revoked after token issuance", async () => {
     const source = await person(), target = await person();

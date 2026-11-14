@@ -62,6 +62,14 @@ Migration `0002_automation` bổ sung mapping WEB_CHAT có nguồn Conversation,
 request bất biến và merge plan. Đặt `CONVERSATION_URL`, `ENROLLMENT_URL` trỏ
 đúng service biệt lập. Không đọc DB của service khác.
 
+Migration `0003_erasure_history` xóa contact/consent và notes trong payload
+automation, cùng toàn bộ report snapshot liên quan, trong transaction tombstone
+của thao tác anonymize đã xác minh. Migration cũng sửa các bản sao của tombstone
+cũ. Giữ report hash, IDs, mapping, result và audit; report đã xóa trả
+`{ "erased": true }`, request lookup có `erased: true`. Plan chưa thực thi bị
+REVOKED và request đã xóa không được execute/replay. Không nhận cờ xóa từ
+client/n8n; ngoài scrub cố định do tombstone trigger, payload/report vẫn bất biến.
+
 - `POST /api/v1/crm/automation-requests`, UUID `Idempotency-Key`: action
   `resolve-channel`, `lead.create`, `lead.claim`, `lead.update`, `merge.execute`.
   Actor/session được IAM xác minh. `resolve-channel` lấy branch/account/session

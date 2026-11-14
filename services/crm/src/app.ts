@@ -136,7 +136,7 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
     if (user.delegation && (user.delegation.operation !== "crm.execute" || user.delegation.inputRef !== id || user.delegation.entity?.type !== "crm-request" || user.delegation.entity.id !== id || user.delegation.entity.version !== 1)) throw new HttpError(403, "FORBIDDEN", "CRM source binding does not match");
     return row;
   }
-  const requestView = (row: Row) => ({ id: row.id, branchId: row.branch_id, action: row.payload.action, status: row.status, result: row.result, source: row.source, jobId: row.job_id });
+  const requestView = (row: Row) => ({ id: row.id, branchId: row.branch_id, action: row.payload.action, status: row.status, result: row.result, source: row.source, jobId: row.job_id, erased: !!row.erasure_request_id });
 
   return createApp("crm", app => {
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM crm_people LIMIT 1"); res.json({ status: "ok" }); });
@@ -158,7 +158,9 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
       const id = Id.parse(req.params.id), token = bearer(req.get("authorization")), verify = () => verifyCommand(auth, token, "crm", "crm:write");
       const user = await verify();
       const data = await transaction(async c => {
-        const request = await crmRequest(c, id, user, true), input = CrmAutomationInput.parse(request.payload);
+        const request = await crmRequest(c, id, user, true);
+        if (request.erasure_request_id) throw conflict("PERSON_ERASED", "CRM request was scrubbed by verified erasure");
+        const input = CrmAutomationInput.parse(request.payload);
         if (request.job_id && request.job_id !== user.delegation!.jobId) throw conflict("OPERATION_CONFLICT", "Lookup the original CRM job");
         if (request.status === "DONE") return requestView(request);
         await c.query("UPDATE crm_automation_requests SET job_id=$2 WHERE id=$1", [id, user.delegation!.jobId]);
@@ -298,14 +300,22 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
           if (input.action === "resolve-channel") {
             if (!config.conversationUrl) throw new HttpError(503, "CHANNEL_UNAVAILABLE", "Conversation source required");
             source = channelIdentity.parse(await upstream(config.conversationUrl, `/api/v1/conversations/${input.conversationId}/crm-context`, req, res)); branchId = source.branchId;
+            await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,4005))", [`${source.provider}:${source.accountRef}:${source.subjectRef}`]);
+            const mapping = (await c.query("SELECT contact_id FROM crm_channel_identities WHERE provider=$1 AND account_ref=$2 AND subject_ref=$3", [source.provider, source.accountRef, source.subjectRef])).rows[0];
+            if (mapping) await people(c, [mapping.contact_id], user);
           } else if (input.action === "lead.create") {
             branchId = input.lead.branchId;
+            await people(c, [input.lead.contactId, input.lead.learnerId, input.lead.payerId].filter((id): id is string => !!id), user);
             if (input.lead.courseId) { const course = await upstream<Row>(config.catalogUrl, `/api/v1/courses/${input.lead.courseId}`, req, res); if (course.status !== "active" || (course.branchIds.length && !course.branchIds.includes(branchId))) throw conflict("INVALID_COURSE", "Course unavailable in this branch"); }
           } else if (input.action === "merge.execute") {
-            const plan = (await c.query("SELECT * FROM crm_merge_plans WHERE id=$1", [input.planId])).rows[0]; if (!plan) throw missing();
+            const plan = (await c.query("SELECT * FROM crm_merge_plans WHERE id=$1 FOR UPDATE", [input.planId])).rows[0]; if (!plan) throw missing();
+            if (plan.erasure_request_id) throw conflict("PERSON_ERASED", "Merge plan was scrubbed by verified erasure");
             if (!["center_director", "branch_director"].includes(user.role) || plan.actor_id !== user.sub || plan.actor_session_id !== user.sid || plan.report_hash !== input.reportHash) throw new HttpError(403, "FORBIDDEN", "Merge request must originate from its verified planner");
             branchId = plan.branch_id;
-          } else branchId = (await readLead(c, input.leadId, user)).branch_id;
+          } else {
+            const lead = await readLead(c, input.leadId, user); branchId = lead.branch_id;
+            await people(c, [lead.contact_id, lead.learner_id, lead.payer_id].filter(Boolean), user);
+          }
           checkBranch(user, branchId);
           const id = randomUUID(), eventId = randomUUID(), entity = { type: "crm-request", id, version: 1 };
           const delegation = await iamRequest(auth.identityUrl, "/internal/iam/delegations", bearer(req.get("authorization")), { eventId, workflowId: "WF-04", workflowVersion: 1, branchId, entity, inputRef: id, operations: ["crm.execute"] }) as { contextRef: string };
