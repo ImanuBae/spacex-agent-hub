@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { and, count, desc, eq, ilike, sql } from "drizzle-orm";
 import { z } from "zod";
-import { authenticateDomain, principal, allowRoles, authConfig, type AuthConfig } from "@spacex/auth";
+import { authenticateDomain, principal, allowRoles, authConfig, verifyCommand, bearer, type AuthConfig } from "@spacex/auth";
 import { CourseInput, CoursePackageInput, ListQuery } from "@spacex/contracts";
 import { HttpError } from "./app.js";
 import { db, pool } from "./db/client.js";
@@ -38,6 +38,14 @@ function throwPackageError(error: unknown): never {
 
 
 export function registerCatalogRoutes(app: Express, config: AuthConfig = authConfig()) {
+    for (const kind of ["enrollment", "class"] as const) app.get(`/internal/catalog/${kind}-quote/:id`, async (req, res) => {
+        const user = await verifyCommand(config, bearer(req.get("authorization")), kind === "class" ? "class-schedule" : "enrollment", kind === "class" ? "classes:enroll" : "enrollment:write");
+        if (user.delegation?.entity?.type !== "enrollment") throw new HttpError(403, "FORBIDDEN", "Enrollment job required");
+        const id = IdParam.parse(req.params.id), branchId = user.delegation.branchId;
+        const { rows } = await pool.query("SELECT p.id AS \"packageId\",p.course_id AS \"courseId\",p.price_vnd AS \"priceVnd\",p.session_count AS \"sessionCount\",p.policy_version AS \"packageVersion\",c.policy_version AS \"courseVersion\",p.policy_text AS \"packagePolicy\",c.policy_text AS \"coursePolicy\",p.effective_at AS \"effectiveAt\",statement_timestamp() AS \"quotedAt\" FROM course_packages p JOIN courses c ON c.id=p.course_id WHERE p.id=$1 AND p.status='active' AND c.status='active' AND p.effective_at<=statement_timestamp() AND c.effective_at<=statement_timestamp() AND (cardinality(c.branch_ids)=0 OR $2::uuid=ANY(c.branch_ids))", [id, branchId]);
+        if (!rows[0]) throw new HttpError(409, "NOT_SELLABLE", "Offer inactive or outside branch");
+        res.json({ data: { ...rows[0], priceVnd: Number(rows[0].priceVnd), currency: "VND" } });
+    });
     app.use("/api/v1", authenticateDomain(config, "catalog", "catalog:read", /^\/(courses|packages)$|^\/packages\/[^/]+\/quote$/), allowRoles("center_director", "branch_director", "admissions", "teacher", "ai_agent"));
     app.use("/api/v1", (req, res, next) => {
         const delegation = principal(res).delegation;

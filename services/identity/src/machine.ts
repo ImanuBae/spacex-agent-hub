@@ -1,7 +1,7 @@
 import { createPublicKey, randomBytes, randomUUID } from "node:crypto";
 import type { Express } from "express";
 import type { Pool } from "pg";
-import { importPKCS8, jwtVerify, SignJWT } from "jose";
+import { decodeJwt, importPKCS8, jwtVerify, SignJWT } from "jose";
 import { z } from "zod";
 import {
   MachinePrincipalInput, MachineTokenInput, MachineClaims, MachineAudience, MachineScope,
@@ -18,7 +18,11 @@ const invalid = () => new HttpError(401, "UNAUTHORIZED", "Invalid or revoked mac
 const readRoles: Role[] = ["center_director", "branch_director", "admissions", "teacher"];
 const target = (operation: string) => operation === "catalog.read"
   ? { audience: "catalog" as const, scope: "catalog:read" as const }
-  : { audience: "class-schedule" as const, scope: operation === "classes.cancel" ? "classes:cancel" as const : "classes:read" as const };
+  : operation === "crm.execute" ? { audience: "crm" as const, scope: "crm:write" as const }
+  : operation === "enrollment.execute" ? { audience: "enrollment" as const, scope: "enrollment:write" as const }
+  : operation === "payment.execute" ? { audience: "payment" as const, scope: "payment:write" as const }
+  : { audience: "class-schedule" as const, scope: operation === "classes.cancel" ? "classes:cancel" as const : operation === "classes.enroll" ? "classes:enroll" as const : "classes:read" as const };
+const registrationOperations = ["enrollment.execute", "payment.execute", "classes.enroll"];
 
 export function registerMachineRoutes(app: Express, pool: Pool, live: (token: string) => Promise<Principal>, authority?: MachineAuthority) {
   // Key material stays in IAM. Every consumer calls IAM and the Bridge again; no revocation cache.
@@ -72,9 +76,19 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     return CommandBinding.parse((await response.json() as { data: unknown }).data);
   }
   async function delegation(b: z.infer<typeof CommandBinding>) {
+    const service = (await pool.query("SELECT * FROM service_delegations WHERE id=$1 AND expires_at>clock_timestamp()", [z.uuid().parse(b.contextRef)])).rows[0];
+    if (service) {
+      const producer = await client(service.source_id), input = DelegationInput.parse(service.input);
+      if (producer.credential_version !== service.credential_version || !registrationOperations.includes(b.operation) ||
+        input.eventId !== b.eventId || input.workflowId !== b.workflowId || input.workflowVersion !== b.workflowVersion ||
+        input.inputRef !== b.inputRef || JSON.stringify(input.entity) !== JSON.stringify(b.entity) || !input.operations.includes(b.operation as z.infer<typeof DelegationInput>["operations"][number])) throw denied();
+      grant(producer, service.audience, ["automation:source"], [input.workflowId]);
+      return { sub: z.uuid().parse(producer.id), sid: service.id as string, role: "ai_agent" as const, branchIds: [input.branchId],
+        delegation: { branchId: input.branchId, jobId: b.jobId, operation: b.operation, source: "service" as const, inputRef: b.inputRef, entity: b.entity, workflowId: b.workflowId } };
+    }
     const source = (await pool.query("SELECT source_id,credential_version FROM channel_delegations WHERE id=$1", [z.uuid().parse(b.contextRef)])).rows[0];
     if (source) {
-      if (b.operation === "classes.cancel") throw denied();
+      if (!["catalog.read", "classes.read"].includes(b.operation)) throw denied();
       const sourceClient = await client(source.source_id);
       if (sourceClient.credential_version !== source.credential_version) throw denied();
       const guest = await channelContext(sourceClient, b.contextRef);
@@ -91,11 +105,12 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     if (!row) throw denied();
     const input = DelegationInput.parse(row.input);
     if (b.operation === "classes.cancel" && !["center_director", "branch_director"].includes(row.role)) throw denied();
-    if (!readRoles.includes(row.role) || (row.role !== "center_director" && !row.branch_ids.includes(input.branchId)) ||
+    if (["crm.execute", ...registrationOperations].includes(b.operation) && !["center_director", "branch_director", "admissions", "accountant"].includes(row.role)) throw denied();
+    if ((!readRoles.includes(row.role) && row.role !== "accountant") || (row.role !== "center_director" && !row.branch_ids.includes(input.branchId)) ||
       input.eventId !== b.eventId || input.workflowId !== b.workflowId || input.workflowVersion !== b.workflowVersion ||
       input.inputRef !== b.inputRef || JSON.stringify(input.entity) !== JSON.stringify(b.entity) || !input.operations.some(o => o === b.operation)) throw denied();
     return { sub: row.id as string, sid: row.sid as string, role: row.role as Role, branchIds: [input.branchId],
-      delegation: { branchId: input.branchId, jobId: b.jobId, operation: b.operation, ...(b.operation === "classes.cancel" ? { inputRef: b.inputRef, entity: b.entity } : {}) } };
+      delegation: { branchId: input.branchId, jobId: b.jobId, operation: b.operation, ...(!["catalog.read", "classes.read"].includes(b.operation) ? { inputRef: b.inputRef, entity: b.entity, workflowId: b.workflowId } : {}) } };
   }
   async function channelContext(c: Client, id: string) {
     if (!authority?.channelUrl) throw new HttpError(503, "CHANNEL_NOT_CONFIGURED", "Verified Channel source required");
@@ -143,7 +158,8 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     configured(); const input = MachineTokenInput.parse(req.body), c = await client(input.clientId);
     if (!await verifyPassword(input.clientSecret, c.secret_hash)) throw invalid();
     grant(c, input.audience, input.scopes, input.workflows);
-    if (input.audience !== "automation-bridge" && !(input.audience === "conversation" && input.scopes.every(s => s === "channel:context") && input.workflows.every(w => w === "WF-02"))) throw denied();
+    const source = ["enrollment", "payment"].includes(input.audience) && input.scopes.every(s => s === "automation:source") && input.workflows.every(w => input.audience === "payment" ? ["WF-06", "WF-07"].includes(w) : w === "WF-07");
+    if (input.audience !== "automation-bridge" && !source && !(input.audience === "conversation" && input.scopes.every(s => s === "channel:context") && input.workflows.every(w => w === "WF-02"))) throw denied();
     res.json({ data: { accessToken: await sign(c, input.audience, input.scopes, input.workflows, input.ttlSeconds), expiresIn: input.ttlSeconds } });
   });
   app.post("/internal/iam/machine/introspect", async (req, res) => {
@@ -153,7 +169,8 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
   });
   app.post("/internal/iam/delegations", async (req, res) => {
     configured(); const user = await live(bearer(req.get("authorization"))), input = DelegationInput.parse(req.body);
-    if (!readRoles.includes(user.role)) throw denied();
+    if (!readRoles.includes(user.role) && user.role !== "accountant") throw denied();
+    if (input.operations.some(o => !["catalog.read", "classes.read"].includes(o)) && !["center_director", "branch_director", "admissions", "accountant"].includes(user.role)) throw denied();
     checkBranch(user, input.branchId);
     const id = randomUUID();
     await mutate(user.sub, "delegation.created", "INSERT INTO automation_delegations(id,account_id,session_id,input) VALUES($1,$2,$3,$4)", [id, user.sub, user.sid, input], id);
@@ -168,6 +185,20 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     if (row.source_id !== c.id || row.credential_version !== c.credential_version) throw denied();
     res.status(201).json({ data: { contextRef } });
   });
+  app.post("/internal/iam/service-delegations", async (req, res) => {
+    const body = z.object({ audience: z.enum(["enrollment", "payment"]), input: DelegationInput }).strict().parse(req.body);
+    const { c } = await verify(bearer(req.get("authorization")), body.audience, "automation:source", "machine");
+    z.uuid().parse(c.id);
+    const input = body.input, workflow = input.workflowId;
+    if (!(body.audience === "payment" ? ["WF-06", "WF-07"] : ["WF-07"]).includes(workflow) || input.workflowVersion !== 1 || input.entity.type !== "enrollment" || input.operations.some(o => !registrationOperations.includes(o))) throw denied();
+    grant(c, body.audience, ["automation:source"], [workflow]);
+    const id = randomUUID();
+    const result = await pool.query(`INSERT INTO service_delegations(id,source_id,credential_version,input,audience) VALUES($1,$2,$3,$4,$5)
+      ON CONFLICT (source_id,(input->>'eventId')) DO UPDATE SET id=service_delegations.id RETURNING *,input=$4::jsonb AND audience=$5 AS identical`, [id, c.id, c.credential_version, input, body.audience]);
+    const row = result.rows[0];
+    if (!row.identical || row.credential_version !== c.credential_version) throw denied();
+    res.json({ data: { contextRef: row.id } });
+  });
   app.post("/internal/iam/delegations/:id/revoke", async (req, res) => {
     const user = await live(bearer(req.get("authorization"))), id = z.uuid().parse(req.params.id);
     z.object({}).strict().parse(req.body);
@@ -178,7 +209,7 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     const token = bearer(req.get("authorization")), input = CommandTokenInput.parse(req.body);
     const { c, claims } = await verify(token, "automation-bridge", "automation:authorize", "machine");
     const b = await binding(token, input), t = target(b.operation);
-    if (!["catalog.read", "classes.read", "classes.cancel"].includes(b.operation)) throw denied();
+    if (!["catalog.read", "classes.read", "classes.cancel", "crm.execute", ...registrationOperations].includes(b.operation)) throw denied();
     if (!claims.workflows.includes(b.workflowId)) throw denied();
     grant(c, t.audience, [t.scope], [b.workflowId]); await delegation(b);
     res.json({ data: { accessToken: await sign(c, t.audience, [t.scope], [b.workflowId], 30, b), expiresIn: 30, audience: t.audience, scope: t.scope } });
@@ -196,13 +227,24 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
   });
   app.post("/internal/iam/commands/approval-session", async (req, res) => {
     const input = z.object({ accountId: z.uuid(), sessionId: z.uuid() }).strict().parse(req.body);
-    const { claims } = await verify(bearer(req.get("authorization")), "class-schedule", "classes:cancel", "command");
+    const token = bearer(req.get("authorization"));
+    let audience: string;
+    try { audience = z.enum(["class-schedule", "crm", "payment"]).parse(decodeJwt(token).aud); } catch { throw invalid(); }
+    const { claims } = await verify(token, audience, audience === "crm" ? "crm:write" : audience === "payment" ? "payment:write" : "classes:cancel", "command");
     const b = CommandBinding.parse(claims.binding), user = await delegation(b);
-    if (b.operation !== "classes.cancel" || input.accountId === user.sub) throw denied();
+    if (!["classes.cancel", "crm.execute", "payment.execute"].includes(b.operation) || input.accountId === user.sub) throw denied();
     const row = (await pool.query(`SELECT a.id FROM accounts a JOIN sessions s ON s.account_id=a.id
       WHERE a.id=$1 AND s.id=$2 AND a.active=true AND a.role='branch_director' AND $3=ANY(a.branch_ids)
       AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`, [input.accountId, input.sessionId, user.delegation.branchId])).rows[0];
     if (!row) throw denied();
     res.json({ data: { allowed: true } });
+  });
+  app.post("/internal/iam/financial-proposal-session", async (req, res) => {
+    const user = await live(bearer(req.get("authorization"))), input = z.object({accountId:z.uuid(),sessionId:z.uuid(),branchId:z.uuid().nullable()}).strict().parse(req.body);
+    if (!["center_director","branch_director"].includes(user.role) || input.accountId === user.sub) throw denied();
+    if(input.branchId)checkBranch(user,input.branchId);else if(user.role!=="center_director")throw denied();
+    const row = (await pool.query(`SELECT a.id FROM accounts a JOIN sessions s ON s.account_id=a.id WHERE a.id=$1 AND s.id=$2
+      AND a.active=true AND a.role='accountant' AND ($3::uuid IS NULL OR $3=ANY(a.branch_ids)) AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`,[input.accountId,input.sessionId,input.branchId])).rows[0];
+    if(!row)throw denied();res.json({data:{allowed:true}});
   });
 }

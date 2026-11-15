@@ -103,6 +103,11 @@ export async function withN8n05Runtime(run, record, bindings) {
   const directory = path.join(root, ".local", "automation", project), acl = await privateDirectory(directory);
   const evidence = record;
   Object.assign(evidence, { project, startedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), status: "FAIL", runtimeChecks: [], artifacts: { ...record.artifacts }, services: [], acl });
+  const paths = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "utf8" }).split("\0").filter(f => /^(services|packages|scripts|workflows|infra|apps)\//.test(f) && /\.(ts|tsx|sql|mjs|cjs|json|yml)$/.test(f));
+  const sourceHashes = Object.fromEntries(await Promise.all([...new Set(paths)].map(async file => [file, sha(await readFile(file))])));
+  const promptFile = "docs/prompt-chot-nghiem-thu-n8n-05.md";
+  await writeFile(path.join(directory,"preflight.json"),JSON.stringify({authorization:"USER_DELEGATED_N8N05",promptFile,promptSha256:sha(await readFile(promptFile)),createdAt:evidence.startedAt,policyVersion:"DEMO-N8N05-2026-11-14-v1",syntheticOnly:true,budgetUsd:0,inferenceAllowed:false,sourceHashes},null,2),{flag:"wx",mode:0o600});
+  await writeFile(path.join(directory,"run-marker.json"),JSON.stringify({project,status:"RUNNING",resumeAllowed:false}),{flag:"wx",mode:0o600});
   const children = [], services = new Map(), pools = {}, domainUrls = {}, allocated = new Set();
   async function freePort() {
     for (;;) {
@@ -197,7 +202,7 @@ export async function withN8n05Runtime(run, record, bindings) {
     await runNode([path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/seed.ts"], { ...hostEnv, DATABASE_URL: domainUrls.identity, SEED_ADMIN_EMAIL: operatorEmail, SEED_ADMIN_PASSWORD: adminPassword }, path.join(root, "services/identity"), "operator-seed.log");
     await writeFile(path.join(directory, "operator-private.json"), JSON.stringify({ email: operatorEmail, password: adminPassword }), { mode: 0o600 });
     async function startService(service, extra = {}) {
-      assert(Object.hasOwn(domainUrls, service), "Only this runtime's backend services may start");
+      assert(Object.hasOwn(domainUrls, service) || service === "gateway", "Only this runtime's backend services may start");
       const previous = services.get(service); assert(!previous || previous.exitCode !== null || previous.signalCode !== null, `${service} is already running`);
       const env = { ...hostEnv, ...runtime, DATABASE_URL: domainUrls[service], PORT: String(ports[service]), ...extra };
       const ordinal = evidence.services.filter(s => s.service === service).length + 1;
@@ -226,7 +231,8 @@ export async function withN8n05Runtime(run, record, bindings) {
     const loginFixture = email => iamCall("/api/v1/auth/login", { email, password: adminPassword });
     await run({ root, directory, project, envFile, ports, urls, pool: pools["automation-bridge"], pools, domainUrls, identityDb: domainUrls.identity, iamCall, operator, loginFixture, startService, runtime, backendHost, bridgePort: ports["automation-bridge"], iamPort: ports.identity, orgPort: ports.org, catalogPort: ports.catalog, classesPort: ports["class-schedule"], chatPort: ports.conversation, crmPort: ports.crm, enrollmentPort: ports.enrollment, paymentPort: ports.payment, n8nPort: ports.n8n, compose, cli, sql, runNode, freePort, eventually, children, services, check });
     completed = true; evidence.status = "PASS";
-  } catch (error) { evidence.failure = { name: error.name, message: error.message }; throw error; }
+    for(const [file,expected] of Object.entries(sourceHashes))assert.equal(sha(await readFile(file)),expected,`Source changed during acceptance: ${file}`);
+  } catch (error) { evidence.status = "FAIL"; evidence.failure = { name: error.name, message: error.message }; throw error; }
   finally {
     const cleanupErrors = [];
     for (const child of children.reverse()) if (child.exitCode === null && child.signalCode === null) {
@@ -236,6 +242,7 @@ export async function withN8n05Runtime(run, record, bindings) {
     for (const pool of Object.values(pools)) try { await pool.end(); } catch { cleanupErrors.push("Owned database pool cleanup failed"); }
     if (evidence.isolation) {
       try {
+        await writeFile(path.join(directory,"docker-private.log"),compose("logs","--no-color"),{mode:0o600});
         compose("down", "--remove-orphans", "--timeout", "10");
         const remaining = execFileSync("docker", ["ps", "-aq", "--filter", `label=com.docker.compose.project=${project}`], { env: hostEnv, encoding: "utf8" }).trim();
         assert.equal(remaining, "");
@@ -254,6 +261,7 @@ export async function withN8n05Runtime(run, record, bindings) {
     }
     if (cleanupErrors.length) evidence.status = "FAIL";
     evidence.cleanupErrors = cleanupErrors; evidence.finishedAt = new Date().toISOString();
+    await writeFile(path.join(directory,"run-marker.json"),JSON.stringify({project,status:evidence.status,finishedAt:evidence.finishedAt,resumeAllowed:false}),{mode:0o600});
     await writeFile(path.join(directory, "evidence.json"), JSON.stringify(evidence, null, 2) + "\n", { mode: 0o600 });
     try { evidence.aclVerification = verifyPrivateAcl(directory, acl); }
     catch { cleanupErrors.push("Private-artifact ACL verification failed"); evidence.status = "FAIL"; }

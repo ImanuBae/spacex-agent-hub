@@ -9,6 +9,7 @@ const server = createConversationApp(pool, authConfig(), {
   sourceClientId: required("CHANNEL_CLIENT_ID"), sourceClientSecret: required("CHANNEL_CLIENT_SECRET"),
   modelReady: process.env.AI_FREE_MODEL_READY === "true",
   syntheticProviderPilot: process.env.CHAT_PROVIDER_DATA_POLICY === "synthetic-only",
+  crmUrl: process.env.CRM_URL,
 }).listen(Number(process.env.PORT ?? 4007), process.env.HOST ?? "127.0.0.1");
 let broker: Awaited<ReturnType<typeof connectBroker>> | undefined, working = false;
 async function tick() {

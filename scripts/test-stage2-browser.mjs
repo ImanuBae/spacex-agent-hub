@@ -59,7 +59,7 @@ try {
   const gatewayUrl = await listen(createGatewayApp(auth, { org: orgUrl, catalog: catalogUrl, classes: classUrl }));
   const portServer = createServer(); portServer.listen(0, "127.0.0.1"); await once(portServer, "listening"); const port = portServer.address().port;
   await new Promise(resolve => portServer.close(resolve)); portalOrigin = `http://localhost:${port}`;
-  const portal = await child([`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: gatewayUrl, PORTAL_ORIGIN: portalOrigin }, "portal");
+  const portal = await child(["--require",`${root}/scripts/no-personal-env.cjs`,`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: gatewayUrl, PORTAL_ORIGIN: portalOrigin }, "portal");
   let ready = false;
   for (let i = 0; i < 100; i++) {
     if (portal.exitCode !== null) throw new Error("Portal exited; inspect ignored Portal log");
@@ -140,7 +140,7 @@ try {
   const recovered = await listen(createClassApp(pools[3], auth, { orgUrl, catalogUrl, demo: false, ttlSeconds: 1200 }));
   const recoveredGateway = await listen(createGatewayApp(auth, { org: orgUrl, catalog: catalogUrl, classes: recovered }));
   portal.kill(); await once(portal, "exit");
-  const inspectedPortal = await child([`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: recoveredGateway, PORTAL_ORIGIN: portalOrigin }, "inspected-portal");
+  const inspectedPortal = await child(["--require",`${root}/scripts/no-personal-env.cjs`,`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: recoveredGateway, PORTAL_ORIGIN: portalOrigin }, "inspected-portal");
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`${portalOrigin}/login`)).ok) break; } catch {} await sleep(100); }
   if (process.env.STAGE2_INSPECT === "1") {
     const inspection = await child([`${root}/scripts/inspect-portal.mjs`, `${portalOrigin}/dashboard/availability`, "--app", "--out", ".local/stage-next-design/availability"], { ...process.env, QA_PORTAL_ORIGIN: portalOrigin, QA_EMAIL: "branch_director@stage2.test", QA_PASSWORD: password }, "inspector");

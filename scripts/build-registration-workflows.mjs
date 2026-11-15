@@ -5,7 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const base = Object.fromEntries(Object.entries({ iam: 4002, bridge: 4006, crm: 4005, classes: 4004, enrollment: 4008, payment: 4009 }).map(([name, port]) => [name, `http://host.docker.internal:${port}`]));
 const artifacts = [];
-const businessErrors = ["SOLD_OUT", "CLASS_CHANGED", "NOT_OPEN", "HOLD_EXPIRED", "INVALID_ENROLLMENT_STATE", "REGISTRATION_CLOSED", "CLASS_INCOMPLETE", "DUPLICATE_LEARNER", "QUOTE_CHANGED", "HOLD_REQUIRED", "CONFIRMATION_EXPIRED", "RECONFIRM_REQUIRED", "ENROLLMENT_NOT_CREATED", "HOLD_LIMIT", "PAYMENT_REQUEST_REQUIRED"];
+const businessErrors = ["SOLD_OUT", "CLASS_CHANGED", "NOT_OPEN", "HOLD_EXPIRED", "INVALID_ENROLLMENT_STATE", "REGISTRATION_CLOSED", "CLASS_INCOMPLETE", "DUPLICATE_LEARNER", "QUOTE_CHANGED", "HOLD_REQUIRED", "CONFIRMATION_EXPIRED", "RECONFIRM_REQUIRED", "ENROLLMENT_NOT_CREATED", "HOLD_LIMIT", "PAYMENT_REQUEST_REQUIRED", "PAYMENT_CLOSED"];
 const noSeatErrors = ["SOLD_OUT", "CLASS_CHANGED", "NOT_OPEN", "HOLD_EXPIRED", "INVALID_ENROLLMENT_STATE", "REGISTRATION_CLOSED", "CLASS_INCOMPLETE", "DUPLICATE_LEARNER", "HOLD_REQUIRED"];
 
 for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
@@ -66,7 +66,7 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
     const path = domain === "crm" ? `${base.crm}/internal/crm/requests/` : `${base[domain]}/internal/${domain}/enrollments/`;
     const resource = domain === "crm" ? `${job}.inputRef` : `${job}.entity.id`;
     http(lookup, `={{ '${path}' + ${resource} }}`, undefined, token); link(`${name} authorized`, lookup);
-    branch(`${name} lookup ready`, `(!$json.error && Object.prototype.hasOwnProperty.call($json,'data'))${missing ? " || $json.error?.code === 'NOT_FOUND'" : ""}`); link(lookup, `${name} lookup ready`); link(`${name} lookup ready`, "Retry", 1);
+    branch(`${name} lookup ready`, `(!$json.error && $json.data !== undefined)${missing ? " || $json.error?.code === 'NOT_FOUND'" : ""}`); link(lookup, `${name} lookup ready`); link(`${name} lookup ready`, "Retry", 1);
     code(next, "return [{json:$json}];");
     if (action === null) {
       link(`${name} lookup ready`, next); steps.push({ name, domain, action, operation, lookup });
@@ -74,7 +74,7 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
     }
     branch(`${name} needed`, `!(${skip})`); link(`${name} lookup ready`, `${name} needed`); link(`${name} needed`, next, 1);
     http(mutate, `={{ '${path}' + ${resource} + '/${action}' }}`, body, token); link(`${name} needed`, mutate);
-    branch(`${name} saved`, "!$json.error && Object.prototype.hasOwnProperty.call($json,'data')"); link(mutate, `${name} saved`); link(`${name} saved`, next);
+    branch(`${name} saved`, "!$json.error && $json.data !== undefined"); link(mutate, `${name} saved`); link(`${name} saved`, next);
     if (errors.length) {
       branch(`${name} business rejection`, `${JSON.stringify(errors)}.includes($json.error?.code)`); link(`${name} saved`, `${name} business rejection`, 1);
       link(`${name} business rejection`, failure); link(`${name} business rejection`, "Retry", 1);
@@ -83,7 +83,7 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
     return { start: `${name} fence`, end: next, lookup, mutate };
   }
   const connect = (from, step, output = 0) => { link(from, step.start, output); return step.end; };
-  const released = "$json.data?.hold == null || ['CANCELLED','EXPIRED'].includes($json.data.hold.status)";
+  const released = "$json.data?.committed === true || $json.data?.hold == null || ['CANCELLED','EXPIRED','COMMITTED'].includes($json.data.hold.status)";
   const releaseOptions = { skip: released };
 
   if (wf === "WF-04") {
@@ -101,7 +101,7 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
     previous = connect(previous, step("Payment create", "payment", "create", { skip: "!!$json.data", errors: businessErrors, failure: "Close failed payment fence" }));
     previous = connect(previous, step("Enrollment payment", "enrollment", "payment", { skip: "!!$json.data?.paymentRequestId", errors: businessErrors, failure: "Close failed payment fence" }));
     link(previous, "Done");
-    const close = step("Close failed payment", "payment", "close", { skip: "!$json.data || ['CANCELLED','EXPIRED'].includes($json.data.status)", body: "{reason:'FAILED'}" });
+    const close = step("Close failed payment", "payment", "close", { skip: "['CANCELLED','EXPIRED'].includes($json.data?.status)", body: "{reason:'FAILED'}" });
     previous = connect(close.end, step("Enrollment failed", "enrollment", "failed", { skip: "$json.data?.releaseAuthorized === true" }));
     branch("Failed release authorized", "$json.data?.releaseAuthorized === true"); link(previous, "Failed release authorized"); link("Failed release authorized", "Done", 1);
     previous = connect("Failed release authorized", step("Release failed hold", "classes", "release", releaseOptions)); link(previous, "Done");
@@ -120,10 +120,10 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
     const state = step("Enrollment inspect", "enrollment", null);
     let previous = connect("Job", state);
     const cancellation = `$('${state.lookup}').first().json.data.cancelRequested === true`;
-    previous = connect(previous, step("Payment close", "payment", "close", { skip: "!$json.data || ['CANCELLED','EXPIRED'].includes($json.data.status)", body: `{reason:(${cancellation})?'CANCEL':'EXPIRE'}` }));
+    previous = connect(previous, step("Payment close", "payment", "close", { skip: "['CANCELLED','EXPIRED'].includes($json.data?.status)", body: `{reason:(${cancellation})?'CANCEL':'EXPIRE'}` }));
     branch("Cancellation requested", cancellation); link(previous, "Cancellation requested");
-    const cancel = step("Enrollment cancel", "enrollment", "cancel", { skip: "$json.data?.releaseAuthorized === true" });
-    const reconcile = step("Enrollment reconcile", "enrollment", "reconcile", { skip: "$json.data?.releaseAuthorized === true" });
+    const cancel = step("Enrollment cancel", "enrollment", "cancel");
+    const reconcile = step("Enrollment reconcile", "enrollment", "reconcile");
     connect("Cancellation requested", cancel); connect("Cancellation requested", reconcile, 1);
     branch("Release authorized", "$json.data?.releaseAuthorized === true"); link(cancel.end, "Release authorized"); link(reconcile.end, "Release authorized"); link("Release authorized", "Done", 1);
     previous = connect("Release authorized", step("Class release", "classes", "release", releaseOptions)); link(previous, "Done");
@@ -131,7 +131,8 @@ for (const wf of ["WF-04", "WF-05", "WF-06", "WF-07"]) {
 
   for (const [name, outcome] of [["Done", "DONE"], ["Retry", "RETRY"], ...(wf === "WF-04" || wf === "WF-05" ? [["Dead", "DEAD"]] : [])]) {
     const ref = wf === "WF-04" ? `'crm-request:'+${job}.inputRef` : `'enrollment:'+${job}.entity.id`;
-    code(name, `${versionCode()}return [{json:{${fence},expectedVersion:version,step:'complete',outcome:'${outcome}',resultRef:${ref}${outcome === "RETRY" ? ",errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5" : outcome === "DEAD" ? ",errorCode:'BUSINESS_REJECTED'" : ""} }}];`);
+    const permanent = "typeof $json.error?.code==='string' && /DENIED|FORBIDDEN|UNAUTHORIZED|VALIDATION|IDEMPOTENCY|STALE_|INVALID_|CONFLICT|RECONFIRM|EXPIRED|NOT_FOUND/.test($json.error.code)";
+    code(name, `${versionCode()}${outcome === "RETRY" ? `const permanent=${permanent};` : ""}return [{json:{${fence},expectedVersion:version,step:'complete',outcome:${outcome === "RETRY" ? "permanent?'DEAD':'RETRY'" : `'${outcome}'`},resultRef:${ref}${outcome === "RETRY" ? ",errorCode:permanent?'DOMAIN_REJECTED':'UPSTREAM_UNAVAILABLE',...(permanent?{}:{retryAfterSeconds:5})" : outcome === "DEAD" ? ",errorCode:'BUSINESS_REJECTED'" : ""} }}];`);
     link(name, "Result");
   }
   http("Result", bridgeUrl("result"), "$json");
@@ -171,6 +172,7 @@ function validate(workflow, steps) {
     if (node.type.endsWith("code")) new Function("$", "$json", node.parameters.jsCode);
     if (node.type.endsWith("if")) {
       const expression = node.parameters.conditions.conditions[0].leftValue.slice(3, -2);
+      assert(!/\.prototype|__proto__|\.constructor/.test(expression),"n8n expression sandbox forbids prototype access");
       new Function("$", "$json", `return (${expression});`);
     }
     if (node.type.endsWith("httpRequest")) {
@@ -232,6 +234,8 @@ function verifyBranches(workflow) {
     return { result, requests, mutated: requests.filter(request => request.name.endsWith(" mutate")).map(request => request.name) };
   }
   assert.equal(run({ Claim: { data: null } }).result, undefined, "Empty claim stops without effects");
+  const firstAuthorization=workflow.nodes.find(n=>n.name.endsWith(" authorize"));
+  assert.equal(run({[firstAuthorization.name]:{error:{code:"AUTHORIZATION_DENIED"}}}).result.outcome,"DEAD","Authorization denial is never a technical retry");
   const broken = { error: { message: "socket timed out" } };
   if (workflow.id.endsWith("WF04")) {
     const partial = run({ "CRM execute mutate": { data: { status: "PARTIAL", result: { errorCode: "CONSENT_REQUIRED" } } } });
@@ -258,6 +262,12 @@ function verifyBranches(workflow) {
     assert.equal(refused.result.outcome, "DONE"); assert(refused.mutated.includes("Payment no seat mutate")); assert(refused.mutated.includes("Enrollment exception mutate"));
   }
   if (workflow.id.endsWith("WF07")) {
+    const missing=run({"Payment close lookup":{data:null},"Enrollment reconcile mutate":{data:{status:"EXPIRED",releaseAuthorized:true}}});
+    assert(missing.mutated.includes("Payment close mutate"),"Missing request closure must create a durable fence before release");
+    const committed=run({"Enrollment reconcile mutate":{data:{status:"EXPIRED",releaseAuthorized:true}},"Class release lookup":{data:{committed:true,hold:{status:"COMMITTED"}}}});
+    assert.equal(committed.result.outcome,"DONE");assert(!committed.mutated.includes("Class release mutate"),"A cached expiry result cannot release a newly committed seat");
+    const decided=run({"Enrollment reconcile lookup":{data:{status:"PAYMENT_REVIEW",releaseAuthorized:true}},"Enrollment reconcile mutate":{data:{status:"REFUND_PENDING",releaseAuthorized:true}}});
+    assert(decided.mutated.includes("Enrollment reconcile mutate"),"Existing release permission cannot hide a newer financial decision");
     const matched = run({ "Enrollment reconcile mutate": { data: { status: "CONFIRMING", releaseAuthorized: false } } });
     assert.equal(matched.result.outcome, "DONE"); assert(!matched.mutated.includes("Class release mutate"));
     const cancel = run({ "Enrollment inspect lookup": { data: { cancelRequested: true } }, "Enrollment cancel mutate": { data: { status: "CANCELLED", releaseAuthorized: true } }, "Class release lookup": { data: { hold: { status: "HELD" } } } });

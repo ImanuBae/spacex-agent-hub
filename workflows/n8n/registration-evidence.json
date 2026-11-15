@@ -1,0 +1,1889 @@
+{
+  "ticket": "N8N-05",
+  "decision": "ACCEPT_LOCAL",
+  "decidedAt": "2026-11-15T17:13:06.257Z",
+  "reviewer": "Codex agent under explicit user delegation",
+  "scope": "Synthetic local WF04–07 connecting CRM/Enrollment/Payment/Class; canonical inactive",
+  "policyVersion": "DEMO-N8N05-2026-11-14-v1",
+  "budgetUsd": 0,
+  "providerRequests": 0,
+  "modelInference": false,
+  "sourceHashes": {
+    "packages/contracts/src/enrollment.ts": "4b7337691dea7f245f977e4b7eeda1ac4e88d0ae127163ec97f216a3f0d46b08",
+    "packages/contracts/src/registration.test.ts": "0721cbf0476fe4a283a5fa93b98bbb3a8c18838730835ff2f3e1d69e72e92984",
+    "scripts/n8n05-review-cases.mjs": "e0a0eb8f16d0da47ca86804ace0f30dac706f5d09a4cccce14e517b417382c24",
+    "scripts/n8n05-workflow-cases.mjs": "0b9169a3e3a2901e462dfb7ba62564bdc5cb5e194781f1bbc353cf84524bfa53",
+    "scripts/no-personal-env.cjs": "119d4ef2efc27add350158c028ea55c0fd11d3dfda19e838e28abd2655d02406",
+    "scripts/no-personal-env.test.cjs": "29ac0b6a777aeb2dca53a5634f1b4c48b1c314b2bab80bab4f7ab40508b8ed46",
+    "scripts/test-n8n05.mjs": "69b6e3ab4586a4a189b52f72135b5836edbe78685641088c6841f241a4c91978",
+    "services/enrollment/migrations/0001.sql": "52ce9affcc1ab89c32076198ffac113e466bc56ddd54d837e8d8e6ba057dc363",
+    "services/enrollment/package.json": "168b82b873c1371837866e2de64e8ddb344564c87523447cec1ff709bab23790",
+    "services/enrollment/src/app.ts": "57a222fdd1ea9df60e70a3bf7680fd35b3f21cb3240d86e47a90b66b0b7ba953",
+    "services/enrollment/src/index.ts": "669837079404d73dae5fc87b9f96242a1b0b68ad5dec5b2e6164b882cbcc8c8a",
+    "services/enrollment/src/migrate.ts": "50184362e7c151724fa74b03a241ed372466dcad884e818838852bb1d565e77c",
+    "services/enrollment/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/identity/migrations/0004_service.sql": "4335a9ea63a59893a8298fe10575c5d4f7be7c0c24ab882d43d0c9c9c0fa0563",
+    "services/payment/migrations/0001.sql": "6d991394412503f0eb43ed5592b62c50222d6fea863665a357ca8d997fe100de",
+    "services/payment/package.json": "d0019ea30107955c3884ebaf12149f42955a65b984618e9855d12a8c5095bc1d",
+    "services/payment/src/app.ts": "e5314c5b61a4c7c5f44814001a65b7a7abec1d7dddda562bb714f76a47a08e60",
+    "services/payment/src/index.ts": "dfe205aad9d6cf2246896bcbcd83ea9495bde6dbcb811cfc1f3ebf8f07e44bf6",
+    "services/payment/src/migrate.ts": "ef5691f71bac21e4513c7f8e14862247d50ebb860a1036e7fd65a420817640ba",
+    "services/payment/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    ".github/workflows/ci.yml": "5262e79afeb47601e325e5116a34f846db231be8793dd3c6138ca0707ca4917d",
+    ".vscode/settings.json": "443894b52702f271884f445e6e10eb47d73e923e94dfb0993bf7d6223f59c9b5",
+    "apps/admin-portal/app/api/chat/[action]/route.ts": "a285c21071c253e27b6f8e473d777078dcc9f262d9a9ab25d5656d50b1a3f6a6",
+    "apps/admin-portal/app/api/session/[action]/route.ts": "efedb85be3538587f8392e2a2a99fd83660bca3610b07250a27d6f084f970051",
+    "apps/admin-portal/app/api/v1/[...path]/route.ts": "22a17ae563e991b394b9e599059eedf981288ed958cda558add375e2582f4946",
+    "apps/admin-portal/app/chat/Messages.tsx": "bc9a146c33c4be3c159bf6868e04de47a171583a63a944649a3895c88a02dcb1",
+    "apps/admin-portal/app/chat/page.tsx": "818fdffc2a96b0c38270741ff7b25980b02bdc4169e1702ffad6db8c53a814c1",
+    "apps/admin-portal/app/dashboard/audit/page.tsx": "0ad0d52eb3fbf0997e7b93cd8584e70c7f65f5d9aabeb64f1c5fbe36057aa145",
+    "apps/admin-portal/app/dashboard/availability/page.tsx": "062f85261ce63934732c704560b80ee453297327fad08e0acc4689f9c7ec945c",
+    "apps/admin-portal/app/dashboard/classes/page.tsx": "dc99bfc5f2e641334c49d43d7ccd0cc684781f9356b9c88aef6fda81a62b7b3d",
+    "apps/admin-portal/app/dashboard/components/HubIcon.tsx": "5a9d02607370b518cba535fbf63644022eadec8c02d455aaa17a02ae9cfa9ee0",
+    "apps/admin-portal/app/dashboard/components/OperationUI.tsx": "61018f11096d51c70eb62796ec5161a26d7cda3a56fbbd3f11027327b2e4c120",
+    "apps/admin-portal/app/dashboard/components/RoadmapState.tsx": "2a151c6cdba21fee3ff6242f69b2dac197514a4f7ca4f1f731c4b8810d84b61b",
+    "apps/admin-portal/app/dashboard/components/Sidebar.tsx": "86e7fc8785b3ce5ce4445838b47952f3b0163f87afad07b5759e2ce4c181e79f",
+    "apps/admin-portal/app/dashboard/courses/CatalogSearch.tsx": "40ba63d20a27d581e4e1ba957fb8a202ef1b81c2d74360bbe5a34fa3170c89eb",
+    "apps/admin-portal/app/dashboard/courses/CourseModal.tsx": "49aab506bedef5d34beed9d6cc5352b83a0e8cde0702fd644ca62aa6b5e4558b",
+    "apps/admin-portal/app/dashboard/courses/PackagesPanel.tsx": "4550e917460cdf4116fa820dbd748183c23dbfb623b05e524a5a20b88527b6c4",
+    "apps/admin-portal/app/dashboard/courses/page.tsx": "f234563ca49f502d001eeedb76d0173d72249cb2d89bb1d22111bc62daec8893",
+    "apps/admin-portal/app/dashboard/enrollments/page.tsx": "1fd96a6827570cf0df295262d74613aabde07573303708f68ac6df8e0fe8e76c",
+    "apps/admin-portal/app/dashboard/finance/page.tsx": "1b9f37cd039b17034f33041226a7ee437baefdc81a7a6dc5d0e9056df41acdc6",
+    "apps/admin-portal/app/dashboard/layout.tsx": "8dc9a23d7be8e8e0a8a037e5a674897ccf95724ecf615100d7c6611d5ca98e0d",
+    "apps/admin-portal/app/dashboard/leads/CrmDetails.tsx": "b4607569d2361eba3a0a648ddce645ace4945af7fd0a839f12a753529a919701",
+    "apps/admin-portal/app/dashboard/leads/CrmForms.tsx": "ab73e0cb232dc50236b574fd5c39769ab48e1ac18b6b86fa126b4fce4fa7cbde",
+    "apps/admin-portal/app/dashboard/leads/page.tsx": "7872490abde93135456b819e7dbd9826cd23c127c8512f6da609a33db7f5b747",
+    "apps/admin-portal/app/dashboard/mailbox/page.tsx": "e833c6a9fa74fccaa906a599587f81063a68ab8a8e2f31bf791500fa3fd23cfa",
+    "apps/admin-portal/app/dashboard/organization/page.tsx": "e2bac5ef7cf105424829d7d5f35f845f18e2f998eb95b5a678cf4290f78170d5",
+    "apps/admin-portal/app/dashboard/overview/page.tsx": "7d72df07a31f32f1aaad643f941eb9e66e088c74c9f8c49db18e75c300fa5b89",
+    "apps/admin-portal/app/dashboard/page.tsx": "fa8cdbcb0e296aa2dc9de2d2316058f0f980ad2e0f88660e623905f42300b6e3",
+    "apps/admin-portal/app/dashboard/profile/page.tsx": "b33f7c8b98a80aac75f9a6d8000ba6f81574b4210fad2c1ddc043f9ad4cd9a16",
+    "apps/admin-portal/app/dashboard/reconciliation/page.tsx": "1b343d8c3fb2dc7aab8916e6963a34289f9d2320063ad2dd101b9c0ae5209a44",
+    "apps/admin-portal/app/dashboard/refunds/page.tsx": "7c87b694c18a8923c81c872603899ea5b4ef9c44fb55d2998e4d636281dbadd3",
+    "apps/admin-portal/app/dashboard/schedule/ClassForm.tsx": "5edc7ad959c3cac8421933b01cb33a0864e3aa94c5c08724c167de7fb0e599ec",
+    "apps/admin-portal/app/dashboard/schedule/page.tsx": "7be26bb67466d928d051c5a545b7d1ea8b386ed8f36db5f3f5875374216ec473",
+    "apps/admin-portal/app/landing/Brand.tsx": "56f6afb91cc1383cbaff98f7f05cff54b3cdbf5f64749ee4f7cecbb529cde9e5",
+    "apps/admin-portal/app/landing/Landing.tsx": "16f8249c13545eaf2d5fe03876f40f510ba0f15df8a27394796d0f103e0abf71",
+    "apps/admin-portal/app/landing/Motion.tsx": "15bdaf201550ce0459d1341de3fbaf40e0aa7c5b28bc0c21c509d94639551e9d",
+    "apps/admin-portal/app/landing/Planet.tsx": "03e93101445a33e074d632c8100aa8a374bb9a1cdd4df7a7d241aaeba8898c8a",
+    "apps/admin-portal/app/landing/ScheduleDemo.tsx": "d77ae90025ae29b8b49fda66972f8c61196e90da895456daae7ecc7f90da312a",
+    "apps/admin-portal/app/landing/planet-scene.ts": "02e29663a8270d8f82d8020da8158059328c82ee3d1a5dbe147593918a0cd286",
+    "apps/admin-portal/app/landing/shaders.ts": "f3caf01f068599ac07dc327e1c6a694e5194caeb477610b9caf6e5391e126315",
+    "apps/admin-portal/app/layout.tsx": "f0f13b847737f31b982459fca11b4e69e1ff378a2943701f4bbacd91989f7557",
+    "apps/admin-portal/app/login/layout.tsx": "fecaa3c771d1a32c0da3922fb0dc15c222a1c242d5cddfe718bdbda5230fceed",
+    "apps/admin-portal/app/login/page.tsx": "83a67fad2db69a3753e77c120a7a8350bdd1d69c20dd19898fb287adc2c6eb62",
+    "apps/admin-portal/app/mock-unavailable.tsx": "0c545e9316a7a94c8a8dad0622ccf7fcc3c07ccb063d3618d7cb0b1f3529ac35",
+    "apps/admin-portal/app/page.tsx": "daee398dfe2aa91f7693b08b16c9b606d56d0bc6bc25872ef8540f0b68c583a9",
+    "apps/admin-portal/app/ui/fonts.ts": "b6168333f3d8ca8d184eff846da716ff2b38c7b8db700330aec30c3a6b3bb0c2",
+    "apps/admin-portal/eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
+    "apps/admin-portal/lib/api-client.ts": "532d3009b2fa3f0f0854f0ad143d025ae5c637a01efac7952c5e2bc194ab4775",
+    "apps/admin-portal/lib/mock-session.test.ts": "c8aff51b7d685e6d9d76c04a976af6ee4debd618df0a43e8de61a7bbc55e4074",
+    "apps/admin-portal/lib/mock-session.ts": "621bb15d9c46bb88f53f9f50bf76c2a23c9a1b6a71fa7a0323e12163783ab6c6",
+    "apps/admin-portal/lib/request.ts": "c32573b958a41dbfda2beb717ef81f61c57fd6626d5a73a048bcb480fadc1286",
+    "apps/admin-portal/lib/roles.test.ts": "913a95057d30f6ab1aefb1a5f6fda89fbee92192d8f60c1e029aa25cbe49c7ec",
+    "apps/admin-portal/lib/roles.ts": "2ecb216bb828e474ce15d91c9b61eb3739011b4a6f18dcf8250f1b1b16c8d7c4",
+    "apps/admin-portal/lib/server-session.test.ts": "c9877ff1d3f2c4d9b62635eb75f718d8f01b4a974e729e9791f5c6cb40e634da",
+    "apps/admin-portal/lib/server-session.ts": "999a1ffe6ede70d8fddd2884877743247b5642b5e3d1d18a30d9b883345bb43b",
+    "apps/admin-portal/lib/services/audit.ts": "8df7b54fd919da652286a7802420848284e509eabb54a7f7aa2910cd8ced36cf",
+    "apps/admin-portal/lib/services/classes.ts": "6165c6d7cc81e127f38b51638a82fb2d527427aeae0c548b4a77ae468d286450",
+    "apps/admin-portal/lib/services/conversations.ts": "f51d908512c002887bbbf8acbaf1175cf083a55e45da5d818f1c158f94a847b3",
+    "apps/admin-portal/lib/services/courses.test.ts": "ea74eb00f4058a7cf5fa1d1312e96e91b8e7894490e6f3964b88a8bfa578c011",
+    "apps/admin-portal/lib/services/courses.ts": "a0d91a01bfaf936b1389b4167b963f6c906c4bedca01bfd53e0a7b89cd5dfea2",
+    "apps/admin-portal/lib/services/crm.ts": "88ec03ae6de871ef4336823036f0a03260389b83f5731824542fa27648967759",
+    "apps/admin-portal/lib/services/enrollments.ts": "a93cd11d8ea7e117b19626e275154bdd5cdba5f126015144aeb83369f6c16439",
+    "apps/admin-portal/lib/services/finance.ts": "6c53b53a67953f0454697aaed49565ef13a0d972bdb8ecc1367278e9617b3fdc",
+    "apps/admin-portal/lib/services/leads.ts": "eac5f659bc6b5cfe715e35f148c531d425b2bf902438966e73077fae06c0d566",
+    "apps/admin-portal/lib/services/mailbox.ts": "8674b94fd1386b1cec79465e1704812389669cc28bdfd2be20c52507a9315268",
+    "apps/admin-portal/lib/services/organization.ts": "1123b31142170cfd13d50385a0e2c41c4ea328b5cc7f1efbe7663dba71b602f1",
+    "apps/admin-portal/lib/services/profile.ts": "eab33e4f3a52869975e310844568c4441697d0e459508d6b4a17c6426af81960",
+    "apps/admin-portal/next.config.ts": "72f117d10803df84906a63b4070a04ceef9f4315e174b3de23f282efc0e0c8e4",
+    "apps/admin-portal/package.json": "770c0ab8ea9f315c9acb653981f3ca716318e8495f59f8a6c2cb9c92b1189a12",
+    "apps/admin-portal/src/config/menu.ts": "1bb89bb37e3701dfba7f34c43d7e2f99ff609d0767d04c009402063bc4e5647f",
+    "apps/admin-portal/src/context/AuthContext.tsx": "4b029afe45de72a55bd84d008a4f518431c19d6b6ad68b39ff737bea36968315",
+    "apps/admin-portal/src/types/roles.ts": "0077bf981f2f9096a5a952e6847956126cc25b7b4ccdd73466f1d51f0be82d46",
+    "apps/admin-portal/tsconfig.json": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c",
+    "eslint.config.mjs": "943535fe6c506b5786034a2783ea5477163ed1b586184e276596c349f2979822",
+    "infra/automation/compose.test.yml": "8a69f19c873301084baf5f85f78e05494578517cc9de221930bf2c603b660e70",
+    "infra/docker-compose.yml": "3cf4e0c08f42e9bba328173518a03bd0e513ce243de4225a360aa0170b5f2053",
+    "infra/n8n/compose.yml": "466f413bb168ccb1793ea23620e1f5418e457586bbc6727cc6151e4af29b759a",
+    "infra/n8n/init.sql": "aaf7cfde9435cce55f4adfa5d88857367cb75633c2227798d5b12e3c45f059fc",
+    "package-lock.json": "6d40dc4c0211c9bfe85c7731933982f65a21182ef7fa23817ea76515f9e59b81",
+    "package.json": "d7a1a7addd17d481b5bb6151c8448942c5ae35fb1d18ef9a56860b16fbabebd8",
+    "packages/auth/package.json": "5982068651918b538eae6bb9368377736986d4f47234758cff45f6e1ff134486",
+    "packages/auth/src/auth.test.ts": "c51971d0b663affc8c4e5890ff5c584fc05e60adda30d2c38c26cf5ee3ad2a50",
+    "packages/auth/src/index.ts": "d73a55f6e709557d00e2b6330c21124a012b06b6d798293bbaf5746b637588a6",
+    "packages/auth/tsconfig.json": "bc26c2c305541106062ac642944f7386f7b6e6efdfa499d86c6ea0508bc7468b",
+    "packages/config/package.json": "44dfa3916bb9233d088bf2b5dbd6a3725981812afe5f497a76eb3b7c53457afe",
+    "packages/config/src/config.test.ts": "f5be89746e410ba787179d908cd9d582b47f30e955d8fec786cde4eedc525744",
+    "packages/config/src/index.ts": "bc3c74a1bc81492fdc79583a5698cc8ad486d7d95772a64b1d58924971b21041",
+    "packages/config/tsconfig.json": "bc26c2c305541106062ac642944f7386f7b6e6efdfa499d86c6ea0508bc7468b",
+    "packages/contracts/package.json": "6210ab4578246be651ab8b9978f72045c3837431b0645378726385bf91eaad1f",
+    "packages/contracts/src/auth.ts": "34160b5364dd6da7d3d3b3e97d02f134c7d2e14c6bdf4128abb5c7ae8ad3b4d8",
+    "packages/contracts/src/automation.ts": "ce0e610e926e7d4d4082b015dca6177dcef8d496269b9c3d924cd485646b347c",
+    "packages/contracts/src/catalog.ts": "8bcdd20891137a1868edf47fc6c0b11ddf259b7a05e7659dbe7926d0644274eb",
+    "packages/contracts/src/classes.ts": "f74ee8f0d6c4788dd063c58556f17ea0999a097f68cf712bd2963268086e94c7",
+    "packages/contracts/src/contracts.test.ts": "62ffc5f804f61cf215dc5ff39ec91809e1cc4c4fca9c58dd275f6635a433fd6a",
+    "packages/contracts/src/conversation.ts": "9b3efa09b5884efd4283a022e0bb4ead7c3b33b2ccafb718e5ae8538503fac1c",
+    "packages/contracts/src/crm.ts": "cdbda600899db45752408b78eb1f32b549de8975c66797a493efae689033a5cc",
+    "packages/contracts/src/events.ts": "6fe1a28330a7ec080e8628c7153dfd2f8c83c22e14ceb49944c93b3223de8dd5",
+    "packages/contracts/src/index.ts": "91ab52146b5c936891fbb09c297298a857e5caa93f1149363f93f23b9a6c08f1",
+    "packages/contracts/src/machine.ts": "deb952e03c4d39b46bea327407271bf09b8ee4acc3705a817e85acd5b761c60d",
+    "packages/contracts/src/organization.ts": "e6adc2942cb9ec657294ce58b670afe728d1eb4f6dc4e820daa3d8b3fcd20231",
+    "packages/contracts/src/roles.ts": "af5f0eb015f1b43a5f6f0867759bd4674c74958d257cd0b99799eb9849a3b4f7",
+    "packages/contracts/tsconfig.json": "bc26c2c305541106062ac642944f7386f7b6e6efdfa499d86c6ea0508bc7468b",
+    "packages/http/package.json": "abfe504af32de0d81812b9a3b513011dca20fdcb1340cb3f12113172d31ed2a1",
+    "packages/http/src/http.test.ts": "69411d5f2cfc169049a265684fce40f9e7b07f5ba5e35e043123062b669e7114",
+    "packages/http/src/index.ts": "c0172803e92809d6b63e349cff9375eef957e4f7f664ec596449a325663a06e4",
+    "packages/http/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "packages/logger/package.json": "910432b609786ba1a413c2f996456a41a1a8b32d3601fa8e72fb726c4d45d395",
+    "packages/logger/src/index.ts": "5d6f51802ba5025b9c833aacc877faa0a3aca72537635f1ff487c8c0a6af28bf",
+    "packages/logger/src/logger.test.ts": "1b2f5126ae2623bb0717d1089f2c546ad8dedf402d2521e9b4390d42925bc86b",
+    "packages/logger/tsconfig.json": "bc26c2c305541106062ac642944f7386f7b6e6efdfa499d86c6ea0508bc7468b",
+    "packages/messaging/package.json": "f05737a1f2c0f8aa9e575d10a042638ec6d6df14cc5ed06aed4ad31e5a2579cc",
+    "packages/messaging/scripts/test-db.mjs": "93b3f842ef6f32c41713c9823b4043c31fdaaf41ba691ce17cc1947527f8ae74",
+    "packages/messaging/src/broker.test.ts": "b0a4c9e339938330f75f047b2396f4271347d2f58608c1f50224595994036613",
+    "packages/messaging/src/index.ts": "4b2d24f3f147e0d9d107e695c06f5f9e31b968515eb25c9e76f4a303adde9c7a",
+    "packages/messaging/src/postgres.test.ts": "659555d8daf9a37b1f2f358e03751c7cd9a7fb6a8a98358c976176361ccdfedf",
+    "packages/messaging/src/postgres.ts": "d375b3569c84c0ffd1ca3ab231dc37259cbee3f92bac63d4e2dc28723a963753",
+    "packages/messaging/tsconfig.json": "bc26c2c305541106062ac642944f7386f7b6e6efdfa499d86c6ea0508bc7468b",
+    "scripts/accept-n8n04.mjs": "981ee488fd84f046d1f7d5ab9712e9ce334b7f1f299986bb3898eee138ccd9b2",
+    "scripts/build-chat-workflows.mjs": "16c32c7699136e203f927216a64e58047c8254da05598d3176fde62538bda8a9",
+    "scripts/build-iam-command-workflow.mjs": "afc631293f23fee3721cb43126334ad5c09696883d8b1dcbca5e7ed3141c7f2f",
+    "scripts/build-registration-workflows.mjs": "a4917103e25be334bc8281e42dc4bfcdf0f0a5a3c58c808595892d7b19b6b2af",
+    "scripts/clean-demo-test-data.mjs": "72787683d5149bc02a6c33418234196be0a9ae124050ff94c3b47ea2088ae630",
+    "scripts/demo-class.mjs": "eb0bc5afce560cee04e05286827f1dcef0364a8b7636df5b7e19eab4e32407f0",
+    "scripts/inspect-class.mjs": "a915ffd50aeaf7038b4600b8c8654b47a595d4843c807a26134f421cbd7c8918",
+    "scripts/inspect-portal.mjs": "e565860bd13ec5852eed8b7235b13b3bae5f423fcb9745c334a7a145100793ad",
+    "scripts/n8n-completion-preflight.mjs": "4e53ffc383abe9ddd37b5f63014ea90e9eead87b0dc616331e0786d5ea2e78db",
+    "scripts/n8n-local.mjs": "bd5f1b1344f55ee7ef044c0f034f8b2fcff93b244d2ef0c2f3aa97337425368e",
+    "scripts/n8n-output.mjs": "99af7f2273530702adcd274aee4442a0368a57c56bd6169b8a06ff28283f007d",
+    "scripts/n8n04-acceptance-cases.mjs": "67ee20d0637750386ccccbafa88446cf3333b084a417002a9872583a0eb61e64",
+    "scripts/n8n04-benchmark-guard.mjs": "fa95d38b4244b23b56176b980ba7c1dbb173c6eee63e315f62fea11ea981ec7e",
+    "scripts/n8n04-benchmark-guard.test.mjs": "8b111c485da0ac9061a7f348aef34a2210ba4d355f2827823bdbfb0e5765f7fc",
+    "scripts/n8n04-clarification.mjs": "5d4e30807977a63ec9f6d8901468b6350fa3d6700c1a7395dcbbabd12ad4bc4e",
+    "scripts/n8n04-fixture.mjs": "cdaf0351121736ee9115f6a579a9e1f516396edc333a6cca61767726a218a26d",
+    "scripts/n8n04-handoff.mjs": "6fc75eb0ffa0b1909fb7eb126bf38e90a936b606d3e7628384538d46a2f5957f",
+    "scripts/n8n04-handoff.test.mjs": "1ee29309044a1f93cf62bdfbd45f30b6ec4508446253b346258749eddb2e5d57",
+    "scripts/n8n04-isolation.mjs": "95b683c2d4cf4867e95a0cbb0c8255df7be342a00b17f92971524fec512c249f",
+    "scripts/n8n04-model.mjs": "68755bd99db618caaa77300b80781985a53184a0263d605f87de94aef48e0eda",
+    "scripts/n8n04-price-filter.mjs": "ebbeb6d0b0faafdbe82f58000067ede0da6f1e39f01223b6a4ebfb0b43fe5f8c",
+    "scripts/n8n04-price-filter.test.mjs": "f398769ecd026840d9413c697f612a208dc36b4e213f13a99dc1f69d636e2cf9",
+    "scripts/n8n04-runtime.mjs": "68cd30d73532adddb82d800c24b572e89f6fcd2cabf3f6a5d26c87bbc388523c",
+    "scripts/n8n04-runtime.test.mjs": "9c191a5e4dac9d1c509d4c148ad6064561876735298964cc290ab31c324350d7",
+    "scripts/n8n04-transport-preload.mjs": "af76ec3ae49da39e4d6944b6b23b24b4f5a1209ab0cdc2bcc61a951e819975a2",
+    "scripts/n8n04-wire-trace.mjs": "68bd69488c1aa4f1d3c7e911952c132690178f308ad1edcf6243b8b7495f0e66",
+    "scripts/n8n04-wire-trace.test.mjs": "ca59e0c4ca23773d673681e29628922812fc0395e30c53015490422ebdb90ff3",
+    "scripts/n8n04-workflow.test.mjs": "c10396085dbc5ef36e760e23dbb81ed004f286de6b7af9e8372a4f348a227d5e",
+    "scripts/n8n05-api-cases.mjs": "a3a72aedb6436a3d9b91944a804db3d0cd394acd0ee09848a174741fd563e8b9",
+    "scripts/n8n05-runtime.mjs": "483e5024724d220fa282fb31d909e31184645fe0773d8831ab1c992fc39ef8e7",
+    "scripts/prepare-authorized-n8n04.mjs": "c556dc59d2e2bb73b00994822b02a7118aaac7fbc8474e69c16e648d3d7e0ed6",
+    "scripts/prepare-n8n04-benchmark.mjs": "ff4d3f38a2d629befac525749643ca64a0056dbb511688f837abbf21b736fdaa",
+    "scripts/replay-broker-dlq.mjs": "389f96a42d8301b459b6ef9c31372e222b7e72e039fd4d4971b4f94462859e68",
+    "scripts/run-n8n04-benchmark.mjs": "cd36a3f8ca6f2db5093c7d24b6bed6cd3e68ecb77d2aa9b7c7efcba9349d24ba",
+    "scripts/test-automation.mjs": "7984ed6bee602c061ac597ba738b783d8f0547234481c7bc2798f340beb9bb7c",
+    "scripts/test-chat-browser.mjs": "ca207ef1d20aacdfa0da3843b76de68dd0642817674d8d05b514cfc4a24db8a4",
+    "scripts/test-chat-faults.mjs": "58d484a0004331b69f9aeb570bfd7aa7018e921efc2b07683e6d3a7a11511313",
+    "scripts/test-chat-local.mjs": "f49729ddd77c963222c86a174e79f913c06ba647fe5ca79e0c85d3b713861890",
+    "scripts/test-chat.mjs": "440d7dedecb0ea59ce86b8824eeece12442c31534736821ce92cf6fce0caa1ee",
+    "scripts/test-class-browser.mjs": "b56129e0c6213387930b7f8bbfcda18132927ccd0f51d01fade274fb39131db1",
+    "scripts/test-crm-browser.mjs": "fa470d9974bdbed6388d54ebc2ea2e4c5cd9e28b6c1c7321acdf06624e726306",
+    "scripts/test-landing-browser.mjs": "4b7a8b30deb09c9a34b5ae7922f61d38f3d29b2a39080bdba42e3e2ca2998ae7",
+    "scripts/test-n8n03-command.mjs": "adc7d2965df4c2600e05bcadb1242e500f0b4cd108bc1c9a50c9a73e4483a007",
+    "scripts/test-n8n04-transport.mjs": "9bb54e5415734dba2af2257b1cae7e1424006e9fc0ce600898261325868f3d0a",
+    "scripts/test-n8n05-browser.mjs": "b0854dc121c97f71e2037d796cc87b026dc4c9cf0140693d0345a94328e946ef",
+    "scripts/test-stage2-browser.mjs": "e0c061a0e70d11e3d28d25d6250fec598e28a4f0f2bf8afa921867e8ab220b76",
+    "services/automation-bridge/migrations/0001.sql": "7f591153850db2823a8bd12d5a3d7902ba60490de21ce0748dc85c5f1de4bdea",
+    "services/automation-bridge/package.json": "8fc76bc45d5034120b1216ce05066987d81ae59cac5de46f682907749e9565fd",
+    "services/automation-bridge/src/app.ts": "225dd89f76cb509615cbf00afdcd8fb938edc004fdf8c35b1fc36deb64638a79",
+    "services/automation-bridge/src/auth.ts": "00c8f1df3a08098a3c68a741ee22f21d216e021a1bbb0503070df8e5bbe05ec6",
+    "services/automation-bridge/src/contracts.test.ts": "ea8ff09a91e20764f94ca8f494408346e95124b53ec47f1aa7b44493f227f78a",
+    "services/automation-bridge/src/index.ts": "01f4e4f2624b8e5338e58e572d0266bcbb9cea3128b2e58af0d8c292b0343430",
+    "services/automation-bridge/src/machine.test.ts": "ce5b13c5c0b3f835b0607dc8cfbe5790508ed6b1947ec6f5fe832d03211d0c61",
+    "services/automation-bridge/src/migrate.ts": "031e1d9d103ae610f0bfe95ed9b11a075bfb3cc67b2ad76976941ecea322973d",
+    "services/automation-bridge/src/postgres.test.ts": "3ab2c4e094708ec4740fd073e4480a384dde3fb1a5c0c7d669368c197947c52f",
+    "services/automation-bridge/src/store.ts": "c8fcbec58c9d306cdcf96ef1cb32efc52d6be1fe25734e252bf81ec9f054e8ef",
+    "services/automation-bridge/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/catalog/drizzle.config.ts": "20c60d229c0d5ba25ed1ae831f530ed0752cef951374888963c06e4be867b7c6",
+    "services/catalog/drizzle/0000_exotic_tomas.sql": "70ead963faab62a9a45310d757487c837b4015b7ac8e4254e97efc0a771e8c97",
+    "services/catalog/drizzle/0001_offer_history.sql": "0931d77663bd9a84cd3f008c97f67b677cf062a0951d7d481dc9744029df04da",
+    "services/catalog/drizzle/0002_policy_text.sql": "857b4c6ec58758695c1e78927ea8bf652ad01159d81bceb0925ac60eb6c35fbc",
+    "services/catalog/drizzle/meta/0000_snapshot.json": "1227607b78d366006698bdf8562f0877eaf840d6f5f3ff43350e83dc357c98c5",
+    "services/catalog/drizzle/meta/_journal.json": "88e9daf4b24ac97b1ea90df68d03f2d2ff6902aa2114e94d521e762b5cb9328c",
+    "services/catalog/package.json": "85bdb7af4ca5c12100cc17860cad2b0f1892d12713111aecf93860dd282b0f2a",
+    "services/catalog/scripts/test-db.mjs": "1c5733b9e73867cce23735c9cc245ab857f5ed716ee9f4d8cbdbb98177916b60",
+    "services/catalog/src/app.test.ts": "4db03c043186cc476324a74f7234ba112d89189389605beaf48264d0ccfe60b2",
+    "services/catalog/src/app.ts": "d3478ac8c7aef4e63fa94c77b5fa505e2b90d2ce3ac3ac98ad29e98d5b8022ea",
+    "services/catalog/src/db/client.ts": "454aef33bb0ccaffdbc800ca1c7e55332cd0526c5b7a5675612f82fb0a99fcad",
+    "services/catalog/src/db/migrate.ts": "b8516bb60c8e606f29c5030c7052bb10d395f43559f66e0a42903a6e0bd700c0",
+    "services/catalog/src/db/schema.ts": "2ce131b6849ddbf2ffbdf6593d15d6d9dad532d2b3d1d3d1b479e23aafd5d0a6",
+    "services/catalog/src/db/seed.ts": "502d6d93787adb3619302575a782b84c992d3c995b625efb33cffc931e49db96",
+    "services/catalog/src/index.ts": "08d9b83e91276eab9fb591e23e2bd4a5d8578dbbb7be9b303bee1de5b59139c5",
+    "services/catalog/src/messaging-demo.ts": "eeddefce8aca44babbec170896c3d2c575481e6b6dbde1770d6f69cac6bb7b44",
+    "services/catalog/src/routes.test.ts": "3399bba8514df61b4ac898fdc130da4a3c646fd93fa0f4acc240abf2012ec525",
+    "services/catalog/src/routes.ts": "7d95cd3d8d7ed2923aaa9c06a71a21054e2e86f7e62958e47596796c30de03cf",
+    "services/catalog/tsconfig.json": "e3d9144af9cbef01916c25675b8304cb7659c7bf0d88542bf471297f085a3c22",
+    "services/class-schedule/migrations/0001.sql": "77878daea4683da33c0a56e776091e88fd13d45e8331aa7452041603a47aacff",
+    "services/class-schedule/migrations/0002_teacher_time.sql": "ee3c23fb3a29da5d1d4b9fea5dc815fd0541ddb70e3a44ad6f5f8ac4db70783a",
+    "services/class-schedule/migrations/0004_lifecycle.sql": "b606ee368d283b0f62ac749db1e9fa0abcc58206eb4d188002deba98337c5422",
+    "services/class-schedule/migrations/0005_automation.sql": "88a3e0eb1a317b426caf69554e0a8c0d0f32c692bc81f995907ab38f83f66249",
+    "services/class-schedule/migrations/0006_enrollment.sql": "f20bfc8829d94a30a2b993b7ce9ff739e0008ec825c636d93097ba259f5c4137",
+    "services/class-schedule/package.json": "19e7018831435ab6ce0071704388c2f273cbab971dfead0af2bd067285867531",
+    "services/class-schedule/scripts/test-db.mjs": "d0ed51926161a56eefed1afcaaeaa4176bc98f1b07173a470f780cddeac6ebac",
+    "services/class-schedule/scripts/test-enrollment-db.mjs": "e674ca937ac57714b487334911437c52a1411c4ecf1d98ba63e2d6a7149c4e58",
+    "services/class-schedule/src/app.ts": "fec21173b137961f1adb0a9046d0c4b7388f155950936010be1bc08d23a16ac4",
+    "services/class-schedule/src/contracts.test.ts": "f9fec4fe03533c126ba4c1afe12eccc8bbbeadc027e5bde83decee2f011372ea",
+    "services/class-schedule/src/index.ts": "5dc4a84349deb8a6092992b9733c6b97ffa16c457b4174117ab6feec03a5fb7a",
+    "services/class-schedule/src/migrate.ts": "de1ec9674fefd27b5386de320b0e1a6989b6e175bcfc27b28e7cfa5a039e3354",
+    "services/class-schedule/src/postgres.test.ts": "7a6a05d0bceb28844fd20dee301cfbf346c4f921b8b11c58bac53180a2976665",
+    "services/class-schedule/src/seed.ts": "ffdd50a97974bc46b41533a101dc5e29ce62cfb1f5d2b46431b1e81b3a2b9070",
+    "services/class-schedule/src/teacher-time.ts": "247c72058375902fa40c03e29b7d056f71cd632637b07d28aeae92ffd5668fc4",
+    "services/class-schedule/tsconfig.json": "a531ad33fabc521d2f75e320041e582293022a5c0bb3e91a96e9130e250802a7",
+    "services/conversation/migrations/0001.sql": "6b0ac584b5f4afed01912b982ce82aae4148b52a92a9881ccdb87e61d76490a9",
+    "services/conversation/package.json": "fc6d946f3b262bb93f82d77d8f631cd8b1b9710574878b21cd3d827b6938e259",
+    "services/conversation/src/app.ts": "004cd96398661c62b5a9c1a7fc84c3a159b9e68c71bd195dba88a451255d7951",
+    "services/conversation/src/index.ts": "6450d3a93601ddb26d88687c116652e9b25d48f5b3aa8c5e69e04f6aa72c49a8",
+    "services/conversation/src/migrate.ts": "606a9ee98b38641e0deadf3e3b5d102e31df50274e916f095401db64ac354890",
+    "services/conversation/src/privacy.test.ts": "20a79f68fc80aaf860a85065cbc705e0eaa41fca3f33194cdc9fb62ec2efae51",
+    "services/conversation/src/privacy.ts": "91ad0034bc5f6219cc9b170b2e4b03d057a069ed46488b9092ba78084a66d95f",
+    "services/conversation/src/workflow.test.ts": "a570d45eeca8de817ff3e307cb926bcbe6abaccc3a7b430f02e7fc16749556b2",
+    "services/conversation/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/crm/migrations/0001.sql": "09e7d88db1cf67bf91160c73533713ee005fb377263cad115057352c74f3b316",
+    "services/crm/migrations/0002_automation.sql": "3c41f6c9150119d20e943c929c5aba7b11095b57e2ff29409be177535e242633",
+    "services/crm/migrations/0003_erasure_history.sql": "aeab93e1cb8db726143c1b7377388223ba97920458636f4c3480b974fb04f32b",
+    "services/crm/package.json": "a7a275de2697df5ace42f8837f35745faafce6b6d0891e079db4cea1b51b0929",
+    "services/crm/scripts/test-db.mjs": "2478b7804029f2c82859fc67d0cfc59a66fb1006350c0b789056a0c319764550",
+    "services/crm/src/app.ts": "f4d8f5c258f08239611b48dd17faeea32aeee5c9ec10ba2397309d6efa2dfd90",
+    "services/crm/src/contracts.test.ts": "5f88476ac906231038e9b26bbc5d9da0a97e8f4f8ae8592ba1fdcc7c10cadb12",
+    "services/crm/src/index.ts": "29fc74b669184940b9f09d912d0a7056f427862768bfd589bec6a7872b22a129",
+    "services/crm/src/migrate.ts": "376a48f8e22d07724265294c3a5ade3dbf600fbd1097524f3e3ca80b7b9f74fa",
+    "services/crm/src/postgres.test.ts": "3405051463c2dbe6cc2cd400cbaff85867cf5d4bd6d97d5b02f4f2dbbbc64fe3",
+    "services/crm/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/gateway/package.json": "ff751377342b2fbd12110f79b5d796543e4e4e0213b0f0b70e6f2880f435ebbe",
+    "services/gateway/src/app.ts": "18732fb84fedd1cf6ece93806a4c632001f7a63373d252b4dec4bda5b4c67508",
+    "services/gateway/src/index.ts": "c49912a206b252b941df80a192cb8f60bba484dec556dd0ae17804a4d850fe77",
+    "services/gateway/src/rate-limit.test.ts": "98c584819be6fc5d5b87c0178bb5678b18c03c452a8dfb932540c63d4238a1b5",
+    "services/gateway/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/identity/migrations/0001.sql": "bab114b075df5874dd06222bfe94a0ba531650e9e57387c5542af908aebd477e",
+    "services/identity/migrations/0002_machine.sql": "d5b2f1cc66fda5469024886c35fbd6e9e1d2eb653b385ea7d715fa6d4c9dffa2",
+    "services/identity/migrations/0003_channel.sql": "840ac5ae0c6df1d4fed31285b4ed8445e7b1dddedaded64de3c2df5a77db0456",
+    "services/identity/package.json": "cf350d336529712e01896f0cb4147169bc20b8a4e00f6964b3b4bb4f71fb0d15",
+    "services/identity/scripts/test-db.mjs": "cdd0852cc69a4c0b8921da062dbf270360ec8b2a4e96b5fce5811648e1303d3f",
+    "services/identity/src/app.ts": "40cb473c1413a546a42a550ff38c6ef19b2f97f7d6ec7a3854efb8d51c77d724",
+    "services/identity/src/index.ts": "f154afe8e6150ef6726863f5728212b8d1ad33ea10b0c8c470d36d5327af4e0f",
+    "services/identity/src/machine.ts": "0536d3309ee0cfccf4c7f2e586ba860d0b69c976e074230dcb52fd3d9f4b4b11",
+    "services/identity/src/migrate.ts": "4899e52a485cc61cc11e23d37101753a9facc0d0023e1940a901ad991a6f04f0",
+    "services/identity/src/password.test.ts": "ab8ade24a5b3a73c06607bc574dfe038394c44e3666330b097e08397a1e54d7d",
+    "services/identity/src/password.ts": "0dcfc9e67258d124b1e7a4d774d67d5e08e0db8d480826eca7c55b8ac04ce570",
+    "services/identity/src/seed.ts": "29bfb2a7a5c217bef8054c08de5a087aed6f601c62a4a6e86a7c2a691d5fe6da",
+    "services/identity/src/stage1.test.ts": "156f92d12350324aecaf416f722e7d3046f28892d31b8e92b810950f121e4c36",
+    "services/identity/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "services/org/migrations/0001.sql": "419d68c70b5809960c1d91a202de0c856b95dd074587bbaf372cbdcaaa25dd27",
+    "services/org/package.json": "24de51707b79b878cc8c0dd270bca9e64d86c02bee3edef7c984f13c1a25318f",
+    "services/org/src/app.ts": "f69f77e02d4283f35b49ac2924ebb55a327795fad5370a0df48a4c1aeac51538",
+    "services/org/src/index.ts": "17669507d94894f5c5e205ee56d77c7697d5bf97b57d2406da911f74d5634f84",
+    "services/org/src/migrate.ts": "3ad0a46f61724ec861eec36e8ffd52eb7a90865c43e6c3d3ef00e21c506dfb8a",
+    "services/org/src/seed.ts": "28c0f15dd954661a52a9d781c23e312a856ec00f71032a7183e276c5dff1482b",
+    "services/org/tsconfig.json": "06a283912691d548c71c38ca53835afb4e62809645c98959b74646c077bc7f89",
+    "skills-lock.json": "51503c217bfbe61449e282d56570f930dcee3c3ae660e7ffc36fb9aea622a342",
+    "templates/service/package.json": "e15b76eeb60125c57244472750d411399fbbeb558a1a74ca747e904b9689e567",
+    "templates/service/src/app.test.ts": "4db03c043186cc476324a74f7234ba112d89189389605beaf48264d0ccfe60b2",
+    "templates/service/src/app.ts": "295184a133dd31ee6373c2b33e2c5936bc729ffaf5a45ac1aedf8b288b66d0c9",
+    "templates/service/src/index.ts": "8cea35ab31e9de0565f5666151462ac3c0a1f2ea6c87c03f890963cb8a9ed7c0",
+    "templates/service/src/messaging-demo.ts": "eeddefce8aca44babbec170896c3d2c575481e6b6dbde1770d6f69cac6bb7b44",
+    "templates/service/tsconfig.json": "e3d9144af9cbef01916c25675b8304cb7659c7bf0d88542bf471297f085a3c22",
+    "tsconfig.base.json": "9452235afeaf43e7aeef318c285a23c9857974a0a5a394ea34dcfef8ccfdeb54",
+    "turbo.json": "b7d502559c2860343d4b733b1fa6634b6643dc1aa38897eb995102c373d271b1",
+    "workflows/n8n/bridge-evidence.json": "e31e5eb6dc3eb193159082c82f2c1bafdf272da63e02804c3bf8e013c812340f",
+    "workflows/n8n/bridge-manifest.json": "395a6858ede9560e6883fee3c99edbec904c410bb93335408bedf0f3d0cf4fe2",
+    "workflows/n8n/bridge-smoke.json": "b4154323e95f58c2969475bcfab29fe4b4b8dd7840a3d08ddbb2aed85209e776",
+    "workflows/n8n/chat-benchmark-review.json": "4e8da3c9a9218364cc8772136e6b760de9c3fd2a64dff9c3fb13db22b71d625d",
+    "workflows/n8n/chat-benchmark.json": "1cb9d4820c820ebe2e4063e0f97b3e80fc302278a8e81e7edaf22a8c6dd855e9",
+    "workflows/n8n/chat-evidence.json": "465170791eefd3553d9241b8f8fdcc5bebacf21633f3935a6f5e1892198cda1a",
+    "workflows/n8n/chat-foundation-evidence.json": "5604d9b3fb8aeafd731efd2ad0794761c7e28ab888b2bee6c554787ac15c6ce8",
+    "workflows/n8n/chat-hardening-evidence.json": "c61004ae3ab4606726dbc01cd22c59d77e17a0e1f2375cc97df209db75ed90d5",
+    "workflows/n8n/chat-manifest.json": "527c74e3e131aca383fd8b1449463585114366fcbcac7df3697134bf23abb618",
+    "workflows/n8n/chat-model-run-evidence.json": "8815c415cbc13a26701aafa24f34cd52ff84ab786b7f727e99d5890993039b92",
+    "workflows/n8n/chat-router-review.json": "34dd753a4aeb2afb79da965667f008ecc002db96ffd585747e7a93c75a266f8a",
+    "workflows/n8n/evidence.json": "e43896aba0353746a81876de2c22d35c9a03582f5df0df9590f4c18c5eaf6b6d",
+    "workflows/n8n/iam-command-evidence.json": "67163ab1b589365a51d8507de1a5ec2b51dcfbae20aa839c6c96a9a7b9db631d",
+    "workflows/n8n/iam-command-manifest.json": "3dc61d1369cbc1077466c2d054e5c7cdf13de0c3836dedbd94e30f550f6a9594",
+    "workflows/n8n/iam-command-smoke.json": "13e9a21a8e15443f381b0584d7342e2bb465c24d7f3feeacf90d4c985f57de2d",
+    "workflows/n8n/iam-read-evidence.json": "5eb7502b5ce4f4f2666b7ccef5a5700d92e30cdbe149f5a0d59ba36720414d98",
+    "workflows/n8n/iam-read-manifest.json": "d2cebc8f512fb697bf8b1e677994221a33120b78abe9cb870e98252c9669c022",
+    "workflows/n8n/iam-read-smoke.json": "6960488d9cb294952ff08e1dd8179b30448baa2d54f3bdee6679ae5f8aa2f404",
+    "workflows/n8n/manifest.json": "d059519e9fcc7afd1146881933365fc40f0ded9dde9cfca1bde2cc7eef314287",
+    "workflows/n8n/registration-manifest.json": "e547b69b4a12bc61ced86e2d952e6a026fbc9b9de891c16e0639027281a4a014",
+    "workflows/n8n/runtime-smoke.json": "ae4d66804afcadbcb15b3af061bfdfbdad5c812667abc7d5707dfc9e82fe77dd",
+    "workflows/n8n/wf-01.json": "30a8c3f51b07620d2cfea8a4d90bbb94138a3269271259c0e7fce3849fdd556a",
+    "workflows/n8n/wf-02.json": "4407a9b05a74f42bc6dffb9f1c31d4b52876918e6bd0c0ec42cd867cff907b2f",
+    "workflows/n8n/wf-03.json": "eae0f30295831c6723029672b052a51f1141ec51f486b45b6d7fda0c05b6dc12",
+    "workflows/n8n/wf-04.json": "5a7251a08b41eca6f09ef1619c3bc9f280873ba06abdba1bad34795ec98d225b",
+    "workflows/n8n/wf-05.json": "4faf8a9d6b16b0db49374795cc93645768101dba612e1eb7902bd73a5364f79d",
+    "workflows/n8n/wf-06.json": "5ed96aa59bc488ec8fce1f17dee82d3061503c9711e869b41ead443bf94b29fe",
+    "workflows/n8n/wf-07.json": "7400725851463e268a4508b3fc79c68eed9e7ba73e1fbebc2571815f72d38cf1"
+  },
+  "sourceIntegrity": {
+    "total": 312,
+    "matched": 312,
+    "preflightSourceCount": 298,
+    "regressionException": {
+      "file": "scripts/n8n05-runtime.mjs",
+      "oldSha256": "22bc6914f157f3a43beb9941364d4059460adc235eccfc640e64970c91729618",
+      "finalSha256": "483e5024724d220fa282fb31d909e31184645fe0773d8831ab1c992fc39ef8e7",
+      "reason": "Only current prompt path and promptFile provenance metadata changed; preflight smoke and fresh integrated runtime PASS"
+    },
+    "historicalArtifacts": [
+      {
+        "file": "docs/acceptance-n8n-03-04.md",
+        "sha256": "ac178e6632406e926cdf2172768ed3e096c62600de0b88dde8729385de522707"
+      },
+      {
+        "file": "workflows/n8n/wf-01.json",
+        "sha256": "30a8c3f51b07620d2cfea8a4d90bbb94138a3269271259c0e7fce3849fdd556a"
+      },
+      {
+        "file": "workflows/n8n/wf-02.json",
+        "sha256": "4407a9b05a74f42bc6dffb9f1c31d4b52876918e6bd0c0ec42cd867cff907b2f"
+      },
+      {
+        "file": "workflows/n8n/wf-03.json",
+        "sha256": "eae0f30295831c6723029672b052a51f1141ec51f486b45b6d7fda0c05b6dc12"
+      },
+      {
+        "file": "workflows/n8n/chat-manifest.json",
+        "sha256": "527c74e3e131aca383fd8b1449463585114366fcbcac7df3697134bf23abb618"
+      },
+      {
+        "file": "workflows/n8n/chat-benchmark.json",
+        "sha256": "1cb9d4820c820ebe2e4063e0f97b3e80fc302278a8e81e7edaf22a8c6dd855e9"
+      },
+      {
+        "file": "workflows/n8n/chat-hardening-evidence.json",
+        "sha256": "c61004ae3ab4606726dbc01cd22c59d77e17a0e1f2375cc97df209db75ed90d5"
+      },
+      {
+        "file": "scripts/build-chat-workflows.mjs",
+        "sha256": "16c32c7699136e203f927216a64e58047c8254da05598d3176fde62538bda8a9"
+      }
+    ]
+  },
+  "evidence": {
+    "integrated": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+      "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+    },
+    "preflight": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/preflight.json",
+      "sha256": "30a18ffc31d9163b688da9088ffdd22781951a71980b0fa08f6ec10115908f96"
+    },
+    "cases": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/acceptance-cases.json",
+      "sha256": "e4a29bf08305a5071c7889c801593b9d1bc76f8af6bcd779aa98f6c96c86d50d"
+    },
+    "browser": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/enrollment-browser-receipt.json",
+      "sha256": "a0090d5723c9eab6e0a7f43df9ebe58c115b1ff6b0bf12ecc8fa1e49bc94fcc8"
+    },
+    "priorIntegrated": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-22d58ae29067/evidence.json",
+      "sha256": "dc305bd2d24a5a7a59cf36db8ef9e33106eafe48c2f1362e61d81a1cb63a75ea"
+    },
+    "crmTests": {
+      "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+      "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+    },
+    "crmDb": {
+      "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-db-evidence.json",
+      "sha256": "ffb13a756980c2585c42879f4319ca84512ee8de8709a2cbd1d449b789e00d8f"
+    },
+    "classTests": {
+      "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/class-tests.json",
+      "sha256": "6795349821283c96e3988344a482fa224aa89b0f8b26012c6043d3ba85476975"
+    },
+    "regressionParent": {
+      "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/receipt.json",
+      "sha256": "641cf9df3c8b453390f51a5b97b2d5a9e08107b03e29ff7f63e2d15d9a48f27f"
+    },
+    "focused": {
+      "file": ".local/automation/n8n04-focused-e7c23a808725/receipt.json",
+      "sha256": "afa2d4cb7034fe740466005f2a8041432dced4983fc523b16e7c97cc49974f51"
+    },
+    "bridge": {
+      "file": ".local/automation/space-agent-automation-test-53de586d7d66/evidence.json",
+      "sha256": "e45295f60e0a90e27248efc214ab5968cf1be548ebd87db26d3e89b1d318943f"
+    },
+    "command": {
+      "file": ".local/automation/space-agent-n8n04-acceptance-7121aaece460/evidence.json",
+      "sha256": "037bd16996ce2126274244e2e5d72b22e5de7701a7c5676fcd7cba4a15ea131a"
+    },
+    "conversation": {
+      "file": ".local/automation/space-agent-automation-test-74e1cb805271/evidence.json",
+      "sha256": "cf38957151d8dcf5d8f15f9e51b756a3d5780e8c3b2c7cec73afe38218a8c6e0"
+    },
+    "review": {
+      "file": ".local/automation/n8n05-closeout-audit/final-review.json",
+      "sha256": "4dc6123d9624693e8dc53b66bd8ac8fd46a2b3eb84ef2c095d114c9948a68238"
+    },
+    "acceptanceAudit": {
+      "file": ".local/automation/n8n05-closeout-audit/acceptance-audit.json",
+      "sha256": "82e29ddcab2387ff0f75f0f428dc6d2cd642ef60ee31d24b7e5f0e9ec1ae1fd2"
+    },
+    "regressionAudit": {
+      "file": ".local/automation/n8n05-closeout-audit/regression-audit.json",
+      "sha256": "f21fdfe35318734188bf877e6fb28264f9022b12b9f903846b97b6eb4aa7b03d"
+    },
+    "safeBuild": {
+      "file": ".local/automation/n8n05-closeout-audit/safe-portal-build-v2.json",
+      "sha256": "1b379f11899d9f075695c13c8fe5ae59d9f471f47a977fee71bbb1db47dca712"
+    },
+    "preflightSmoke": {
+      "file": ".local/automation/n8n05-closeout-audit/preflight-smoke-result.json",
+      "sha256": "8b0661b3acc8e8255461e1676fdd715c61067dfbf1a900a21042094c326a7ff5"
+    },
+    "isolation": {
+      "file": ".local/automation/n8n05-closeout-audit/final-isolation.json",
+      "sha256": "53624ced25684388aad41f80b126e03ecb6567f6700e3eaf059aaae2c4d09703"
+    },
+    "quality": {
+      "file": ".turbo/runs/3M5ivphEyuTVG6tua0wu8IIubCN.json",
+      "sha256": "bf6042cf985c628148a5a29f8fae1ecdca970ecd0779f5df5a91eaf283464523"
+    },
+    "incident": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-594ee3149d07/batch-interruption.json",
+      "sha256": "cbd4b76f90388aa5a8d207eeb63ca436e347e6f06d923c25b40169e8df238455"
+    },
+    "historicalCheckpoint": {
+      "file": ".local/automation/n8n-completion-5edb68dbbaa2/checkpoint.json",
+      "sha256": "e465020bdb4e677a80761817aa8358c61546b6ee4cdfcafd730b5e6dcb9f8a23"
+    },
+    "closeoutScriptReview": {
+      "file": ".local/automation/n8n05-closeout-audit/closeout-script-review.json",
+      "sha256": "e9887c5d82a6c2698f5d9c6c71d48a9a53c462fa7dd58e3e153167737d6f0b98"
+    }
+  },
+  "canonical": {
+    "status": "IMPLEMENTED_NOT_ACCEPTED",
+    "syntheticOnly": true,
+    "paidFallback": false,
+    "canonicalActive": false,
+    "workflows": [
+      {
+        "workflowId": "WF-04",
+        "version": 1,
+        "id": "N8N05WF04",
+        "file": "workflows/n8n/wf-04.json",
+        "sha256": "5a7251a08b41eca6f09ef1619c3bc9f280873ba06abdba1bad34795ec98d225b",
+        "credential": "WF-04-machine-client",
+        "credentialId": "N8N05WF04Machine",
+        "nodes": 23
+      },
+      {
+        "workflowId": "WF-05",
+        "version": 1,
+        "id": "N8N05WF05",
+        "file": "workflows/n8n/wf-05.json",
+        "sha256": "4faf8a9d6b16b0db49374795cc93645768101dba612e1eb7902bd73a5364f79d",
+        "credential": "WF-05-machine-client",
+        "credentialId": "N8N05WF05Machine",
+        "nodes": 105
+      },
+      {
+        "workflowId": "WF-06",
+        "version": 1,
+        "id": "N8N05WF06",
+        "file": "workflows/n8n/wf-06.json",
+        "sha256": "5ed96aa59bc488ec8fce1f17dee82d3061503c9711e869b41ead443bf94b29fe",
+        "credential": "WF-06-machine-client",
+        "credentialId": "N8N05WF06Machine",
+        "nodes": 78
+      },
+      {
+        "workflowId": "WF-07",
+        "version": 1,
+        "id": "N8N05WF07",
+        "file": "workflows/n8n/wf-07.json",
+        "sha256": "7400725851463e268a4508b3fc79c68eed9e7ba73e1fbebc2571815f72d38cf1",
+        "credential": "WF-07-machine-client",
+        "credentialId": "N8N05WF07Machine",
+        "nodes": 67
+      }
+    ],
+    "bindings": [
+      {
+        "eventType": "crm.requested",
+        "workflowId": "WF-04",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "enrollment.requested",
+        "workflowId": "WF-05",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "payment.matched",
+        "workflowId": "WF-06",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "enrollment.deadline",
+        "workflowId": "WF-07",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "enrollment.cancel_requested",
+        "workflowId": "WF-07",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "payment.review_required",
+        "workflowId": "WF-07",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      },
+      {
+        "eventType": "payment.review_decided",
+        "workflowId": "WF-07",
+        "workflowVersion": 1,
+        "inputSchemaVersion": 1
+      }
+    ]
+  },
+  "schema": {
+    "automation-bridge": [
+      "0001"
+    ],
+    "identity": [
+      "0001",
+      "0002_machine",
+      "0003_channel",
+      "0004_service"
+    ],
+    "org": [
+      "0001"
+    ],
+    "class-schedule": [
+      "0001",
+      "0002_teacher_time",
+      "0003_messaging",
+      "0004_lifecycle",
+      "0005_automation",
+      "0006_enrollment"
+    ],
+    "conversation": [
+      "0001"
+    ],
+    "crm": [
+      "0001",
+      "0002_automation",
+      "0003_erasure_history"
+    ],
+    "enrollment": [
+      "0001"
+    ],
+    "payment": [
+      "0001"
+    ]
+  },
+  "acceptance": [
+    {
+      "wf": "WF04",
+      "requirement": "Identity nguồn Portal/Conversation/Channel; actor/session/branch hiện hành",
+      "source": "Conversation crm-context; CRM requests; IAM",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-WF04-VERIFIED-CRM"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "WF04",
+      "requirement": "Contact/learner/payer và consent/đại diện xác minh; cùng số không auto-merge",
+      "source": "CRM relationships/consents/enrollment-authority",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-WF04-VERIFIED-CRM"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "WF04",
+      "requirement": "Claim race/version/idempotency; partial result giữ mapping",
+      "source": "CRM operations/result/audit/outbox",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-WF04-VERIFIED-CRM"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "WF04",
+      "requirement": "Merge conflict/plan/hash/version/branch/approval độc lập; erasure giữ lineage",
+      "source": "CRM migrations 0002/0003; IAM approval-session",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-WF04-VERIFIED-CRM"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "WF05",
+      "requirement": "Confirmation backend explicit, payload/session/expiry/revoke/consume",
+      "source": "Enrollment confirmations; Portal",
+      "status": "PASS",
+      "caseIds": [
+        "WF05-STRICT-CONFIRMATION-AND-OWNERSHIP",
+        "WF05-PREVIEW-IDEMPOTENCY",
+        "WF05-CONFIRMATION-EXPIRY-AND-REVOKE",
+        "WF05-CONFIRMATION-REPLAY",
+        "N8N-BROWSER-CONFIRMATION"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF05",
+      "requirement": "Snapshot bất biến và quote/terms/class version",
+      "source": "Enrollment migration; Catalog quote",
+      "status": "PASS",
+      "caseIds": [
+        "WF05-QUOTE-CHANGED-BEFORE-CONFIRM",
+        "WF05-QUOTE-CHANGED-OR-CLOSED-AFTER-CONFIRM"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF05",
+      "requirement": "Hold thật; OPEN/lịch/quyền/last-seat/server deadline",
+      "source": "Enrollment/Class scoped API",
+      "status": "PASS",
+      "caseIds": [
+        "API-WF05-HELD",
+        "WF05-CLASS-NOT-OPEN",
+        "WF05-LAST-SEAT-RACE",
+        "WF07-CLASS-DEADLINE-WITHOUT-N8N"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF05",
+      "requirement": "QR sau hold; giá/ref/hạn backend; dedup/lookup",
+      "source": "Payment/Class/Enrollment readback",
+      "status": "PASS",
+      "caseIds": [
+        "WF05-NO-HOLD-NO-QR",
+        "WF05-DUPLICATE-AND-LOOKUP-AFTER-COMMIT",
+        "REVIEW-QR-CANCEL-RACE-CLOSE",
+        "REVIEW-QR-CANCEL-RACE-CREATE"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF05",
+      "requirement": "Kết thúc bền; lookup trước retry/bù trừ; timeout không nhả hold",
+      "source": "n8n WF05; domain operation keys",
+      "status": "PASS",
+      "caseIds": [
+        "RECOVERY-PAYMENT-SERVICE-OUTAGE-AFTER-QR-COMMIT",
+        "N8N-WF05-HOLD-QR",
+        "N8N-TIMEOUT-AFTER-QR-COMMIT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF06",
+      "requirement": "Webhook auth/replay/conflict; append-only ledger/dedup/allocation",
+      "source": "Payment synthetic HMAC + transaction",
+      "status": "PASS",
+      "caseIds": [
+        "WF06-WEBHOOK-AUTH-DEDUP-CONFLICT",
+        "WF06-TWO-ACTUAL-SYNTHETIC-TRANSFERS"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF06",
+      "requirement": "Backend-only matched; đúng matchRef/scope; một entitlement",
+      "source": "Payment authority; IAM live contexts",
+      "status": "PASS",
+      "caseIds": [
+        "API-WF06-CONFIRMED",
+        "AUTH-RESOURCE-AUDIENCE-AND-STRICT-MUTATIONS",
+        "REVIEW-LEGACY-SEAT-ENDPOINTS-CANNOT-BYPASS-PAYMENT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF06",
+      "requirement": "CONFIRMING → Class COMMITTED → CONFIRMED/outbox; crash hội tụ cùng key",
+      "source": "Enrollment/Class commit/lookup",
+      "status": "PASS",
+      "caseIds": [
+        "WF06-COMMIT-CRASH-RECOVERY",
+        "REVIEW-LATE-CONFIRM-CLEARS-RELEASE",
+        "N8N-WF06-MATCH-COMMIT-CONFIRM",
+        "N8N-KILL-AFTER-CLASS-COMMIT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF07",
+      "requirement": "Class tự chặn hết hạn dù n8n tắt; deadline/version dedup",
+      "source": "Class expiry; Enrollment Class deadline readback",
+      "status": "PASS",
+      "caseIds": [
+        "WF07-CLASS-DEADLINE-WITHOUT-N8N",
+        "REVIEW-ORPHAN-HOLD-USES-CLASS-DEADLINE"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF07",
+      "requirement": "Tiền đủ muộn lấy chỗ nguyên tử hoặc NO_SEAT review có owner",
+      "source": "Class late commit; Payment review",
+      "status": "PASS",
+      "caseIds": [
+        "WF07-LATE-FULL-AVAILABLE",
+        "WF07-LATE-FULL-NO-SEAT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF07",
+      "requirement": "Thiếu/thừa/sai mã/hai giao dịch/hủy race; ledger không mất",
+      "source": "Payment ledger/reviews; Enrollment reconcile",
+      "status": "PASS",
+      "caseIds": [
+        "WF06-TWO-ACTUAL-SYNTHETIC-TRANSFERS",
+        "WF07-UNDERPAYMENT",
+        "WF07-OVERPAYMENT",
+        "WF07-WRONG-REFERENCE",
+        "WF07-CANCEL-IDEMPOTENCY",
+        "WF07-MONEY-AFTER-CANCEL",
+        "WF07-CANCEL-VS-MATCHED-MONEY",
+        "REVIEW-EXCESS-REFUND-BEFORE_CONFIRM",
+        "REVIEW-EXCESS-REFUND-AFTER_CONFIRM",
+        "N8N-WF07-CANCEL"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "WF07",
+      "requirement": "Review timeout, một extension; duyệt độc lập/current; refund pending",
+      "source": "Payment proposals/decisions; IAM",
+      "status": "PASS",
+      "caseIds": [
+        "WF07-REVIEW-TIMEOUT",
+        "WF07-REVIEW-EXTEND-ONCE",
+        "WF07-REFUND-PENDING-APPROVAL",
+        "REVIEW-SERVICE-CANNOT-INVENT-CUSTOMER-CANCEL"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "Authority",
+      "requirement": "Không tin actor/branch/customer; revoke/rotate/expiry/dependency",
+      "source": "IAM/auth/domain final checks",
+      "status": "PASS",
+      "caseIds": [
+        "WF06-WEBHOOK-AUTH-DEDUP-CONFLICT",
+        "AUTH-RESOURCE-AUDIENCE-AND-STRICT-MUTATIONS",
+        "AUTH-STALE-LEASE-DONE-OLD-VERSION-REDELIVERY",
+        "AUTH-CONTEXT-REVOKED-AFTER-TOKEN",
+        "AUTH-MACHINE-EXPIRY-ROTATE-REVOKE",
+        "RECOVERY-PAYMENT-SERVICE-OUTAGE-AFTER-QR-COMMIT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "Fencing",
+      "requirement": "Lease/attempt/DONE/workflowVersion/intent/event dedup",
+      "source": "Bridge + source context",
+      "status": "PASS",
+      "caseIds": [
+        "AUTH-STALE-LEASE-DONE-OLD-VERSION-REDELIVERY"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "Consistency",
+      "requirement": "Own-DB state/result/audit/outbox transaction; causation/correlation",
+      "source": "Domain migrations/APIs/contracts",
+      "status": "PASS",
+      "caseIds": [
+        "API-WF06-CONFIRMED",
+        "N8N-TIMEOUT-AFTER-QR-COMMIT",
+        "N8N-KILL-AFTER-CLASS-COMMIT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    },
+    {
+      "wf": "n8n",
+      "requirement": "Import thật; manual + automatic poll/event/recovery; canonical inactive",
+      "source": "WF04–07 canonical/manifest; 7 bindings",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-WF04-VERIFIED-CRM",
+        "N8N-WF05-HOLD-QR",
+        "N8N-WF06-MATCH-COMMIT-CONFIRM",
+        "N8N-WF07-CANCEL",
+        "N8N-AUTOMATIC-TRIGGERS",
+        "N8N-TIMEOUT-AFTER-QR-COMMIT",
+        "N8N-KILL-AFTER-CLASS-COMMIT"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "Portal",
+      "requirement": "Checkbox explicit; QR/trạng thái bền/reload; không xác nhận tiền/chỗ sớm",
+      "source": "Gateway/BFF; enrollments screen; clean safe build",
+      "status": "PASS",
+      "caseIds": [
+        "N8N-BROWSER-CONFIRMATION"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        }
+      ]
+    },
+    {
+      "wf": "Preservation",
+      "requirement": "Affected regressions, source/review, isolation/ACL/retention",
+      "source": "Baseline + audit + fresh runtime",
+      "status": "PASS",
+      "caseIds": [
+        "SETUP"
+      ],
+      "evidence": [
+        {
+          "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+          "sha256": "18bca3c43ff638bbb336217211381c988dfaf93a6b73d42bd46e2592e093af88"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n05-regression-8b4b0d8b5b1e/crm-tests.json",
+          "sha256": "d2f9e463625321f1ba73f215f16b3b1ad63d5e4c73637ef8ff79c02c39be6639"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "SETUP",
+      "status": "PASS",
+      "expected": "Real IAM/CRM/Enrollment/Payment start against their own migrated PostgreSQL DBs",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/0/actual",
+        "sha256": "4516dcf33f9334c9315f4cca7042e30eb3e4d2b9b3e0c59126848eed38ea1ecf"
+      }
+    },
+    {
+      "id": "API-WF05-HELD",
+      "status": "PASS",
+      "expected": "One backend confirmation → immutable Enrollment → one hold → one synthetic QR",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/1/actual",
+        "sha256": "1ab944ac0187b6dd96be7b073fe89accfd73de113b7105a1bceccb5d9eca6612"
+      }
+    },
+    {
+      "id": "API-WF06-CONFIRMED",
+      "status": "PASS",
+      "expected": "Authenticated ledger match → Class COMMITTED → Enrollment CONFIRMED and one confirmed outbox",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/2/actual",
+        "sha256": "28e4b1c5ff2d0a44adb8c5cc71a239d1be0969575b7d73e61f903709e25e45d0"
+      }
+    },
+    {
+      "id": "WF05-STRICT-CONFIRMATION-AND-OWNERSHIP",
+      "status": "PASS",
+      "expected": "Only exact backend selection/explicit acceptance; forged actor/branch/amount rejected and other customers cannot read confirmation",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/3/actual",
+        "sha256": "ea2495cd641192cc3911896d25a0bd7db4d17c19c2fc4fdb373286142e353479"
+      }
+    },
+    {
+      "id": "WF05-PREVIEW-IDEMPOTENCY",
+      "status": "PASS",
+      "expected": "Concurrent identical preview has one confirmation; changed payload with same operation key is rejected",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/4/actual",
+        "sha256": "2dba89e32b25981d5f9a776f176d9737b853930309d2af830e7f22025dd67948"
+      }
+    },
+    {
+      "id": "WF05-CONFIRMATION-EXPIRY-AND-REVOKE",
+      "status": "PASS",
+      "expected": "Expired draft and revoked published confirmation produce no order, hold or QR",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/5/actual",
+        "sha256": "b17cd4ea1f0fd5bce13efd3d050d729b897bbd1082547c79982163dba847fb4b"
+      }
+    },
+    {
+      "id": "WF05-CONFIRMATION-REPLAY",
+      "status": "PASS",
+      "expected": "Concurrent confirmation publishes one source event and create replay consumes one confirmation once",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/6/actual",
+        "sha256": "3994520e51edbd764dd3a8a1b4eaca37c1e7671ee879d7da289eb4efeb6427bf"
+      }
+    },
+    {
+      "id": "WF05-QUOTE-CHANGED-BEFORE-CONFIRM",
+      "status": "PASS",
+      "expected": "Catalog quote/policy change requires a new explicit confirmation; old snapshot stays unchanged",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/7/actual",
+        "sha256": "ccff20c712f3c6ef6cd7f70939198e560e4fe3591ac6bcfdf257a082b72430cd"
+      }
+    },
+    {
+      "id": "WF05-QUOTE-CHANGED-OR-CLOSED-AFTER-CONFIRM",
+      "status": "PASS",
+      "expected": "Changed or closed Catalog offer creates NEEDS_CONFIRMATION without hold/QR; persisted snapshots are immutable",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/8/actual",
+        "sha256": "99f7e58270ba71d1a42ed4e96cbffa6b14d174a918efb22283a48627029bedc7"
+      }
+    },
+    {
+      "id": "WF05-CLASS-NOT-OPEN",
+      "status": "PASS",
+      "expected": "A PLANNED class cannot produce a confirmation or take money",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/9/actual",
+        "sha256": "d990675e81ffc1f85f762156af65c32f8a774360554d574570ffb11e5dbb2042"
+      }
+    },
+    {
+      "id": "WF05-NO-HOLD-NO-QR",
+      "status": "PASS",
+      "expected": "Backend rejects QR before a real hold and rejects forged hold payload fields",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/10/actual",
+        "sha256": "1b49f5c2a7b7c7577e8d34525dc88aac55cf10af3bd9e0adcea6984e1379e9ef"
+      }
+    },
+    {
+      "id": "WF05-LAST-SEAT-RACE",
+      "status": "PASS",
+      "expected": "Two real enrollments race for one seat: exactly one hold/QR; losing enrollment has neither",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/11/actual",
+        "sha256": "ab4b46a8192e6fa04a253793fd24ca2c21d5cb49953a5748c8b4223b78a8a764"
+      }
+    },
+    {
+      "id": "WF05-DUPLICATE-AND-LOOKUP-AFTER-COMMIT",
+      "status": "PASS",
+      "expected": "A committed hold/QR is looked up before replay; one hold, QR and operation result despite omitted client checkpoint",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/12/actual",
+        "sha256": "0722803f9ec0c31cd2e57fc8338a2026aa2ee88790c54b856b0133a223fc304e"
+      }
+    },
+    {
+      "id": "WF06-WEBHOOK-AUTH-DEDUP-CONFLICT",
+      "status": "PASS",
+      "expected": "Signed synthetic webhook only; replay is one immutable ledger/match/allocation and conflicting transaction payload is rejected",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/13/actual",
+        "sha256": "4e55f0f44353d816898d6d976203159dd3df55ff94b58cc529ee4acb70c2bcb4"
+      }
+    },
+    {
+      "id": "WF06-COMMIT-CRASH-RECOVERY",
+      "status": "PASS",
+      "expected": "No confirmation before Class commit; expired worker cannot write; reclaim looks up same committed seat and converges once",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/14/actual",
+        "sha256": "c7ff537f04418fbb7dffd2bb08f29caf44b4420d0b0d230c4a7617d85c19cda6"
+      }
+    },
+    {
+      "id": "WF06-TWO-ACTUAL-SYNTHETIC-TRANSFERS",
+      "status": "PASS",
+      "expected": "Different transaction IDs remain two ledger entries; only one tuition allocation/seat, excess has an owned review",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/15/actual",
+        "sha256": "f5e75730fa75f086912b36b5e9997180a8660353e82f7c31e32abbc2f978b97e"
+      }
+    },
+    {
+      "id": "WF07-UNDERPAYMENT",
+      "status": "PASS",
+      "expected": "Amount deviation is durable owned review, never automatic match/confirmation; hold expires without losing money",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/16/actual",
+        "sha256": "a3f5c640744bc996c37d448d98f43314b247d931f44c82409582e3beecb1213c"
+      }
+    },
+    {
+      "id": "WF07-OVERPAYMENT",
+      "status": "PASS",
+      "expected": "Amount deviation is durable owned review, never automatic match/confirmation; hold expires without losing money",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/17/actual",
+        "sha256": "9670dacaa8e255479837fc36512d8cbe8a8f519d6068168f46f07ef706b63ee0"
+      }
+    },
+    {
+      "id": "WF07-WRONG-REFERENCE",
+      "status": "PASS",
+      "expected": "Equal amount with wrong reference remains unallocated and owned; it cannot settle any enrollment",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/18/actual",
+        "sha256": "01531360f5c19c99ee3c31495b032b03a713525346bcb49e4f19f6a8fd93331d"
+      }
+    },
+    {
+      "id": "WF07-CLASS-DEADLINE-WITHOUT-N8N",
+      "status": "PASS",
+      "expected": "With workflow workers inactive, Class server expiry releases capacity; later deduplicated deadline processing closes original QR",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/19/actual",
+        "sha256": "78c7e5dd62bbd6a92fd6065cff99ed525b397c4a4c11a826d940e783d00097a7"
+      }
+    },
+    {
+      "id": "WF07-LATE-FULL-AVAILABLE",
+      "status": "PASS",
+      "expected": "Full money after expiry can reacquire the original seat atomically when capacity remains; one confirmation only",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/20/actual",
+        "sha256": "3637be7c17bec5c0a156073283248d2bfea75e3b779b9afd7fa00043674b1503"
+      }
+    },
+    {
+      "id": "WF07-LATE-FULL-NO-SEAT",
+      "status": "PASS",
+      "expected": "Late full payment cannot steal another enrollment's final seat; durable NO_SEAT review has owner/deadline and no early confirmation",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/21/actual",
+        "sha256": "79c9e1873ba194919fa758b95cea9be3ea8b9d501e0300c5b9dc88b715923e15"
+      }
+    },
+    {
+      "id": "WF07-REVIEW-TIMEOUT",
+      "status": "PASS",
+      "expected": "Review timeout escalates to its owner, releases expired hold through reconciliation, and preserves every ledger entry",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/22/actual",
+        "sha256": "f3bd4be1459dc0dea9a31f02274480b084e6ee14fcb4ffbf83160e0754c403ca"
+      }
+    },
+    {
+      "id": "WF07-REVIEW-EXTEND-ONCE",
+      "status": "PASS",
+      "expected": "Independent approved review extension is at most 24h once and never extends Class hold or QR",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/23/actual",
+        "sha256": "3299ef2ce378aba3dc5d102a5e59c3a9bb908a043a2d9b43992d80d272265311"
+      }
+    },
+    {
+      "id": "WF07-REFUND-PENDING-APPROVAL",
+      "status": "PASS",
+      "expected": "Owned refund proposal needs independent current approval; result remains REFUND_PENDING with ledger intact and no real refund",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/24/actual",
+        "sha256": "60b691679f8f7d769e027f041acac1602bd427d4c62ab1a77f87243f1b512b5b"
+      }
+    },
+    {
+      "id": "WF07-CANCEL-IDEMPOTENCY",
+      "status": "PASS",
+      "expected": "Unpaid cancellation uses one command/event and closes QR/releases hold exactly once; changed operation payload rejected",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/25/actual",
+        "sha256": "080676a482fde013771db1e82d9de2aea98dd13ce15c2877f816ddc0acd688ad"
+      }
+    },
+    {
+      "id": "WF07-MONEY-AFTER-CANCEL",
+      "status": "PASS",
+      "expected": "Money after completed cancellation is still ledgered and owned for review; no match, seat or customer confirmation is created",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/26/actual",
+        "sha256": "7eff111cd5d0d3976e9e822f79973fb73018a64b1b2ceb564515bf819f5b60d7"
+      }
+    },
+    {
+      "id": "WF07-CANCEL-VS-MATCHED-MONEY",
+      "status": "PASS",
+      "expected": "Cancellation and money race rechecks durable match: paid confirmation wins safely without releasing committed entitlement",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/27/actual",
+        "sha256": "3d0ea6d020dc463d6300d9d77f471b90e5622df8845862051b1e6b6bec1917ec"
+      }
+    },
+    {
+      "id": "AUTH-RESOURCE-AUDIENCE-AND-STRICT-MUTATIONS",
+      "status": "PASS",
+      "expected": "Job-scoped domain authorization rejects another customer, human token, wrong audience and forged body fields",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/28/actual",
+        "sha256": "a065e99ec06ac4c6bf41094f7757e7794d68437f5d9cc72758263ad4eaf93c24"
+      }
+    },
+    {
+      "id": "AUTH-STALE-LEASE-DONE-OLD-VERSION-REDELIVERY",
+      "status": "PASS",
+      "expected": "Expired worker and DONE job cannot write; reclaim keeps operation identity and broker replay never creates a second job/version",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/29/actual",
+        "sha256": "8e6b7e594a418709cef10621914b1a6b0165bee709002091f3d642f0a8855159"
+      }
+    },
+    {
+      "id": "AUTH-CONTEXT-REVOKED-AFTER-TOKEN",
+      "status": "PASS",
+      "expected": "Revocation after command token issuance prevents enrollment creation with no money/seat effects",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/30/actual",
+        "sha256": "4adc4319507568705609a80104454201fbf715bd3f059d2a3699f5561d6c6162"
+      }
+    },
+    {
+      "id": "AUTH-MACHINE-EXPIRY-ROTATE-REVOKE",
+      "status": "PASS",
+      "expected": "Fresh test principal expiry, rotation and revocation invalidate old credentials without touching the workflow worker",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/31/actual",
+        "sha256": "184b0fb43c64f489f314a3a057acac7c1e2069cb022c12d83c93881a58f548d5"
+      }
+    },
+    {
+      "id": "RECOVERY-PAYMENT-SERVICE-OUTAGE-AFTER-QR-COMMIT",
+      "status": "PASS",
+      "expected": "Payment process outage after durable QR creation preserves hold/QR; recovery looks up same request before completing enrollment checkpoint",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/32/actual",
+        "sha256": "4c7089aa31c4f9261cd2a07cca757e012506f4e8d3f91f9afb2de6d056f79441"
+      }
+    },
+    {
+      "id": "REVIEW-QR-CANCEL-RACE-CLOSE",
+      "status": "PASS",
+      "expected": "Real concurrent Payment close/create serialize under one resource lock; a completed cancellation has no active QR or held seat",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/33/actual",
+        "sha256": "c64ad9b0ecf30e0604a38652ec94a436e76c74e5fa5d089c1e09de9ae3850b81"
+      }
+    },
+    {
+      "id": "REVIEW-QR-CANCEL-RACE-CREATE",
+      "status": "PASS",
+      "expected": "Real concurrent Payment close/create serialize under one resource lock; a completed cancellation has no active QR or held seat",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/34/actual",
+        "sha256": "00ec7cc8f85e5296eab585bc608c60fefdd4a69247aafd6020761c556cdf848f"
+      }
+    },
+    {
+      "id": "REVIEW-SERVICE-CANNOT-INVENT-CUSTOMER-CANCEL",
+      "status": "PASS",
+      "expected": "A valid underpaid service review job cannot claim customer cancellation or release a live hold",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/35/actual",
+        "sha256": "b7d316147893acea643be344a1ba6f1ad6010fa1695a6aef2212e6f45bf558bd"
+      }
+    },
+    {
+      "id": "REVIEW-EXCESS-REFUND-BEFORE_CONFIRM",
+      "status": "PASS",
+      "expected": "Independent refund of an additional ledger entry preserves original tuition allocation and exactly one committed entitlement",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/36/actual",
+        "sha256": "4d1c082c6d41ce805483c74265fdd24a3f8e1c430ef5b26bda190cf0504d8e23"
+      }
+    },
+    {
+      "id": "REVIEW-EXCESS-REFUND-AFTER_CONFIRM",
+      "status": "PASS",
+      "expected": "Independent refund of an additional ledger entry preserves original tuition allocation and exactly one committed entitlement",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/37/actual",
+        "sha256": "71f869c2d58e3adb32a40a7c420565725c95f5b77c59ae4aec737be368378eb1"
+      }
+    },
+    {
+      "id": "REVIEW-LATE-CONFIRM-CLEARS-RELEASE",
+      "status": "PASS",
+      "expected": "A cached expiry operation cannot revoke a later paid commitment; fresh Enrollment state clears release permission",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/38/actual",
+        "sha256": "9716ff24fa5dd5dcba8969a4fc3d6b37fb5b4c2b1fc348daff6cb939c8aa237c"
+      }
+    },
+    {
+      "id": "REVIEW-LEGACY-SEAT-ENDPOINTS-CANNOT-BYPASS-PAYMENT",
+      "status": "PASS",
+      "expected": "Real Enrollment holds cannot be cancelled directly or bypassed through Class cancellation",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/39/actual",
+        "sha256": "6e73c00fd17bc265216f9ad6acb6a652731119f6d7ea96493c211a907375b1c7"
+      }
+    },
+    {
+      "id": "REVIEW-ORPHAN-HOLD-USES-CLASS-DEADLINE",
+      "status": "PASS",
+      "expected": "An old PENDING_HOLD checkpoint cannot expire a newer live Class hold; system recovery first reads Class server truth",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/40/actual",
+        "sha256": "48ac135548318258646fb060962cbfcbae5c0728d65d5b6125ecb3671d2bc9f3"
+      }
+    },
+    {
+      "id": "N8N-WF04-VERIFIED-CRM",
+      "status": "PASS",
+      "expected": "Imported n8n consumes backend CRM source request through live IAM/Bridge, writes one lead/result/audit/outbox",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/41/actual",
+        "sha256": "fdbbb5f30c246c6aa82d483de334f7bc2218bd2254c93ad614e673c69266fd36"
+      }
+    },
+    {
+      "id": "N8N-WF05-HOLD-QR",
+      "status": "PASS",
+      "expected": "Imported n8n creates one real Enrollment/hold/QR and finishes without confirming money or seat",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/42/actual",
+        "sha256": "7a523e38152a7804c7c14a530d0c2e5550ff5258e65feb4b7be8b1fd841c348c"
+      }
+    },
+    {
+      "id": "N8N-WF06-MATCH-COMMIT-CONFIRM",
+      "status": "PASS",
+      "expected": "Real signed synthetic receipt triggers n8n to commit the exact seat before one CONFIRMED event",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/43/actual",
+        "sha256": "946ab48865def48a3a7d355b241d8cff63f0dc701dc56b007607a2557ccc1b1c"
+      }
+    },
+    {
+      "id": "N8N-WF07-CANCEL",
+      "status": "PASS",
+      "expected": "Real cancellation source is consumed by n8n; money is checked before request closure and seat release",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/44/actual",
+        "sha256": "b816fd6f9ac575e489b78dd941e641a68e3181b7cb203f87cff199c81b830137"
+      }
+    },
+    {
+      "id": "N8N-AUTOMATIC-TRIGGERS",
+      "status": "PASS",
+      "expected": "Published isolated copies poll backend jobs and process source events automatically; canonical files remain inactive",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/45/actual",
+        "sha256": "d452f1101ed1ce83700128bb896113d7c15182febc4a0409f817db19cea0b218"
+      }
+    },
+    {
+      "id": "N8N-BROWSER-CONFIRMATION",
+      "status": "PASS",
+      "expected": "Real Portal uses explicit confirmation and reads durable held/QR state after reload at1440/768/390px",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/46/actual",
+        "sha256": "966f35f7beab991f148d4ad61f18999242e680bf97373a744f7e4d153dd8d48c"
+      }
+    },
+    {
+      "id": "N8N-TIMEOUT-AFTER-QR-COMMIT",
+      "status": "PASS",
+      "expected": "A real HTTP response timeout after Payment commit schedules lookup/recovery; it never releases the valid hold or creates a second QR",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/47/actual",
+        "sha256": "1af7688c6e19194f50dbc0353d578b52ac7401f62ed01bb2b5bb79c282110641"
+      }
+    },
+    {
+      "id": "N8N-KILL-AFTER-CLASS-COMMIT",
+      "status": "PASS",
+      "expected": "Killing only test n8n after Class commits leaves no early confirmation; original job/operation recovers the same seat once",
+      "actual": {
+        "file": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/evidence.json",
+        "jsonPointer": "/cases/48/actual",
+        "sha256": "6e36a8d7e8b10d34cf90dc4bd3584fb56dff0630565c3b83d84ec1074a443251"
+      }
+    }
+  ],
+  "n8nExecutions": [
+    {
+      "workflowId": "WF-04",
+      "jobId": "27b8ac8d-d022-49da-9d5f-254fb272bca6",
+      "eventId": "5db19e75-67f2-4952-b11b-0d5e873d976e",
+      "correlationId": "12edea6b-5a4e-444d-b910-9d4d862a903e",
+      "executionId": "1",
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-04-manual-5-execution-private.json",
+      "traceSha256": "62e238d1e4bbaecffc4ceea1d2c5ea984bac0c7257b5068aa14e381edc7f2110",
+      "operationKeys": [
+        "automation:27b8ac8d-d022-49da-9d5f-254fb272bca6:crm.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-05",
+      "jobId": "67f2c333-d4d1-4f58-9fca-2507881726bd",
+      "eventId": "3aa6f1bf-afc9-463d-8f10-6e89cfb46748",
+      "correlationId": "a3e441fa-ce5b-43f6-b1c9-4f1d69f98307",
+      "executionId": "2",
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-05-manual-6-execution-private.json",
+      "traceSha256": "3cc639a94730b56c88d28c6d17151b8f0b2564ee25d9e2e336523cccb982213a",
+      "operationKeys": [
+        "automation:67f2c333-d4d1-4f58-9fca-2507881726bd:classes.enroll",
+        "automation:67f2c333-d4d1-4f58-9fca-2507881726bd:payment.execute",
+        "automation:67f2c333-d4d1-4f58-9fca-2507881726bd:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-06",
+      "jobId": "2e19ee14-bbc2-4a9b-a1cb-4fb6c4279392",
+      "eventId": "e4ffcfd0-bcb8-4479-a951-6b01ab4cea25",
+      "correlationId": "a3e441fa-ce5b-43f6-b1c9-4f1d69f98307",
+      "executionId": "3",
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-06-manual-7-execution-private.json",
+      "traceSha256": "a4fa25f3c79ace158b532a2e570dec12fcf8cecc8289fc8b4b3ba6db783cfb09",
+      "operationKeys": [
+        "automation:2e19ee14-bbc2-4a9b-a1cb-4fb6c4279392:classes.enroll",
+        "automation:2e19ee14-bbc2-4a9b-a1cb-4fb6c4279392:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-05",
+      "jobId": "71edfad0-4ab6-4773-8729-1fd04a114705",
+      "eventId": "b7362f4a-83d6-4673-b11f-6a0d34672a47",
+      "correlationId": "eabc190c-454b-482f-a9d1-24547798abd9",
+      "executionId": "4",
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-05-manual-8-execution-private.json",
+      "traceSha256": "aefed46496d6b048c09347b0c5bf6200ffe28888a9cbd2f243a47b46061b55fd",
+      "operationKeys": [
+        "automation:71edfad0-4ab6-4773-8729-1fd04a114705:classes.enroll",
+        "automation:71edfad0-4ab6-4773-8729-1fd04a114705:payment.execute",
+        "automation:71edfad0-4ab6-4773-8729-1fd04a114705:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-07",
+      "jobId": "c73373f6-429a-4ec1-af54-50a8cea4b282",
+      "eventId": "abda2492-9b7c-41d1-a21e-ee85c2aaeb65",
+      "correlationId": "eabc190c-454b-482f-a9d1-24547798abd9",
+      "executionId": "5",
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-07-manual-9-execution-private.json",
+      "traceSha256": "758e2055123402415903edd2773cd6f9f4d9443b2997b6d995a4f197853bd113",
+      "operationKeys": [
+        "automation:c73373f6-429a-4ec1-af54-50a8cea4b282:payment.execute",
+        "automation:c73373f6-429a-4ec1-af54-50a8cea4b282:enrollment.execute",
+        "automation:c73373f6-429a-4ec1-af54-50a8cea4b282:classes.enroll"
+      ]
+    },
+    {
+      "workflowId": "WF-05",
+      "jobId": "e0432aa3-6149-4072-b63a-e3d1d7b25704",
+      "eventId": "3cf1252d-5f73-4486-a2ee-2d835d7e5df9",
+      "executionId": 11,
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-05-automatic-14-execution-private.json",
+      "traceSha256": "b6cdffc8cecc82e4895e286a8ae8bef52fba74370a8c4bd6aa4587df525fffd5",
+      "operationKeys": [
+        "automation:e0432aa3-6149-4072-b63a-e3d1d7b25704:classes.enroll",
+        "automation:e0432aa3-6149-4072-b63a-e3d1d7b25704:payment.execute",
+        "automation:e0432aa3-6149-4072-b63a-e3d1d7b25704:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-06",
+      "jobId": "30712ae9-d44f-4281-bbb1-b91509798746",
+      "eventId": "497383f8-429d-44b6-937a-67acf7cc6452",
+      "executionId": 20,
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-06-automatic-15-execution-private.json",
+      "traceSha256": "ac99baad2fed8748c11dd0b548b15c277ec2c01c8aa15f95898231db11d20491",
+      "operationKeys": [
+        "automation:30712ae9-d44f-4281-bbb1-b91509798746:classes.enroll",
+        "automation:30712ae9-d44f-4281-bbb1-b91509798746:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-05",
+      "jobId": "e15737d4-3a8c-4da5-82d5-455ab35af310",
+      "eventId": "c7aca46c-9258-4f57-9814-117aa5b0d613",
+      "executionId": 68,
+      "attempt": 2,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-05-automatic-20-execution-private.json",
+      "traceSha256": "63b610b721d77984cfd2c7aa419b93cd25fc3af61aa368d385060c054a32d86b",
+      "operationKeys": [
+        "automation:e15737d4-3a8c-4da5-82d5-455ab35af310:classes.enroll",
+        "automation:e15737d4-3a8c-4da5-82d5-455ab35af310:payment.execute",
+        "automation:e15737d4-3a8c-4da5-82d5-455ab35af310:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-06",
+      "jobId": "7a7aa6e6-7702-4228-bf09-353795574bcc",
+      "eventId": "ad49e350-aa37-4d97-a0d0-635f5dfa0cdf",
+      "executionId": 73,
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-06-automatic-21-execution-private.json",
+      "traceSha256": "d3feaf2caea2c0cff5eb28c8c685bf84ac4009195d1971a8d51b2468126a4aa3",
+      "operationKeys": [
+        "automation:7a7aa6e6-7702-4228-bf09-353795574bcc:classes.enroll",
+        "automation:7a7aa6e6-7702-4228-bf09-353795574bcc:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-05",
+      "jobId": "c4a82fdf-575a-4f23-b859-175ee1fe3e86",
+      "eventId": "a012c45e-d25c-40e5-b68e-b238b2ae9da4",
+      "executionId": 76,
+      "attempt": 1,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-05-automatic-24-execution-private.json",
+      "traceSha256": "2b7e3a89989f0c1279fd7c32d309979d5954f5c9c394ec7f3df9e499fc6aa104",
+      "operationKeys": [
+        "automation:c4a82fdf-575a-4f23-b859-175ee1fe3e86:classes.enroll",
+        "automation:c4a82fdf-575a-4f23-b859-175ee1fe3e86:payment.execute",
+        "automation:c4a82fdf-575a-4f23-b859-175ee1fe3e86:enrollment.execute"
+      ]
+    },
+    {
+      "workflowId": "WF-06",
+      "jobId": "9b9fc5ec-0afd-48a6-b0c8-af1cbbb6eb7a",
+      "eventId": "d10ab7bb-0e30-4f67-bba5-13db8e79ab19",
+      "executionId": 113,
+      "attempt": 2,
+      "trace": ".local/automation/space-agent-n8n05-acceptance-2b18def65d0e/WF-06-automatic-27-execution-private.json",
+      "traceSha256": "f083f5c8403be7d82cd1b5fb32bfd6d8e5c29e0f6f5fced34a3bb35b19fd0a89",
+      "operationKeys": [
+        "automation:9b9fc5ec-0afd-48a6-b0c8-af1cbbb6eb7a:classes.enroll",
+        "automation:9b9fc5ec-0afd-48a6-b0c8-af1cbbb6eb7a:enrollment.execute"
+      ]
+    }
+  ],
+  "verification": {
+    "executedNow": {
+      "integrated": {
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0
+      },
+      "browser": {
+        "status": "PASS",
+        "widths": [
+          1440,
+          768,
+          390
+        ]
+      },
+      "portalBuild": "PASS",
+      "preflightSmoke": "PASS",
+      "modelInference": 0
+    },
+    "inherited": {
+      "crm": 22,
+      "class": 19,
+      "bridgeIam": {
+        "receipt": {
+          "file": ".local/automation/space-agent-automation-test-53de586d7d66/evidence.json",
+          "sha256": "e45295f60e0a90e27248efc214ab5968cf1be548ebd87db26d3e89b1d318943f"
+        },
+        "sourceIntegrity": {
+          "total": 24,
+          "matched": 24,
+          "mismatches": []
+        },
+        "integration": {
+          "passed": 11,
+          "failed": 0,
+          "tests": [
+            {
+              "name": "deduplicates redelivery and rolls back both inbox/job on failed creation; pins deployed version",
+              "status": "passed"
+            },
+            {
+              "name": "two workers racing one job get exactly one lease; owner and version fence writes",
+              "status": "passed"
+            },
+            {
+              "name": "limits active leases to two across concurrent workers",
+              "status": "passed"
+            },
+            {
+              "name": "expired worker cannot checkpoint/result, even before recovery; new attempt rejects old token",
+              "status": "passed"
+            },
+            {
+              "name": "SIGKILL/restart preserves checkpoint/key and recovers expired lease from durable DB",
+              "status": "passed"
+            },
+            {
+              "name": "early durable event wakes WAITING once; wrong entity/correlation cannot wake; deadline survives restart",
+              "status": "passed"
+            },
+            {
+              "name": "event concurrent with WAITING registration is never lost",
+              "status": "passed"
+            },
+            {
+              "name": "honors Retry-After, caps technical failures at eight, and retains operation keys through retries",
+              "status": "passed"
+            },
+            {
+              "name": "replay uses live IAM role/session, mandatory reason and CAS; preserves ID/version/key with audit",
+              "status": "passed"
+            },
+            {
+              "name": "rejects missing/wrong audience/scope/workflow/expired machine tokens and public Gateway forwarding",
+              "status": "passed"
+            },
+            {
+              "name": "runtime DB role cannot read IAM/n8n DB or create databases",
+              "status": "passed"
+            }
+          ]
+        },
+        "machine": {
+          "passed": 13,
+          "failed": 0,
+          "tests": [
+            {
+              "name": "IAM issues real bounded tokens; correct job/audience/scope reads Catalog and Class",
+              "status": "passed"
+            },
+            {
+              "name": "rejects signature/audience/scope/expiry, raw domain token and scope escalation",
+              "status": "passed"
+            },
+            {
+              "name": "accepts one-second issuance jitter while keeping absolute expiry and future-iat limits",
+              "status": "passed"
+            },
+            {
+              "name": "rejects self-declared actor/role/branch/context and uncheckpointed operations",
+              "status": "passed"
+            },
+            {
+              "name": "binds immutable context to event, workflow version, entity and input refs",
+              "status": "passed"
+            },
+            {
+              "name": "checks current branch/teacher ownership in Class and restricts director delegation to one branch",
+              "status": "passed"
+            },
+            {
+              "name": "fences authorization issuance and consumption after expiry, reclaim and completion",
+              "status": "passed"
+            },
+            {
+              "name": "enforces machine grants and rotates credentials without retaining old tokens",
+              "status": "passed"
+            },
+            {
+              "name": "fails closed if IAM or the configured lease authority is unavailable",
+              "status": "passed"
+            },
+            {
+              "name": "revokes context, account permission and initiating session on the next request",
+              "status": "passed"
+            },
+            {
+              "name": "honors existing IAM access/status administration revocation without an Org bypass",
+              "status": "passed"
+            },
+            {
+              "name": "rejects inactive principals immediately for Bridge, minting and already-issued domain tokens",
+              "status": "passed"
+            },
+            {
+              "name": "keeps missing approvals, business writes, unconfigured authority and public internal routes closed",
+              "status": "passed"
+            }
+          ]
+        }
+      },
+      "command": {
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0
+      },
+      "n8n04Native": {
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0
+      },
+      "conversation": {
+        "outerStatus": "PASS",
+        "chatStatus": "PARTIAL",
+        "backendGroups": 17,
+        "browser": {
+          "status": "PASS",
+          "widths": [
+            1440,
+            768,
+            390
+          ],
+          "checks": 5,
+          "realModelAnswerRendered": false
+        },
+        "faults": 4,
+        "modelBenchmark": {
+          "status": "BLOCKED",
+          "reason": "No supplied free-model credential",
+          "executed": 0,
+          "passed": 0
+        }
+      },
+      "quality": {
+        "tasks": 65,
+        "cached": 65,
+        "newlyExecuted": 0,
+        "nonEnvInputsChecked": 245,
+        "skippedEnvInputs": [
+          "apps/admin-portal/.env.example",
+          "apps/admin-portal/.env.local",
+          "services/automation-bridge/.env.example",
+          "services/catalog/.env",
+          "services/catalog/.env.example",
+          "services/class-schedule/.env",
+          "services/class-schedule/.env.example",
+          "services/conversation/.env.example",
+          "services/crm/.env.example",
+          "services/enrollment/.env.example",
+          "services/gateway/.env",
+          "services/gateway/.env.example",
+          "services/identity/.env",
+          "services/identity/.env.example",
+          "services/org/.env",
+          "services/org/.env.example",
+          "services/payment/.env.example"
+        ],
+        "limitation": "Historical cached result; personal-env hashes not reread; Portal safe build executed anew"
+      }
+    }
+  },
+  "review": {
+    "findings": [],
+    "verdict": "Ship for synthetic local scope subject to root verification of final runtime/build/browser, affected regressions, isolation and consistent closeout evidence. This review is not an acceptance decision.",
+    "ref": {
+      "file": ".local/automation/n8n05-closeout-audit/final-review.json",
+      "sha256": "4dc6123d9624693e8dc53b66bd8ac8fd46a2b3eb84ef2c095d114c9948a68238"
+    }
+  },
+  "isolation": {
+    "file": ".local/automation/n8n05-closeout-audit/final-isolation.json",
+    "sha256": "53624ced25684388aad41f80b126e03ecb6567f6700e3eaf059aaae2c4d09703"
+  },
+  "externalGate": {
+    "status": "BLOCKED",
+    "localBlocked": false,
+    "owner": "User/provider account owner",
+    "firstSeen": "2026-11-14",
+    "missing": [
+      "Specified provider/bank account and credentials",
+      "Provider approval",
+      "Separate authorization for live/production rollout"
+    ],
+    "unblock": "Separate authorized provider/live task; no automatic continuation",
+    "schedulerInstalled": false
+  },
+  "privacyIncident": {
+    "occurred": true,
+    "ref": {
+      "file": ".local/automation/space-agent-n8n05-acceptance-594ee3149d07/batch-interruption.json",
+      "sha256": "cbd4b76f90388aa5a8d207eeb63ca436e347e6f06d923c25b40169e8df238455"
+    },
+    "description": "Historical Next development build automatically loaded personal .env.local; contents were not inspected/printed. Subsequent clean build/start used preload and explicit env allowlist."
+  },
+  "limits": [
+    "Synthetic QR/webhook is not bank/SePay acceptance",
+    "REFUND_PENDING is pending, not completed refund",
+    "No manual collection, real money, production, WF08–12 or downstream delivery acceptance",
+    "Historical model corpus retained; no new model benchmark",
+    "Historical FAIL/SKIP/UNKNOWN receipts remain unchanged; original integrated decision remains NOT_ACCEPTED",
+    "Original previous build retains its pre-existing ACL under ignored app/out; byte-identical snapshot is also preserved privately"
+  ],
+  "schedulerInstalled": false,
+  "canonicalMetadataNote": "Manifest IMPLEMENTED_NOT_ACCEPTED is preserved generator metadata predating acceptance. This index.decision and the new checkpoint own the post-verification decision; canonical graph/hash remains unchanged."
+}

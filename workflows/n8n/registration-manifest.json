@@ -9,7 +9,7 @@
       "version": 1,
       "id": "N8N05WF04",
       "file": "workflows/n8n/wf-04.json",
-      "sha256": "02e24ec18aafe0f400a276adcc28d0f970917eaf46c2437f2fbd6296a80646f4",
+      "sha256": "5a7251a08b41eca6f09ef1619c3bc9f280873ba06abdba1bad34795ec98d225b",
       "credential": "WF-04-machine-client",
       "credentialId": "N8N05WF04Machine",
       "nodes": 23
@@ -19,7 +19,7 @@
       "version": 1,
       "id": "N8N05WF05",
       "file": "workflows/n8n/wf-05.json",
-      "sha256": "16defca02fbc409cddb590232b8a1a3930ffadd27c417340633dc9a19cb4a664",
+      "sha256": "4faf8a9d6b16b0db49374795cc93645768101dba612e1eb7902bd73a5364f79d",
       "credential": "WF-05-machine-client",
       "credentialId": "N8N05WF05Machine",
       "nodes": 105
@@ -29,7 +29,7 @@
       "version": 1,
       "id": "N8N05WF06",
       "file": "workflows/n8n/wf-06.json",
-      "sha256": "d3f5e0702cf6fb134c9a7a697963f1cbd7e4270257f22bb946a1c661082c9a72",
+      "sha256": "5ed96aa59bc488ec8fce1f17dee82d3061503c9711e869b41ead443bf94b29fe",
       "credential": "WF-06-machine-client",
       "credentialId": "N8N05WF06Machine",
       "nodes": 78
@@ -39,7 +39,7 @@
       "version": 1,
       "id": "N8N05WF07",
       "file": "workflows/n8n/wf-07.json",
-      "sha256": "c705d9931c67b4731d0c0ee7bb7f5241aec3ddcbdb4360042a6d37cd11b755b3",
+      "sha256": "7400725851463e268a4508b3fc79c68eed9e7ba73e1fbebc2571815f72d38cf1",
       "credential": "WF-07-machine-client",
       "credentialId": "N8N05WF07Machine",
       "nodes": 67

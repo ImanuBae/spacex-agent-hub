@@ -1,0 +1,10 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const directory = path.resolve(".local/automation/n8n05-20261114-baseline/env-loader-selfcheck");
+fs.mkdirSync(directory, { recursive: true });
+const file = path.join(directory, ".env.local");
+fs.writeFileSync(file, "N8N05_SYNTHETIC_VALUE=not-a-credential\n");
+for (const method of ["statSync", "readFileSync"]) assert.throws(() => fs[method](file), { code: "ENOENT" });
+assert(fs.readFileSync(path.resolve("package.json")).length > 0);
+console.log("PASS personal env metadata/content blocked; ordinary source reads work");

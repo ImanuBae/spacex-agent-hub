@@ -1,3 +1,10 @@
+# N8N readiness — hiện hành 16/11/26
+
+**N8N-05 ACCEPT_LOCAL**: WF04–07 đã nối CRM/Enrollment/Payment/Class và kiểm tổng hợp backend thật; không còn gate thiếu backend local. [Matrix](acceptance-n8n-05.md), [index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). Provider/live/production BLOCKED riêng; N8N06–08/WF08–12 chưa nghiệm thu bởi nhiệm vụ này.
+
+<details>
+<summary>Snapshot readiness ngày12/11/2026 — giữ nguyên nội dung, TODO và thiếu backend tại thời điểm cũ</summary>
+
 # N8N-05–08 — readiness từ source, 12/11/2026
 
 Phạm vi lượt này: đọc source/contracts và chuẩn bị task; **không triển khai hoặc
@@ -55,3 +62,5 @@ tự mở WF-04 trong lượt đang làm.
 - Workspace hiện có services: identity, org, catalog, class-schedule, crm,
   automation-bridge, conversation, gateway. Đã kiểm danh mục source; không chạy
   acceptance Enrollment/Payment/Notification/Reporting hoặc thử gate bên ngoài.
+
+</details>

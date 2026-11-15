@@ -47,7 +47,7 @@ export async function enrollmentBrowser({ origin, directory, email, password, se
     await confirmButton.waitFor();
     assert(await confirmButton.isDisabled(), "Explicit agreement required before purchase confirmation");
     assert.equal(receipt.requests.filter(r => /\/confirm$/.test(r.path) && r.method === "POST").length, 0);
-    assert.equal(await page.getByText("Đã xác nhận chỗ học", { exact: true }).count(), 0);
+    assert.equal(await page.locator(".enrollment-result").getByText("Đã xác nhận chỗ học", { exact: true }).count(), 0);
     receipt.checks.push("preview is not enrollment confirmation and requires explicit checkbox");
     await page.getByRole("checkbox").check();
     const confirmedResponse = page.waitForResponse(r => r.url() === `${origin}/api/v1/enrollment-confirmations/${preview.id}/confirm` && r.request().method() === "POST");
@@ -73,8 +73,10 @@ export async function enrollmentBrowser({ origin, directory, email, password, se
       assert.equal(current.enrollment.paymentRequest.adapter, "SYNTHETIC");
       await page.getByRole("button", { name: "Tra cứu trạng thái", exact: true }).click();
       await page.getByRole("heading", { name: "Tiền và chỗ học", exact: true }).waitFor();
-      assert.equal(await page.getByText("Đã xác nhận chỗ học", { exact: true }).count(), 0, "Payment/seat confirmation cannot be displayed early");
+      assert.equal(await page.locator(".enrollment-result").getByText("Đã xác nhận chỗ học", { exact: true }).count(), 0, "Current enrollment cannot be displayed as confirmed early");
       await page.getByText("tổng hợp — không dùng chuyển tiền thật", { exact: false }).waitFor();
+      const qrImage=page.getByRole("img",{name:"QR DEMO tổng hợp — không chuyển tiền thật",exact:true});await qrImage.scrollIntoViewIfNeeded();await qrImage.evaluate(img=>img.decode());
+      assert(await qrImage.evaluate(img=>img.complete&&img.naturalWidth===256),"Synthetic QR image loads from the real Payment request");
       receipt.checks.push("real hold and synthetic QR rendered with no early paid/seat claim");
     }
     await page.reload();

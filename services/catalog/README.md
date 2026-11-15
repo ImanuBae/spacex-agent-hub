@@ -1,5 +1,11 @@
 # Catalog API - BE-01/02/03
 
+N8N-05 adds read-only `/internal/catalog/enrollment-quote/:packageId` and
+`/internal/catalog/class-quote/:packageId`. They require the reviewed Enrollment
+or Class job-bound command token, a bound Enrollment resource and current branch.
+SQL requires active/effective course/package; a changed quote/version requires
+new confirmation. They do not enable a generic service-token read or any write.
+
 N8N-03: delegated RS256 reads call live IAM introspection, restricted to
 `GET /api/v1/courses`, `/packages`, `/packages/:id/quote`. Catalog applies the
 verified context branch in SQL and returns active offers only; history/detail

@@ -58,7 +58,7 @@ try {
   const gatewayUrl = await listen(createGatewayApp(auth, { org: orgUrl, catalog: catalogUrl, crm: classUrl }));
   const portServer = createServer(); portServer.listen(0, "127.0.0.1"); await once(portServer, "listening"); const port = portServer.address().port;
   await new Promise(resolve => portServer.close(resolve)); portalOrigin = `http://localhost:${port}`;
-  const portal = await child([`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: gatewayUrl, PORTAL_ORIGIN: portalOrigin }, "portal");
+  const portal = await child(["--require",`${root}/scripts/no-personal-env.cjs`,`${root}/node_modules/next/dist/bin/next`, "start", "apps/admin-portal", "--hostname", "127.0.0.1", "--port", String(port)], { ...process.env, NODE_ENV: "production", GATEWAY_URL: gatewayUrl, PORTAL_ORIGIN: portalOrigin }, "portal");
   let ready = false;
   for (let i = 0; i < 100; i++) {
     if (portal.exitCode !== null) throw new Error("Portal exited; inspect ignored Portal log");

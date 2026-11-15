@@ -1,13 +1,13 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
-import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, type AuthConfig } from "@spacex/auth";
+import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
 import { ChatMessageInput, ConversationModeInput, ConversationProof, ConversationDraft, CommandBinding, DelegationInput, MachineClaims } from "@spacex/contracts";
 import { createApp, HttpError } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
 import { redact } from "./privacy.js";
 
-export interface ConversationConfig { branchId: string; bridgeUrl: string; sourceClientId: string; sourceClientSecret: string; modelReady?: boolean; syntheticProviderPilot?: boolean; }
+export interface ConversationConfig { branchId: string; bridgeUrl: string; sourceClientId: string; sourceClientSecret: string; modelReady?: boolean; syntheticProviderPilot?: boolean; crmUrl?: string; }
 const denied = () => new HttpError(403, "FORBIDDEN", "Conversation access denied");
 const stale = () => new HttpError(409, "STALE_CONVERSATION", "Conversation owner, mode or message changed");
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -121,6 +121,29 @@ export function createConversationApp(pool: Pool, auth: AuthConfig, config: Conv
     }
     app.get("/api/v1/conversations/:id", async (req, res) => {
       res.json({ data: await tx(async c => { const r = await staffRow(c, req.params.id as string, principal(res)); return history(c, r.id); }) });
+    });
+    app.get("/api/v1/conversations/:id/crm-context", async (req, res) => {
+      res.json({ data: await tx(async c => {
+        await lockSession(c, z.uuid().parse(req.params.id));
+        const r = await staffRow(c, req.params.id as string, principal(res));
+        return { provider: "WEB_CHAT", accountRef: r.branch_id, subjectRef: r.session_id, branchId: r.branch_id, conversationId: r.id, version: r.version };
+      }) });
+    });
+    app.get("/internal/conversations/:id/crm-context", async (req, res) => {
+      const token = bearer(req.get("authorization")), u = await verifyCommand(auth, token, "crm", "crm:write"), d = u.delegation!;
+      if (!config.crmUrl || d.operation !== "crm.execute" || d.entity?.type !== "crm-request" || d.entity.id !== d.inputRef) throw denied();
+      let response: Response;
+      try { response = await fetch(`${config.crmUrl}/internal/crm/requests/${d.inputRef}`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(3000), redirect: "error" }); }
+      catch { throw new HttpError(503, "CRM_UNAVAILABLE", "Verified CRM source unavailable"); }
+      if (!response.ok) throw denied();
+      const source = (await response.json() as {data:{source?:{conversationId?:string}}}).data.source;
+      if (source?.conversationId !== req.params.id) throw denied();
+      res.json({ data: await tx(async c => {
+        await lockSession(c, z.uuid().parse(req.params.id));
+        const r = await staffRow(c, req.params.id as string, u);
+        await verifyCommand(auth, token, "crm", "crm:write");
+        return { provider: "WEB_CHAT", accountRef: r.branch_id, subjectRef: r.session_id, branchId: r.branch_id, conversationId: r.id, version: r.version };
+      }) });
     });
     app.post("/api/v1/conversations/:id/mode", async (req, res) => {
       const input = ConversationModeInput.parse(req.body), u = principal(res);

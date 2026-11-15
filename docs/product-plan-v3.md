@@ -1,9 +1,7 @@
 # SpaceX Agent Hub — Product Plan v3: n8n điều phối nghiệp vụ
 
 <!-- CURRENT_N8N_LINK -->
-Trạng thái hiện hành ngày14/11/2026,acceptance matrix,10ca,hashes,ngân sách và runbook:
-[nghiệm thu N8N-03/04](acceptance-n8n-03-04.md).
-**N8N-03 ACCEPT local; N8N-04 ACCEPT local** —10/10 corpus cuối,8câu trả lời model,2nhánh deterministic;16generation0USD. Agent đã nghiệm thu;production/khách thật/WF-04–12 vẫn đóng.
+Hiện hành 16/11/26: **N8N-05 ACCEPT_LOCAL** — WF04–07 tổng hợp local, 49/49 nhóm tích hợp cuối và affected regressions đạt. [Matrix](acceptance-n8n-05.md), [evidence index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). **N8N03/04 ACCEPT local** giữ theo [hồ sơ lịch sử](acceptance-n8n-03-04.md). Canonical inactive; provider/live/production và WF08–12 vẫn đóng. Các snapshot có ngày bên dưới giữ quyết định tại thời điểm ghi; các ticket cha không được coi hoàn tất chỉ từ lát cắt N8N05.
 
 <details>
 <summary>Lịch sử kiểm chứng đến 11/11/2026 — giữ nguyên receipts và quyết định cũ</summary>
@@ -412,34 +410,34 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | CV-3 | Owner/mode/version CAS | Nhận/trả AI | WF-03 | U04, U05 | PARTIAL | N8N-04 CAS/race/late draft + AI live/WF-03; còn scope Conversation rộng hơn |
 | CV-4 | Retention/xóa | Theo dõi yêu cầu | WF-12 | U16 | TODO | E0 |
 | CV-5 | Queue/chuyển branch/escalation | Hàng đợi/phân công | WF-03 | U02, U04 | TODO | E0 |
-| CRM-1 | People/định danh kênh | Hồ sơ | WF-04 | U17 | PARTIAL | E4; thiếu định danh Channel/Conversation |
-| CRM-2 | Merge xác minh/xung đột | Duyệt merge | WF-04 | U17 | TODO | E0 |
-| CRM-3 | Lead/source/owner | Lead API thật | WF-04 | U02, U17 | PARTIAL | E4; chưa nối hành trình chat/enrollment |
+| CRM-1 | People/định danh kênh | Hồ sơ | WF-04 | U17 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| CRM-2 | Merge xác minh/xung đột | Duyệt merge | WF-04 | U17 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| CRM-3 | Lead/source/owner | Lead API thật | WF-04 | U02, U17 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | CRM-4 | Consent/erasure | Consent/yêu cầu xóa | WF-04, WF-12 | U16, N09 | PARTIAL | E4; task ngoài CRM còn bằng chứng thủ công |
 | CRM-5 | Import/dry-run/rollback batch | Import/kết quả | WF-11 | U19 | COND | E0; demo fixture và policy C12 cần chốt |
-| CAT-1 | Khóa/gói/policy/version | Catalog/gói | WF-02, WF-05 | U13 | PARTIAL | E3; cần khép với snapshot Enrollment |
+| CAT-1 | Khóa/gói/policy/version | Catalog/gói | WF-02, WF-05 | U13 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | CAT-2 | Filter/quote hợp lệ | Tìm khóa/gói | WF-02 | U06, N05 | PARTIAL | E3; API có, chưa có AI/tool nghiệm thu |
 | CAT-3 | FAQ/RAG version đã duyệt | Duyệt nội dung | WF-02 | N05 | TODO | E0 |
-| CAT-4 | History/effectiveAt/snapshot | Lịch sử/policy | WF-05 | U13 | PARTIAL | E3; chưa snapshot đơn cũ, policy tương lai |
+| CAT-4 | History/effectiveAt/snapshot | Lịch sử/policy | WF-05 | U13 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | CS-1 | Lớp/buổi/lifecycle | Lớp/lịch | WF-08 | U06, U13 | PARTIAL | E2/E3; chờ policy/Enrollment |
 | CS-2 | Giờ rảnh/nghỉ/xung đột | Availability/duyệt | WF-08 | U13 | PARTIAL | E3; thiếu xử lý quyền lợi bị ảnh hưởng |
 | CS-3 | Tìm lớp OPEN/còn chỗ | Tìm lịch | WF-02 | U06, N05 | PARTIAL | E2/E3; chưa nghiệm thu qua AI |
-| CS-4 | Hold/expire/commit atomic | Hạn/trạng thái chỗ | WF-05–WF-07 | U07, U08, U11 | PARTIAL | E2/E3; fixture, chưa Enrollment/Payment |
+| CS-4 | Hold/expire/commit atomic | Hạn/trạng thái chỗ | WF-05–WF-07 | U07, U08, U11 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | CS-5 | Đổi/hủy + event version | Đổi/hủy có lý do | WF-08, WF-09 | U13, U15 | PARTIAL | E3; đang chặn khi có committed |
 | CS-6 | Phòng/link online | Hình thức/phòng | WF-08 | U06, U02 | PARTIAL | E2/E3; quyền link learner cần khép |
 | CS-7 | Sĩ số/hoãn/học bù | Duyệt/ảnh hưởng | WF-08, WF-09 | U13, U15 | PARTIAL | E3; C02/C05 chưa khóa |
 | CS-8 | Import lịch/chặn xung đột | Import/kết quả | WF-11 | U19 | COND | E0; C12, demo fixture |
-| ENR-1 | State machine/snapshot | Đơn/quyền lợi | WF-05 | U08, U13 | TODO | E0 |
-| ENR-2 | Lệnh bước/operation, n8n điều phối | Tiến trình đơn | WF-05, WF-06 | U07–U12, N03 | TODO | E0; thay saga runner độc lập bằng n8n |
-| ENR-3 | Expire/cancel/race tiền | Hạn/lỗi/tra cứu | WF-07 | U08, U11 | TODO | E0 |
+| ENR-1 | State machine/snapshot | Đơn/quyền lợi | WF-05 | U08, U13 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| ENR-2 | Lệnh bước/operation, n8n điều phối | Tiến trình đơn | WF-05, WF-06 | U07–U12, N03 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| ENR-3 | Expire/cancel/race tiền | Hạn/lỗi/tra cứu | WF-07 | U08, U11 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | ENR-4 | Waitlist/invite có hạn | Danh sách/lời mời | WF-09 | U07, U15 | TODO | E0 |
 | ENR-5 | Phương án hủy theo đơn | Chọn hoàn/chuyển | WF-08, WF-09 | U13, U14 | TODO | E0 |
 | ENR-6 | Bảo lưu/hạn/quyền lợi | Yêu cầu/duyệt | WF-09 | U15 | TODO | E0 |
 | ENR-7 | Chuyển lớp/chênh lệch | Yêu cầu/duyệt | WF-09 | U15, U07 | TODO | E0 |
 | ENR-8 | Import quyền lợi qua API | Import/đối chiếu | WF-11 | U19 | COND | E0; C12, không ghi thẳng DB |
-| PAY-1 | SePay adapter/QR/lookup | QR/hạn | WF-05 | U08, N12 | COND | E0; chưa tài khoản/provider |
-| PAY-2 | Webhook/auth/ledger/dedup | Trạng thái giao dịch | WF-06 | U09, U10 | TODO | E0; cần PAY-1 |
-| PAY-3 | Allocation/review/deadline | Hàng đợi kế toán | WF-07 | U10, U11 | TODO | E0 |
+| PAY-1 | SePay adapter/QR/lookup | QR/hạn | WF-05 | U08, N12 | COND | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| PAY-2 | Webhook/auth/ledger/dedup | Trạng thái giao dịch | WF-06 | U09, U10 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| PAY-3 | Allocation/review/deadline | Hàng đợi kế toán | WF-07 | U10, U11 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | PAY-4 | Refund/phê duyệt/bằng chứng | Tạo/duyệt/thực hiện | WF-09 | U14 | TODO | E0 |
 | PAY-5 | Đối soát/chênh lệch | Đối soát | WF-11 | U18 | TODO | E0 |
 | PAY-6 | Hóa đơn mô phỏng/file | Form/tải file | WF-10 | U02, U17 | TODO | E0; ghi không giá trị pháp lý |
@@ -448,7 +446,7 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | AG-1 | Bridge/context/mode | Nháp/chế độ | WF-02 | U05, N01 | PARTIAL | N8N-04 AI live chỉ đọc local; ngoài lát cắt còn backlog |
 | AG-2 | Tool API nguồn thật | Nguồn/thời điểm | WF-02 | N05 | PARTIAL | N8N-04 ACCEPT local: 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; phần ngoài lát cắt vẫn mở; xem acceptance matrix |
 | AG-3 | Hồ sơ nhu cầu | Chat/form | WF-02 | N05 | TODO | E0; tối đa hai câu hỏi/lượt |
-| AG-4 | Xác nhận tạo đơn | Xác nhận mua | WF-02, WF-05 | U08, N04 | TODO | E0; chỉ bật sau Enrollment |
+| AG-4 | Xác nhận tạo đơn | Xác nhận mua | WF-02, WF-05 | U08, N04 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | AG-5 | Allowlist/guard quyền | Từ chối/handoff | WF-02 | U02, N04 | PARTIAL | N8N-04 injection/allowlist model thật local; chưa rollout rộng |
 | AG-6 | Timeout/handoff | Chờ/tiếp quản | WF-02, WF-03 | U05, N06 | PARTIAL | N8N-04 model live + n8n fault injection; chưa production SLA |
 | AG-7 | Che PII/context giới hạn | Form an toàn | WF-02 | U16, N04 | PARTIAL | N8N-04 projection/redaction; không bảo đảm PII văn bản tự do |
@@ -465,9 +463,9 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | RP-4 | Fill/response/AI metrics | Kỳ/định nghĩa | WF-11 | U18, N05 | TODO | E0 |
 | WEB-1 | BFF/session | Login/menu/401/403 | — | U01, U02 | LOCAL | E1 |
 | WEB-2 | Conversation API | Hộp thư/handoff | WF-01–WF-03 | U03–U05, U20 | PARTIAL | N8N-04 browser/API/model thật local; scope rộng hơn còn backlog |
-| WEB-3 | CRM/Enrollment API | Đăng ký quầy/chat | WF-04, WF-05 | U08, U17 | PARTIAL | E4 có lead, chưa đăng ký |
+| WEB-3 | CRM/Enrollment API | Đăng ký quầy/chat | WF-04, WF-05 | U08, U17 | PARTIAL | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | WEB-4 | Catalog/Class API | Khóa/gói/lớp/lịch | WF-02, WF-08 | U06, U13, U20 | PARTIAL | E3; cần khép quyền lợi/lifecycle |
-| WEB-5 | Payment API | Kế toán/hoàn | WF-07, WF-09 | U10, U14 | TODO | E0 |
+| WEB-5 | Payment API | Kế toán/hoàn | WF-07, WF-09 | U10, U14 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | WEB-6 | Teacher-time API | Giờ rảnh/lịch/nghỉ | WF-08 | U02, U13, U20 | PARTIAL | E3; chưa quy trình ảnh hưởng toàn chuỗi |
 | WEB-7 | Reporting API | Dashboard | WF-11 | U18 | TODO | E0 |
 | WEB-8 | Web chat API | Widget/reconnect | WF-01 | U03, U20 | PARTIAL | N8N-04 browser gửi/nhận/reconnect local |
@@ -487,8 +485,8 @@ Dependency chỉ yêu cầu phần contract/acceptance cần cho lát cắt đan
 | N8N-01 | Local runtime, image ghim, DB/key riêng; export/import và restart smoke | PL-1 | LOCAL — [evidence và phần chưa kiểm](ban-giao-n8n-01.md) |
 | N8N-02 | Bridge inbox/job/claim/lease/checkpoint/result/replay; test dedup và recovery | PL-2, N8N-01 | LOCAL — [11/11 integration + n8n smoke](ban-giao-n8n-02.md); đã [regression bằng IAM thật](ban-giao-n8n-03.md) |
 | N8N-03 | Machine principal, scope/delegation, guard confirmation/approval và test thu hồi quyền | IAM-2/4, N8N-02 | ACCEPT LOCAL — 19/19 command thật + 13/13 IAM/read + 11/11 Bridge; [matrix](acceptance-n8n-03-04.md); production/Enrollment/Payment vẫn đóng |
-| N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | ACCEPT LOCAL — 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; 16 generation 0 USD; [matrix hiện hành](acceptance-n8n-03-04.md); production/WF-04–12 vẫn đóng |
-| N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | TODO — [readiness và task đề xuất](n8n-readiness.md), chưa mở WF |
+| N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | ACCEPT LOCAL — 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; 16 generation 0 USD; [matrix hiện hành](acceptance-n8n-03-04.md); production/WF-08–12 vẫn đóng; LLM mutation vẫn đóng |
+| N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | ACCEPT_LOCAL — [matrix](acceptance-n8n-05.md), 49/49 + affected regressions; provider/live BLOCKED riêng |
 | N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | TODO — [dependency thực](n8n-readiness.md) |
 | N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | TODO — [dependency thực](n8n-readiness.md) |
 | N8N-08 | VPS/HTTPS, gate provider, registry workflow/credential, clean import/restore, evidence final | Bắt đầu với N8N-01; đóng sau N8N-02–07, CH-3/4, phần backup/restore OPS-1 | TODO — [gate còn thiếu](n8n-readiness.md) |

@@ -28,6 +28,11 @@ assert(/^(npipe:\/\/|unix:\/\/)/.test(endpoint), "Local Docker context required"
 const root = fileURLToPath(new URL("../", import.meta.url)); process.chdir(root);
 const project = `space-agent-n8n04-acceptance-${randomBytes(6).toString("hex")}`;
 const directory = path.join(root, ".local", "automation", project); await mkdir(directory, { recursive: true });
+if (process.platform === "win32") {
+  const sid = execFileSync("whoami", ["/user", "/fo", "csv", "/nh"], { encoding:"utf8" }).match(/S-1-[\d-]+/)?.[0];
+  assert(sid, "Current artifact owner required");
+  execFileSync("icacls", [directory,"/inheritance:r","/grant:r",`*${sid}:(OI)(CI)F`, "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-18:(OI)(CI)F"], {encoding:"utf8"});
+}
 const secret = () => randomBytes(32).toString("hex");
 async function freePort() {
   return new Promise((resolve, reject) => {

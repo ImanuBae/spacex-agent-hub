@@ -388,7 +388,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) || $json.error?.code === 'NOT_FOUND' }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) || $json.error?.code === 'NOT_FOUND' }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -507,7 +507,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -536,7 +536,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\",\"PAYMENT_CLOSED\"].includes($json.error?.code) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -806,7 +806,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -925,7 +925,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -954,7 +954,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\",\"PAYMENT_CLOSED\"].includes($json.error?.code) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1195,7 +1195,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1314,7 +1314,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1343,7 +1343,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\",\"PAYMENT_CLOSED\"].includes($json.error?.code) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1584,7 +1584,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1703,7 +1703,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1732,7 +1732,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\",\"PAYMENT_CLOSED\"].includes($json.error?.code) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1973,7 +1973,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2092,7 +2092,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2121,7 +2121,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\"].includes($json.error?.code) }}",
+                "leftValue": "={{ [\"SOLD_OUT\",\"CLASS_CHANGED\",\"NOT_OPEN\",\"HOLD_EXPIRED\",\"INVALID_ENROLLMENT_STATE\",\"REGISTRATION_CLOSED\",\"CLASS_INCOMPLETE\",\"DUPLICATE_LEARNER\",\"QUOTE_CHANGED\",\"HOLD_REQUIRED\",\"CONFIRMATION_EXPIRED\",\"RECONFIRM_REQUIRED\",\"ENROLLMENT_NOT_CREATED\",\"HOLD_LIMIT\",\"PAYMENT_REQUEST_REQUIRED\",\"PAYMENT_CLOSED\"].includes($json.error?.code) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2362,7 +2362,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2404,7 +2404,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !(!$json.data || ['CANCELLED','EXPIRED'].includes($json.data.status)) }}",
+                "leftValue": "={{ !(['CANCELLED','EXPIRED'].includes($json.data?.status)) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2481,7 +2481,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2722,7 +2722,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2841,7 +2841,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -3111,7 +3111,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -3153,7 +3153,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !($json.data?.hold == null || ['CANCELLED','EXPIRED'].includes($json.data.hold.status)) }}",
+                "leftValue": "={{ !($json.data?.committed === true || $json.data?.hold == null || ['CANCELLED','EXPIRED','COMMITTED'].includes($json.data.hold.status)) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -3230,7 +3230,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -3266,7 +3266,7 @@
           200
         ],
         "parameters": {
-          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\",\"Release failed hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'RETRY',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5 }}];"
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment create intent\",\"Class hold intent\",\"Enrollment held intent\",\"Payment create intent\",\"Enrollment payment intent\",\"Close failed payment intent\",\"Enrollment failed intent\",\"Release failed hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}const permanent=typeof $json.error?.code==='string' && /DENIED|FORBIDDEN|UNAUTHORIZED|VALIDATION|IDEMPOTENCY|STALE_|INVALID_|CONFLICT|RECONFIRM|EXPIRED|NOT_FOUND/.test($json.error.code);return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:permanent?'DEAD':'RETRY',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:permanent?'DOMAIN_REJECTED':'UPSTREAM_UNAVAILABLE',...(permanent?{}:{retryAfterSeconds:5}) }}];"
         }
       },
       {

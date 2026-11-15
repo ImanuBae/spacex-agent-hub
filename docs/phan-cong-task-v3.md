@@ -1,9 +1,7 @@
 # Phân công v3 — một người chính, hai người hỗ trợ
 
 <!-- CURRENT_N8N_LINK -->
-Trạng thái hiện hành ngày14/11/2026,acceptance matrix,10ca,hashes,ngân sách và runbook:
-[nghiệm thu N8N-03/04](acceptance-n8n-03-04.md).
-**N8N-03 ACCEPT local; N8N-04 ACCEPT local** —10/10 corpus cuối,8câu trả lời model,2nhánh deterministic;16generation0USD. Agent đã nghiệm thu;production/khách thật/WF-04–12 vẫn đóng.
+Hiện hành 16/11/26: **N8N-05 ACCEPT_LOCAL** — WF04–07 tổng hợp local, 49/49 nhóm tích hợp cuối và affected regressions đạt. [Matrix](acceptance-n8n-05.md), [evidence index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). **N8N03/04 ACCEPT local** giữ theo [hồ sơ lịch sử](acceptance-n8n-03-04.md). Canonical inactive; provider/live/production và WF08–12 vẫn đóng. Các snapshot có ngày bên dưới giữ quyết định tại thời điểm ghi; các ticket cha không được coi hoàn tất chỉ từ lát cắt N8N05.
 
 <details>
 <summary>Lịch sử kiểm chứng đến 11/11/2026 — giữ nguyên receipts và quyết định cũ</summary>

@@ -8,3 +8,4 @@ export * from "./crm.js";
 export * from "./automation.js";
 export * from "./machine.js";
 export * from "./conversation.js";
+export * from "./enrollment.js";

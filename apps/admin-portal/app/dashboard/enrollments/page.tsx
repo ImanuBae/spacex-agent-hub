@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { api, allPages, dateTime, money, enrollmentStates, confirmationStates, moneyStates, type Enrollment, type EnrollmentConfirmation } from "../../../lib/services/enrollments";
 import { intentKey, type PersonView } from "../../../lib/services/crm";
 import type { ClassView, Package } from "../../../lib/services/classes";
@@ -29,7 +30,7 @@ export default function EnrollmentsPage() {
   const confirmationId = confirmation?.id, confirmationStatus = confirmation?.status;
   const enrollmentStatus = confirmation?.enrollment?.status;
   useEffect(() => {
-    if (!confirmationId || !["CONFIRMED", "CONSUMED"].includes(confirmationStatus ?? "") || ["CONFIRMED", "CANCELLED", "EXPIRED", "REFUND_PENDING"].includes(enrollmentStatus ?? "")) return;
+    if (!confirmationId || !["CONFIRMED", "CONSUMED"].includes(confirmationStatus ?? "") || ["CONFIRMED", "CANCELLED", "EXPIRED", "REFUND_PENDING", "NEEDS_CONFIRMATION"].includes(enrollmentStatus ?? "")) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
@@ -117,7 +118,7 @@ export default function EnrollmentsPage() {
           </>}
           {!draft && !enrollment && <p>Đang chờ xử lý đăng ký. Chỗ học chỉ được xác nhận sau khi đối soát tiền và chốt chỗ thành công.</p>}
           {enrollment && <><dl><dt>Trạng thái tiền</dt><dd>{enrollment.moneyStatus ? moneyStates[enrollment.moneyStatus] ?? enrollment.moneyStatus : "Chưa xác minh"}</dd><dt>Chỗ học</dt><dd>{enrollmentStates[enrollment.status] ?? enrollment.status}</dd>{enrollment.expiresAt && <><dt>Hạn giữ chỗ</dt><dd>{dateTime(enrollment.expiresAt)}</dd></>}</dl></>}
-          {payment && <div className="enrollment-payment"><h3>Yêu cầu thanh toán {payment.adapter === "SYNTHETIC" ? "DEMO" : ""}</h3><p>Trạng thái: {payment.status}</p><dl><dt>Số tiền</dt><dd>{money(payment.amountDue)}</dd><dt>Mã tham chiếu</dt><dd><code>{payment.reference}</code></dd><dt>Hạn thanh toán</dt><dd>{dateTime(payment.expiresAt)}</dd></dl>{payment.qrPayload && <><p>Nội dung QR {payment.adapter === "SYNTHETIC" ? "tổng hợp — không dùng chuyển tiền thật" : ""}</p><code className="enrollment-qr">{payment.qrPayload}</code></>}</div>}
+          {payment && <div className="enrollment-payment"><h3>Yêu cầu thanh toán {payment.adapter === "SYNTHETIC" ? "DEMO" : ""}</h3><p>Trạng thái: {payment.status}</p><dl><dt>Số tiền</dt><dd>{money(payment.amountDue)}</dd><dt>Mã tham chiếu</dt><dd><code>{payment.reference}</code></dd><dt>Hạn thanh toán</dt><dd>{dateTime(payment.expiresAt)}</dd></dl>{payment.qrPayload && <><p>QR {payment.adapter === "SYNTHETIC" ? "tổng hợp — không dùng chuyển tiền thật" : ""}</p>{payment.qrImageDataUrl && <Image src={payment.qrImageDataUrl} width={256} height={256} unoptimized alt="QR DEMO tổng hợp — không chuyển tiền thật" />}<code className="enrollment-qr">{payment.qrPayload}</code></>}</div>}
           <div className="ops-actions"><button disabled={busy} onClick={() => void lookup(confirmation.id)}>Tra cứu trạng thái</button></div>
           <p className="muted">Mã xác nhận: <code>{confirmation.id}</code>{enrollment && <> · Mã đăng ký: <code>{enrollment.id}</code></>}</p>
         </>}

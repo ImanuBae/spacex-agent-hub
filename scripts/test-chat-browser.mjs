@@ -25,7 +25,7 @@ export async function chatBrowser(h) {
   const port=await h.freePort(),gatewayPort=await h.freePort(),origin=`http://localhost:${port}`;
   await h.startService("gateway",{PORT:String(gatewayPort),CATALOG_URL:`http://127.0.0.1:${h.catalogPort}`,CLASS_URL:`http://127.0.0.1:${h.classesPort}`,CONVERSATION_URL:`http://127.0.0.1:${h.chatPort}`});
   const log=await open(path.join(h.directory,"chat-portal.log"),"w");
-  const child=spawn(process.execPath,[path.join(h.root,"node_modules/next/dist/bin/next"),"start","apps/admin-portal","--hostname","127.0.0.1","--port",String(port)],{
+  const child=spawn(process.execPath,["--require",path.join(h.root,"scripts/no-personal-env.cjs"),path.join(h.root,"node_modules/next/dist/bin/next"),"start","apps/admin-portal","--hostname","127.0.0.1","--port",String(port)],{
     cwd:h.root,env:{...process.env,NODE_ENV:"production",GATEWAY_URL:`http://127.0.0.1:${gatewayPort}`,PORTAL_ORIGIN:origin,NEXT_PUBLIC_ENABLE_MOCK:"false"},stdio:["ignore",log.fd,log.fd],windowsHide:true});h.children.push(child);await log.close();
   let ready=false;
   for(let n=0;n<100;n++){try{if((await fetch(origin+"/chat")).ok){ready=true;break;}}catch{/* owned process starting */} await new Promise(r=>setTimeout(r,100));}

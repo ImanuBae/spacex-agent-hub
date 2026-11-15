@@ -84,6 +84,11 @@ and retains private traces and test volumes. See [acceptance](../../docs/accepta
 
 ## N8N-05 scoped Enrollment seats
 
+Legacy `/api/v1/holds/:id/cancel` and shared-secret `/internal/holds/:id/commit`
+are restricted to explicitly registered demo fixtures. They cannot bypass money
+reconciliation for a real Enrollment hold. Class cancellation also fails closed
+while real live Enrollment holds remain; cancel/reconcile those enrollments first.
+
 `classes.enroll` uses audience `class-schedule`, scope `classes:enroll`, and a
 live Bridge intent/lease/attempt bound to exactly one Enrollment. These routes
 use real Enrollment/Payment authority APIs and do not read `demo_fixtures`:

@@ -4,11 +4,11 @@ export type EnrollmentSnapshot = {
   learnerId: string; contactId: string; payerId: string;
   classId: string; packageId: string; branchId: string;
   amountDue: number; currency: string; quoteId: string;
-  quoteVersion: number; policyVersion: number; termsVersion: string; terms: string;
+  quoteVersion: string; policyVersion: string; termsVersion: string; terms: string;
 };
 export type PaymentRequest = {
   id: string; status: string; amountDue: number; reference: string;
-  expiresAt: string; qrPayload: string; adapter: string;
+  expiresAt: string; qrPayload: string; qrImageDataUrl?: string; adapter: string;
 };
 export type Enrollment = {
   id: string; confirmationId: string; status: string; version: number;
@@ -23,6 +23,7 @@ export const enrollmentStates: Record<string, string> = {
   PENDING_HOLD: "Đang yêu cầu giữ chỗ", HELD: "Đang giữ chỗ, chờ thanh toán",
   CONFIRMING: "Đã đối soát tiền, đang xác nhận chỗ", CONFIRMED: "Đã xác nhận chỗ học",
   PAYMENT_REVIEW: "Kế toán đang xem xét", EXPIRED: "Đã hết hạn giữ chỗ",
+  NEEDS_CONFIRMATION: "Báo giá đã thay đổi — cần xác nhận mới",
   CANCELLED: "Đã hủy đăng ký", REFUND_PENDING: "Đang chờ duyệt / thực hiện hoàn tiền",
   WAITLISTED: "Đang chờ lớp có chỗ", COMPLETED: "Đã hoàn tất khóa học",
 };
@@ -33,5 +34,6 @@ export const confirmationStates: Record<string, string> = {
 export const moneyStates: Record<string, string> = {
   UNPAID: "Chưa ghi nhận tiền", OPEN: "Chờ thanh toán", MATCHED: "Đã đối soát đủ tiền",
   SETTLED: "Đã đối soát đủ tiền", REVIEW: "Chờ kế toán đối soát", PARTIAL: "Đã nhận thiếu",
+  MATCHED_WITH_EXCESS: "Đã đối soát đủ tiền; phần dư chờ kế toán",
   OVERPAID: "Đã nhận thừa", UNALLOCATED: "Chưa phân bổ", REFUND_PENDING: "Đang chờ hoàn tiền",
 };

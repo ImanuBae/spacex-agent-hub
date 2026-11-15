@@ -1,5 +1,16 @@
 # Identity & Access
 
+N8N-05 current: migration `0004_service` adds source-owned, immutable service
+delegations for synthetic Enrollment deadlines and verified Payment events.
+Domain audiences/scopes are `crm`/`crm:write`, `enrollment`/`enrollment:write`,
+`payment`/`payment:write`, `class-schedule`/`classes:enroll`; only job-bound command
+tokens can use them. Source credentials have only `automation:source`, never the
+n8n worker's write grants. Every command still rechecks live IAM and Bridge.
+Backend APIs bind their stored confirmation/cancellation/approval and resource;
+the workflow cannot declare actor, branch, consent or paid status. Source rotation
+invalidates existing source contexts; human session rotation/revocation remains
+fail-closed. [Current acceptance](../../docs/acceptance-n8n-05.md).
+
 N8N-04 adds the limited Channel-source `conversation` / `channel:context` policy.
 Its context is verified against the configured Conversation backend and rechecked
 on every guest domain authorization/introspection; no employee session is fabricated.

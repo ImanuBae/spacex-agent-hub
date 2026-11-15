@@ -388,7 +388,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -507,7 +507,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -601,7 +601,7 @@
           200
         ],
         "parameters": {
-          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"CRM execute intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'RETRY',resultRef:'crm-request:'+$('Job').first().json.inputRef,errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5 }}];"
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"CRM execute intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}const permanent=typeof $json.error?.code==='string' && /DENIED|FORBIDDEN|UNAUTHORIZED|VALIDATION|IDEMPOTENCY|STALE_|INVALID_|CONFLICT|RECONFIRM|EXPIRED|NOT_FOUND/.test($json.error.code);return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:permanent?'DEAD':'RETRY',resultRef:'crm-request:'+$('Job').first().json.inputRef,errorCode:permanent?'DOMAIN_REJECTED':'UPSTREAM_UNAVAILABLE',...(permanent?{}:{retryAfterSeconds:5}) }}];"
         }
       },
       {

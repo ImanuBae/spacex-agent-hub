@@ -388,7 +388,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -507,7 +507,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -777,7 +777,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -896,7 +896,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1166,7 +1166,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1285,7 +1285,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1526,7 +1526,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1645,7 +1645,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -1886,7 +1886,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2005,7 +2005,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2275,7 +2275,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ (!$json.error && Object.prototype.hasOwnProperty.call($json,'data')) }}",
+                "leftValue": "={{ (!$json.error && $json.data !== undefined) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2317,7 +2317,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !($json.data?.hold == null || ['CANCELLED','EXPIRED'].includes($json.data.hold.status)) }}",
+                "leftValue": "={{ !($json.data?.committed === true || $json.data?.hold == null || ['CANCELLED','EXPIRED','COMMITTED'].includes($json.data.hold.status)) }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2394,7 +2394,7 @@
             },
             "conditions": [
               {
-                "leftValue": "={{ !$json.error && Object.prototype.hasOwnProperty.call($json,'data') }}",
+                "leftValue": "={{ !$json.error && $json.data !== undefined }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -2430,7 +2430,7 @@
           200
         ],
         "parameters": {
-          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment confirming intent\",\"Class commit intent\",\"Enrollment confirm intent\",\"Payment no seat intent\",\"Enrollment exception intent\",\"Release exception hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:'RETRY',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:'UPSTREAM_UNAVAILABLE',retryAfterSeconds:5 }}];"
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Enrollment confirming intent\",\"Class commit intent\",\"Enrollment confirm intent\",\"Payment no seat intent\",\"Enrollment exception intent\",\"Release exception hold intent\"]){if($(name).isExecuted){const value=$(name).first().json.data?.version;if(Number.isSafeInteger(value))version=Math.max(version,value);}}const permanent=typeof $json.error?.code==='string' && /DENIED|FORBIDDEN|UNAUTHORIZED|VALIDATION|IDEMPOTENCY|STALE_|INVALID_|CONFLICT|RECONFIRM|EXPIRED|NOT_FOUND/.test($json.error.code);return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'complete',outcome:permanent?'DEAD':'RETRY',resultRef:'enrollment:'+$('Job').first().json.entity.id,errorCode:permanent?'DOMAIN_REJECTED':'UPSTREAM_UNAVAILABLE',...(permanent?{}:{retryAfterSeconds:5}) }}];"
         }
       },
       {

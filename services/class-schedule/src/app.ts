@@ -10,6 +10,7 @@ import {
   HoldInput,
   RoomInput,
   DelegatedPrincipal,
+  MachineClaims,
 } from "@spacex/contracts";
 import {
   authenticateDomain,
@@ -416,11 +417,20 @@ export function createClassApp(
   async function cancelClass(c: PoolClient, row: Row, actor: string, correlation: string) {
     await expireClass(c, row.id, correlation);
     if ((await view(c, row)).committed > 0) throw fail("ENROLLMENT_REQUIRED", "Lớp có chỗ đã chốt: cần quy trình Enrollment/hoàn hoặc chuyển lớp trước khi hủy");
+    if ((await c.query("SELECT 1 FROM holds h WHERE h.class_id=$1 AND h.status='HELD' AND NOT EXISTS(SELECT 1 FROM demo_fixtures f WHERE f.enrollment_id=h.enrollment_id)",[row.id])).rowCount)
+      throw fail("ENROLLMENT_REQUIRED","Reconcile real Enrollment/Payment holds before cancelling the class");
     const holds = (await c.query("UPDATE holds SET status='CANCELLED' WHERE class_id=$1 AND status='HELD' RETURNING id", [row.id])).rows;
     for (const hold of holds) await audit(c, actor, "hold.cancelled", hold.id, correlation);
     await c.query("UPDATE sessions SET active=false WHERE class_id=$1", [row.id]);
   }
   return createApp("class-schedule", (app) => {
+    app.post("/internal/classes/deadlines",async(req,res)=>{
+      const claims=MachineClaims.parse(await iamRequest(auth.identityUrl,"/internal/iam/machine/introspect",bearer(req.get("authorization")),{audience:"enrollment",scope:"automation:source"}));
+      if(!claims.workflows.includes("WF-07"))throw new HttpError(403,"FORBIDDEN","Enrollment deadline source required");
+      const {enrollmentIds}=z.object({enrollmentIds:z.array(Id).min(1).max(50)}).strict().parse(req.body);
+      const holds=(await pool.query("SELECT h.*,clock_timestamp() AS now FROM holds h WHERE enrollment_id=ANY($1::uuid[]) ORDER BY created_at DESC",[enrollmentIds])).rows;
+      res.json({data:enrollmentIds.map(id=>{const h=holds.find(r=>r.enrollment_id===id);return {enrollmentId:id,hold:h?holdView(h,h.now):null};})});
+    });
     app.get("/ready", async (_req, res) => {
       await pool.query("SELECT 1 FROM holds LIMIT 1");
       res.json({ status: "ok" });
@@ -451,12 +461,12 @@ export function createClassApp(
         throw new HttpError(403, "FORBIDDEN", "Enrollment does not match the delegated resource");
     }
     const enrollmentPath = "/internal/classes/enrollments/:id";
-    async function readEnrollmentSeat(id: string, user: Principal, source?: z.infer<typeof seatAuthority>) {
+    async function readEnrollmentSeat(id: string, user: Principal, source?: z.infer<typeof seatAuthority>, db: Pool | PoolClient = pool) {
       seatActor(user);
       const d = user.delegation;
       if (!d || d.entity?.type !== "enrollment" || d.entity.id !== id)
         throw new HttpError(403, "FORBIDDEN", "Seat lookup requires the bound Enrollment");
-      const hold = (await pool.query(`SELECT h.*,clock_timestamp() AS now,c.branch_id FROM holds h
+      const hold = (await db.query(`SELECT h.*,clock_timestamp() AS now,c.branch_id FROM holds h
         JOIN classes c ON c.id=h.class_id WHERE h.enrollment_id=$1 ORDER BY h.created_at DESC LIMIT 1`, [id])).rows[0];
       if (hold) {
         checkBranch(user, hold.branch_id);
@@ -469,7 +479,25 @@ export function createClassApp(
       const id = Id.parse(req.params.id);
       const user = await verifyCommand(auth, bearer(req.get("authorization")), audience, audience === "enrollment" ? "enrollment:write" : "payment:write");
       if (user.delegation?.operation !== `${audience}.execute`) throw new HttpError(403, "FORBIDDEN", "Scoped source lookup operation required");
-      res.json({ data: await readEnrollmentSeat(id, user) });
+      const seat = await readEnrollmentSeat(id, user);
+      if (user.delegation?.workflowId === "WF-05" && user.role === "admissions" && seat.hold && seat.hold.actorId !== user.sub)
+        throw new HttpError(403, "FORBIDDEN", "Seat belongs to another initiating actor");
+      if (audience === "payment" && seat.hold) {
+        const token = bearer(req.get("authorization"));
+        const source = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, `/internal/enrollment/enrollments/${id}/payment-authority`, token));
+        const result = await transaction(pool, async c => {
+          const row = await classRow(c, seat.hold!.classId, user, true);
+          const current = await readEnrollmentSeat(id,user,undefined,c);
+          const now = (await c.query("SELECT clock_timestamp() AS now")).rows[0].now as Date;
+          const occupancy = (await c.query("SELECT count(*)::int AS n FROM holds WHERE class_id=$1 AND enrollment_id<>$2 AND (status='COMMITTED' OR (status='HELD' AND expires_at>clock_timestamp()))",[row.id,id])).rows[0].n;
+          const duplicate=(await c.query("SELECT 1 FROM holds WHERE class_id=$1 AND learner_id=$2 AND enrollment_id<>$3 AND (status='COMMITTED' OR (status='HELD' AND expires_at>clock_timestamp()))",[row.id,source.learnerId,id])).rowCount;
+          const committable = row.status === "OPEN" && row.version === source.classVersion && row.registration_closes_at > now && occupancy < row.capacity && !duplicate &&
+            !!current.hold && ["HELD","EXPIRED"].includes(current.hold.status) && !(await view(c,row)).missingConditions.length;
+          return {...current,committable};
+        });
+        res.json({ data: result }); return;
+      }
+      res.json({ data: { ...seat, committable: false } });
     });
     app.get(enrollmentPath, async (req, res) => {
       const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
@@ -565,6 +593,10 @@ export function createClassApp(
         }
         const finalSource = seatAuthority.parse(await enrollmentAuthority(config.enrollmentUrl, sourcePath, token));
         seatBinding(await verify(), id, finalSource);
+        if (action === "commit") {
+          const finalMatch = matchAuthority.parse(await enrollmentAuthority(config.paymentUrl, `/internal/payment/matches/${EnrollmentCommitInput.parse(payload).matchRef}/seat-authority`, token));
+          if (!finalMatch.eligible || finalMatch.enrollmentId !== id) throw new HttpError(403,"UNVERIFIED_PAYMENT","Payment authority changed before commit");
+        }
         if (finalSource.classId !== source.classId || finalSource.classVersion !== source.classVersion || finalSource.packageId !== source.packageId || finalSource.learnerId !== source.learnerId ||
           (action === "hold" && (!["PENDING_HOLD", "HELD"].includes(finalSource.state) || finalSource.quoteCurrent !== true)) ||
           (action === "commit" && (finalSource.state !== "CONFIRMING" || finalSource.matchRef !== source.matchRef)) ||
@@ -611,6 +643,8 @@ export function createClassApp(
             [id],
           )
         ).rows[0];
+        if (!(await c.query("SELECT 1 FROM demo_fixtures WHERE enrollment_id=$1",[row.enrollment_id])).rowCount)
+          throw fail("ENROLLMENT_REQUIRED","Real Enrollment seats require the scoped verified payment-match API");
         if (row.status === "COMMITTED") return holdView(row, row.now);
         if (targetClass.status !== "OPEN") throw fail("NOT_OPEN", "Class no longer accepts seat commits");
         if (row.status !== "HELD" || row.expires_at <= row.now) return null;
@@ -1317,6 +1351,8 @@ export function createClassApp(
           const id = Id.parse(req.params.id),
             initial = await readHold(id, principal(res), c);
           await classRow(c, initial.class_id, principal(res), true);
+          if (!(await c.query("SELECT 1 FROM demo_fixtures WHERE enrollment_id=$1",[initial.enrollment_id])).rowCount)
+            throw fail("ENROLLMENT_REQUIRED","Cancel real Enrollment holds through money reconciliation");
           await expireClass(c, initial.class_id, res.locals.correlationId);
           const updated = (
             await c.query(

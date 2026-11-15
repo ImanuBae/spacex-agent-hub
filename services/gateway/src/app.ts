@@ -28,7 +28,7 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
       if (res.locals.principal?.sub) limit(`actor:${res.locals.principal.sub}`, 300);
       const path = req.originalUrl.split("?")[0];
       const enrollmentRoute = req.method === "GET" && /^\/api\/v1\/(enrollments|enrollment-confirmations)(\/[a-zA-Z0-9-]+)?$/.test(path)
-        || req.method === "POST" && (/^\/api\/v1\/enrollment-confirmations\/preview$/.test(path) || /^\/api\/v1\/enrollment-confirmations\/[a-zA-Z0-9-]+\/(confirm|revoke)$/.test(path));
+        || req.method === "POST" && (/^\/api\/v1\/enrollment-confirmations\/preview$/.test(path) || /^\/api\/v1\/enrollment-confirmations\/[a-zA-Z0-9-]+\/(confirm|revoke)$/.test(path) || /^\/api\/v1\/enrollments\/[a-zA-Z0-9-]+\/cancel$/.test(path));
       const target = /^\/api\/v1\/(auth|accounts|assignees)(\/|$)/.test(path) ? config.identityUrl
         : /^\/api\/v1\/(courses|packages)(\/|$)/.test(path) ? targets.catalog
         : /^\/api\/v1\/(branches|departments|employees|teachers|access-sync)(\/|$)/.test(path) ? targets.org
@@ -36,6 +36,7 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
         : /^\/api\/v1\/crm(\/|$)/.test(path) ? targets.crm
         : enrollmentRoute ? targets.enrollment
         : req.method === "GET" && /^\/api\/v1\/payment-requests(\/[a-zA-Z0-9-]+)?$/.test(path) ? targets.payment
+        : (req.method === "GET" && /^\/api\/v1\/payment-reviews(\/[a-zA-Z0-9-]+)?$/.test(path) || req.method === "POST" && /^\/api\/v1\/payment-reviews\/[a-zA-Z0-9-]+\/(decision|approve)$/.test(path)) ? targets.payment
         : /^\/api\/v1\/(chat|conversations)(\/|$)/.test(path) ? targets.conversation : undefined;
       if (!target) throw new HttpError(404, "NOT_FOUND", "Unknown API route");
       res.locals.routePattern = `/api/v1/${path.split("/")[3]}/*`;

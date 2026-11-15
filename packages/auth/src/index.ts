@@ -1,9 +1,9 @@
 import { SignJWT, jwtVerify, decodeProtectedHeader } from "jose";
-import { TokenClaims, DelegatedPrincipal, type Role } from "@spacex/contracts";
+import { TokenClaims, DelegatedPrincipal, type Role, type DomainOperation, type MachineAudience, type MachineScope } from "@spacex/contracts";
 import { HttpError } from "@spacex/http";
 import type { RequestHandler, Response } from "express";
 
-export interface Principal extends TokenClaims { sid: string; delegation?: { branchId: string; jobId: string; operation: "catalog.read" | "classes.read" | "classes.cancel"; source?: "guest"; inputRef?: string; entity?: {type: string; id: string; version?: number} }; }
+export interface Principal extends TokenClaims { sid: string; delegation?: { branchId: string; jobId: string; operation: (typeof DomainOperation)["_output"]; source?: "guest" | "service"; inputRef?: string; entity?: {type: string; id: string; version?: number}; workflowId?: string }; }
 export interface AuthConfig { secret: string; issuer: string; audience: string; identityUrl: string; }
 
 export function authConfig(env = process.env): AuthConfig {
@@ -85,6 +85,17 @@ export function authenticateDomain(config: AuthConfig, audience: "catalog" | "cl
 export function principal(res: Response): Principal {
   if (!res.locals.principal) throw new HttpError(401, "UNAUTHORIZED", "Authentication required");
   return res.locals.principal as Principal;
+}
+
+// Command tokens remain bound to the live job/intent; callers repeat this under their resource locks.
+export async function verifyCommand(config: AuthConfig, token: string, audience: (typeof MachineAudience)["_output"], scope: (typeof MachineScope)["_output"]): Promise<Principal> {
+  return DelegatedPrincipal.parse(await iamRequest(config.identityUrl, "/internal/iam/commands/introspect", token, { audience, scope }));
+}
+export function authenticateCommand(config: AuthConfig, audience: (typeof MachineAudience)["_output"], scope: (typeof MachineScope)["_output"]): RequestHandler {
+  return async (req, res, next) => {
+    try { res.locals.principal = await verifyCommand(config, bearer(req.get("authorization")), audience, scope); next(); }
+    catch (error) { next(error); }
+  };
 }
 
 export function allowRoles(...roles: Role[]): RequestHandler {

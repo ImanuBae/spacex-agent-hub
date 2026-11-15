@@ -12,9 +12,12 @@ Gateway whitelist route đến IAM/Org/Catalog, chỉ chuyển các header cần
 service vẫn kiểm quyền riêng. Upstream lỗi trả 502, IAM lỗi khi xác thực trả 503.
 Rate limit/BFF aggregation đầy đủ của GW-2 thuộc đợt sau.
 
-N8N-05: `ENROLLMENT_URL` (mặc định :4007) chỉ nhận GET danh sách/chi tiết
+N8N-05: `ENROLLMENT_URL` (mặc định :4008) chỉ nhận GET danh sách/chi tiết
 `enrollments`, GET `enrollment-confirmations/:id`, POST preview và confirm/revoke.
-`PAYMENT_URL` (mặc định :4008) chỉ nhận GET `payment-requests`/`:id`.
+POST `enrollments/:id/cancel` chỉ ghi nhận yêu cầu đã xác minh.
+`PAYMENT_URL` (mặc định :4009) nhận GET `payment-requests`/`:id`,
+`payment-reviews`/`:id` và POST review `decision`/`approve`; backend kiểm quyền
+kế toán/giám đốc hiện hành, branch và người duyệt độc lập.
 Webhook tổng hợp và lệnh machine nội bộ không được forward. Mỗi backend vẫn
 kiểm actor/session/branch/quyền sở hữu; Gateway không cấp quyền bằng body/header.
 

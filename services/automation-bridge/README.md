@@ -1,5 +1,14 @@
 # Automation Bridge — N8N-02 / N8N-03
 
+N8N-05 current source adds narrow `crm.execute`, `enrollment.execute`,
+`payment.execute`, `classes.enroll` operation intents through shared contracts/IAM.
+The Bridge still owns only durable jobs/inbox/lease/checkpoints; n8n owns step
+orchestration and each backend owns its transaction and operation lookup.
+Reference-only bindings and inactive canonical WF-04–07 are in
+`workflows/n8n/registration-manifest.json`. Activation is only in the isolated
+test project; historical smokes/receipts below keep their original scope.
+[Current decision/matrix](../../docs/acceptance-n8n-05.md).
+
 Current N8N-03 command slice: `classes.cancel` now has source-owned confirmation,
 separate branch-director approval, expiry/version/payload binding, transactional
 consumption and operation lookup in Class. See the
