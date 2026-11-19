@@ -1,5 +1,22 @@
 # Identity & Access
 
+Migration `0005_learner` adds learner accounts and OTP challenges for WF10. A
+director provisions `/api/v1/learner-identities` after IAM checks an active CRM
+learner, branch and matching email. `POST /api/v1/auth/otp/request` and
+`POST /api/v1/auth/otp/verify` use purpose `STUDENT_LOGIN` and a browser challenge
+binding. IAM stores a keyed code hash and uses server time for the five minute
+expiry. A challenge allows five incorrect attempts and is consumed in the same
+transaction that creates the learner session. IAM permits three challenges per
+account over the prior 15 minutes. `/api/v1/auth/learner` resolves the current
+session to the learner and branch for downstream ownership checks.
+
+Set `CRM_URL`, `NOTIFICATION_URL` and a fresh `IAM_NOTIFICATION_SECRET` shared
+only with Notification. OTP text goes to the private synthetic mailbox. IAM
+returns challenge and delivery references. WF08–10 command grants are scoped to
+version 1 of the relevant workflow and its stored resource. WF10 accepts only a
+Notification source delegation. The delivery command resolves its recipient
+through the bound intent and a current learner mapping. See [Notification](../notification/README.md).
+
 N8N-05 current: migration `0004_service` adds source-owned, immutable service
 delegations for synthetic Enrollment deadlines and verified Payment events.
 Domain audiences/scopes are `crm`/`crm:write`, `enrollment`/`enrollment:write`,

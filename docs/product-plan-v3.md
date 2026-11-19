@@ -487,7 +487,7 @@ Dependency chỉ yêu cầu phần contract/acceptance cần cho lát cắt đan
 | N8N-03 | Machine principal, scope/delegation, guard confirmation/approval và test thu hồi quyền | IAM-2/4, N8N-02 | ACCEPT LOCAL — 19/19 command thật + 13/13 IAM/read + 11/11 Bridge; [matrix](acceptance-n8n-03-04.md); production/Enrollment/Payment vẫn đóng |
 | N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | ACCEPT LOCAL — 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; 16 generation 0 USD; [matrix hiện hành](acceptance-n8n-03-04.md); production/WF-08–12 vẫn đóng; LLM mutation vẫn đóng |
 | N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | ACCEPT_LOCAL — [matrix](acceptance-n8n-05.md), 49/49 + affected regressions; provider/live BLOCKED riêng |
-| N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | TODO — [dependency thực](n8n-readiness.md) |
+| N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | **ACCEPT_LOCAL** ngày 20/11/2026. [Matrix](acceptance-n8n-06.md), [policy DEMO](ban-giao-n8n-06.md) và [index](../workflows/n8n/adjustment-evidence.json). Gate live còn đóng |
 | N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | TODO — [dependency thực](n8n-readiness.md) |
 | N8N-08 | VPS/HTTPS, gate provider, registry workflow/credential, clean import/restore, evidence final | Bắt đầu với N8N-01; đóng sau N8N-02–07, CH-3/4, phần backup/restore OPS-1 | TODO — [gate còn thiếu](n8n-readiness.md) |
 

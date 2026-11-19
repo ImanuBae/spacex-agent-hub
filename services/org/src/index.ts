@@ -8,5 +8,5 @@ if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 const logger = createLogger("org");
 pool.on("error", error => logger.error("database.idle_error", { errorName: error.name }));
-const server = createOrgApp(pool, authConfig()).listen(config.PORT, config.HOST);
+const server = createOrgApp(pool, authConfig(), process.env.CLASS_URL).listen(config.PORT, config.HOST);
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => { server.close(() => { void pool.end().then(() => process.exit(0)); }); setTimeout(() => process.exit(1), 10000).unref(); });

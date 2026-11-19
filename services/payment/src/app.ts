@@ -6,8 +6,9 @@ import { MachineClaims, PaymentReviewDecision, SyntheticPaymentInput,Registratio
 import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
+import { registerPaymentAdjustments } from "./adjustments.js";
 
-export interface PaymentConfig { enrollmentUrl:string; classUrl:string; sourceClientId:string; sourceClientSecret:string; reviewOwnerId:string; syntheticWebhookSecret:string; syntheticEnabled:boolean; }
+export interface PaymentConfig { enrollmentUrl:string; classUrl:string; sourceClientId:string; sourceClientSecret:string; reviewOwnerId:string; syntheticWebhookSecret:string; syntheticEnabled:boolean; adjustmentFault?: "UNKNOWN_BEFORE" | "UNKNOWN_AFTER"; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row=Record<string,any>;
 const denied=()=>new HttpError(403,"FORBIDDEN","Payment authority does not match");
@@ -47,6 +48,7 @@ export function createPaymentApp(pool:Pool,auth:AuthConfig,config:PaymentConfig)
     if(result.rowCount&&r)await emit(c,r,"payment.review_required",id,"WF-07");return id;
   }
   return createApp("payment",app=>{
+    registerPaymentAdjustments(app,pool,auth,config);
     app.get("/ready",async(_req,res)=>{await pool.query("SELECT id FROM payment_ledger LIMIT 0");res.json({ready:true});});
     app.post("/internal/payment/synthetic-webhook",async(req,res)=>{
       if(!config.syntheticEnabled||process.env.NODE_ENV!=="test")throw denied();

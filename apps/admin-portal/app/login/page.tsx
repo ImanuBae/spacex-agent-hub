@@ -118,6 +118,7 @@ export default function LoginPage() {
           <p className="entry-help">
             Liên hệ quản lý để được cấp hoặc khôi phục tài khoản.
           </p>
+          <p className="entry-help"><Link href="/student/login">Đăng nhập học viên</Link></p>
         </section>
       </main>
       <footer className="entry-footer">

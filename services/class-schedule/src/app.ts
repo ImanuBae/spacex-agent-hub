@@ -27,6 +27,7 @@ import {
 import { createApp, HttpError } from "@spacex/http";
 import { enqueueEvent, replayDeadEvent } from "@spacex/messaging";
 import { checkTeacherSessions, registerTeacherTime } from "./teacher-time.js";
+import { registerChanges } from "./changes.js";
 
 export interface ClassConfig {
   orgUrl: string;
@@ -37,6 +38,7 @@ export interface ClassConfig {
   messagingEnabled?: boolean;
   enrollmentUrl?: string;
   paymentUrl?: string;
+  notificationUrl?: string;
 }
 const Id = z.uuid();
 export const EnrollmentCommitInput = z.object({ matchRef: Id }).strict();
@@ -91,7 +93,7 @@ const CONDITIONS = (r: Row, sessions: Row[]) => [
   (sessions.length && r.decision_at >= sessions[0].starts_at)
     ? ["Hạn quyết định phải từ hạn đăng ký đến trước buổi đầu"]
     : []),
-  ...(r.minimum_size > 0
+  ...(r.minimum_size > 0 && !r.minimum_policy_version
     ? [
         "Chính sách duyệt dưới sĩ số tối thiểu C02/CS-7 chưa được chốt; demo chỉ mở lớp minimumSize=0",
       ]
@@ -355,8 +357,9 @@ export function createClassApp(
   async function view(c: PoolClient, row: Row) {
     const sessions = (
       await c.query(
-        "SELECT starts_at,ends_at FROM sessions WHERE class_id=$1 ORDER BY starts_at",
-        [row.id],
+        `SELECT starts_at,ends_at FROM sessions WHERE class_id=$1 AND (active OR $2='CANCELLED' AND
+          (retired_revision=$3 OR retired_revision IS NULL AND NOT EXISTS(SELECT 1 FROM sessions WHERE class_id=$1 AND retired_revision=$3))) ORDER BY starts_at`,
+        [row.id,row.status,row.version],
       )
     ).rows;
     const counts = (
@@ -390,7 +393,7 @@ export function createClassApp(
       held: counts.held,
       available: row.capacity - counts.committed - counts.held,
       serverTime: counts.now,
-      missingConditions: CONDITIONS(row, sessions),
+      missingConditions: [...CONDITIONS(row, sessions), ...(row.minimum_policy_version && row.decision_at <= counts.now && counts.committed < row.minimum_size ? ["Sĩ số dưới mức tối thiểu tại hạn quyết định: cần kế hoạch hoãn/hủy đã duyệt"] : [])],
     };
   }
   function guestView(row: Awaited<ReturnType<typeof view>>) {
@@ -400,12 +403,13 @@ export function createClassApp(
   }
   async function saveSessions(c: PoolClient, id: string, input: ClassInput) {
     if (input.teacherId) await checkTeacherSessions(c, input.teacherId, input.sessions);
-    await c.query("DELETE FROM sessions WHERE class_id=$1", [id]);
+    await c.query("DELETE FROM sessions WHERE class_id=$1 AND active AND NOT (SELECT preserve_schedule_history FROM classes WHERE id=$1)", [id]);
+    await c.query("UPDATE sessions SET active=false,retired_revision=(SELECT version FROM classes WHERE id=$1) WHERE class_id=$1 AND active", [id]);
     // Ordered inserts avoid opposite lock acquisition order across concurrent requests.
     for (const s of [...input.sessions].sort((a, b) =>
       a.startsAt.localeCompare(b.startsAt),
     ))
-      await c.query("INSERT INTO sessions(id,class_id,teacher_id,room_id,starts_at,ends_at) VALUES($1,$2,$3,$4,$5,$6)", [
+      await c.query("INSERT INTO sessions(id,class_id,teacher_id,room_id,starts_at,ends_at,schedule_revision) VALUES($1,$2,$3,$4,$5,$6,(SELECT version FROM classes WHERE id=$2))", [
         randomUUID(),
         id,
         input.teacherId,
@@ -421,9 +425,10 @@ export function createClassApp(
       throw fail("ENROLLMENT_REQUIRED","Reconcile real Enrollment/Payment holds before cancelling the class");
     const holds = (await c.query("UPDATE holds SET status='CANCELLED' WHERE class_id=$1 AND status='HELD' RETURNING id", [row.id])).rows;
     for (const hold of holds) await audit(c, actor, "hold.cancelled", hold.id, correlation);
-    await c.query("UPDATE sessions SET active=false WHERE class_id=$1", [row.id]);
+    await c.query("UPDATE sessions SET active=false,retired_revision=$2 WHERE class_id=$1 AND active", [row.id,row.version+1]);
   }
   return createApp("class-schedule", (app) => {
+    registerChanges(app,pool,auth,config,{transaction,audit,expireClass,classRow,view,validate});
     app.post("/internal/classes/deadlines",async(req,res)=>{
       const claims=MachineClaims.parse(await iamRequest(auth.identityUrl,"/internal/iam/machine/introspect",bearer(req.get("authorization")),{audience:"enrollment",scope:"automation:source"}));
       if(!claims.workflows.includes("WF-07"))throw new HttpError(403,"FORBIDDEN","Enrollment deadline source required");
@@ -881,7 +886,9 @@ export function createClassApp(
         const filter = `($1::uuid[] IS NULL OR branch_id=ANY($1)) AND ($2::uuid IS NULL OR teacher_account_id=$2)
           AND ($3::uuid IS NULL OR course_id=$3) AND ($4::uuid IS NULL OR package_id=$4) AND ($5::uuid IS NULL OR branch_id=$5)
           AND ($6::text IS NULL OR mode=$6) AND ($7::text IS NULL OR status=$7)
-          AND (($8::timestamptz IS NULL AND $9::timestamptz IS NULL) OR EXISTS(SELECT 1 FROM sessions s WHERE s.class_id=classes.id AND ($8::timestamptz IS NULL OR s.starts_at >= $8) AND ($9::timestamptz IS NULL OR s.ends_at <= $9)))
+          AND (($8::timestamptz IS NULL AND $9::timestamptz IS NULL) OR EXISTS(SELECT 1 FROM sessions s WHERE s.class_id=classes.id
+            AND (s.active OR classes.status='CANCELLED' AND (s.retired_revision=classes.version OR s.retired_revision IS NULL AND NOT EXISTS(SELECT 1 FROM sessions retired WHERE retired.class_id=classes.id AND retired.retired_revision=classes.version)))
+            AND ($8::timestamptz IS NULL OR s.starts_at >= $8) AND ($9::timestamptz IS NULL OR s.ends_at <= $9)))
           AND (NOT $10::boolean OR (status='OPEN' AND registration_closes_at>transaction_timestamp() AND capacity>(SELECT count(*) FROM holds h WHERE h.class_id=classes.id AND (h.status='COMMITTED' OR (h.status='HELD' AND h.expires_at>transaction_timestamp())))))
           AND ($11::jsonb IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements($11::jsonb) o WHERE (o->>'packageId')::uuid=package_id AND (o->>'courseId')::uuid=course_id AND (o->'modes') ? mode AND ((o->'branchIds')='[]'::jsonb OR (o->'branchIds') ? branch_id::text)))`;
         const params = [
@@ -1015,7 +1022,9 @@ export function createClassApp(
             );
           const row = (
             await c.query(
-              "UPDATE classes SET code=$2,name=$3,teacher_id=$4,teacher_account_id=$5,mode=$6,room_id=$7,online_url=$8,capacity=$9,minimum_size=$10,registration_closes_at=$11,decision_at=$12,session_count=$13,version=version+1 WHERE id=$1 RETURNING *",
+              `UPDATE classes SET code=$2,name=$3,teacher_id=$4,teacher_account_id=$5,mode=$6,room_id=$7,online_url=$8,capacity=$9,
+                minimum_size=$10,registration_closes_at=$11,decision_at=$12,session_count=$13,version=version+1,
+                minimum_policy_version=CASE WHEN minimum_size=$10 AND registration_closes_at=$11 AND decision_at=$12 THEN minimum_policy_version END WHERE id=$1 RETURNING *`,
               [
                 id,
                 input.code,
@@ -1096,7 +1105,7 @@ export function createClassApp(
               );
           }
           if (["IN_PROGRESS", "COMPLETED"].includes(input.status)) {
-            const timing = (await c.query("SELECT min(starts_at)<=clock_timestamp() AS started,max(ends_at)<=clock_timestamp() AS ended FROM sessions WHERE class_id=$1", [id])).rows[0];
+            const timing = (await c.query("SELECT min(starts_at)<=clock_timestamp() AS started,max(ends_at)<=clock_timestamp() AS ended FROM sessions WHERE class_id=$1 AND active", [id])).rows[0];
             const current = await view(c, row);
             if (input.status === "IN_PROGRESS" && (!timing.started || current.committed < row.minimum_size || current.held > 0))
               throw fail("START_CONDITIONS", "Chưa đến giờ học, chưa đủ sĩ số hoặc còn giữ chỗ chưa xử lý");

@@ -6,13 +6,14 @@ import { bearer, verifyAccessToken, signAccessToken, allowRoles, principal, chec
 import { createApp, HttpError } from "@spacex/http";
 import { hashPassword, verifyPassword, refreshHash } from "./password.js";
 import { registerMachineRoutes, type MachineAuthority } from "./machine.js";
+import { registerLearnerRoutes, type LearnerConfig } from "./learner.js";
 
-interface Account { id: string; email: string; name: string; role: Role; branch_ids: string[]; active: boolean; password_hash: string; locked_until: Date | null; }
+export interface Account { id: string; email: string; name: string; role: Role; branch_ids: string[]; active: boolean; password_hash: string; locked_until: Date | null; }
 const view = (a: Account) => ({ id: a.id, email: a.email, name: a.name, role: a.role, branchIds: a.branch_ids, active: a.active });
 const Id = z.uuid();
 const invalid = () => new HttpError(401, "UNAUTHORIZED", "Invalid credentials or session");
 
-export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string, machines?: MachineAuthority) {
+export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string, machines?: MachineAuthority, learners?: LearnerConfig) {
   async function audit(db: Pool | PoolClient, actor: string | null, action: string, target: string | null) {
     await db.query("INSERT INTO identity_audit(id,actor_id,action,target_id) VALUES($1,$2,$3,$4)", [randomUUID(), actor, action, target]);
   }
@@ -31,6 +32,7 @@ export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string
   }
   return createApp("identity", app => {
     registerMachineRoutes(app, pool, live, machines);
+    registerLearnerRoutes(app, pool, config, learners, live, issue);
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM accounts LIMIT 1"); res.json({ status: "ok" }); });
     app.post("/api/v1/auth/login", async (req, res) => {
       const input = LoginInput.parse(req.body);
@@ -42,7 +44,7 @@ export function createIdentityApp(pool: Pool, config: AuthConfig, orgUrl: string
         // Use a fixed-cost hash even for an unknown email to reduce timing disclosure.
         const fallback = "scrypt$00000000000000000000000000000000$" + "00".repeat(64);
         const valid = await verifyPassword(input.password, account?.password_hash ?? fallback);
-        if (!account || !account.active || (account.role !== "center_director" && account.branch_ids.length === 0) || (account.locked_until && account.locked_until > new Date()) || !valid) {
+        if (!account || account.role === "student" || !account.active || (account.role !== "center_director" && account.branch_ids.length === 0) || (account.locked_until && account.locked_until > new Date()) || !valid) {
           if (account) await client.query("UPDATE accounts SET failed_attempts=CASE WHEN locked_until>now() THEN failed_attempts WHEN locked_until IS NOT NULL THEN 1 ELSE failed_attempts+1 END, locked_until=CASE WHEN locked_until>now() THEN locked_until WHEN (CASE WHEN locked_until IS NOT NULL THEN 0 ELSE failed_attempts END)>=4 THEN now()+interval '15 minutes' ELSE NULL END WHERE id=$1", [account.id]);
           await audit(client, null, "login.failed", account?.id ?? null);
           await client.query("COMMIT");

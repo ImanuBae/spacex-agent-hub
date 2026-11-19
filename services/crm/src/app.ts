@@ -23,7 +23,7 @@ const personView = (r: Row, full = false) => ({ id: r.id, branchId: r.branch_id,
 const leadView = (r: Row, full = true) => ({ id: r.id, branchId: r.branch_id, contactId: r.contact_id, learnerId: r.learner_id, payerId: r.payer_id, courseId: r.course_id, source: r.source, ownerId: r.owner_id, stage: r.stage, notes: full ? r.notes : "", version: r.version, createdAt: r.created_at, contactName: r.contact_name, contactPhone: maskedPhone(r.contact_phone) });
 const consentView = (r: Row) => ({ id: r.id, personId: r.person_id, purpose: r.purpose, status: r.status, statementVersion: r.statement_version, statementText: r.statement_text, method: r.method, actorId: r.actor_id, recordedAt: r.recorded_at });
 
-export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: string; catalogUrl: string; conversationUrl?: string; enrollmentUrl?: string }) {
+export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: string; catalogUrl: string; conversationUrl?: string; enrollmentUrl?: string; notificationUrl?: string }) {
   async function transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await pool.connect();
     try { await c.query("BEGIN"); await c.query("SET LOCAL lock_timeout='5s'"); const result = await work(c); await c.query("COMMIT"); return result; }
@@ -140,6 +140,40 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
 
   return createApp("crm", app => {
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM crm_people LIMIT 1"); res.json({ status: "ok" }); });
+    async function currentCourseConsent(c: PoolClient, learnerId: string, branchId: string) {
+      const person = (await c.query("SELECT * FROM crm_people WHERE id=$1 FOR SHARE", [learnerId])).rows[0];
+      const consent = (await c.query("SELECT status FROM crm_consents WHERE person_id=$1 AND purpose='COURSE_NOTICES' ORDER BY sequence DESC LIMIT 1", [learnerId])).rows[0];
+      const erasure = (await c.query("SELECT 1 FROM crm_erasure_requests WHERE person_id=$1 AND status IN ('VERIFIED','PROCESSING')", [learnerId])).rowCount;
+      return !!person && person.kind === "LEARNER" && person.status === "ACTIVE" && !person.merged_into && person.branch_id === branchId && !erasure && consent?.status === "GRANTED";
+    }
+    app.get("/internal/crm/adjustments/:id/waitlist-consent", async (req, res) => {
+      const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
+      const verify = () => verifyCommand(auth, token, "enrollment", "enrollment:adjust");
+      const user = await verify(), d = user.delegation;
+      if (d?.workflowId !== "WF-09" || d.operation !== "enrollment.adjust" || d.entity?.type !== "adjustment" || d.entity.id !== id || d.inputRef !== id)
+        throw new HttpError(403, "FORBIDDEN", "Waitlist source binding does not match");
+      if (!config.enrollmentUrl) throw new HttpError(503, "ENROLLMENT_UNAVAILABLE", "Enrollment authority required");
+      const source = z.object({ learnerId: Id, branchId: Id, type: z.literal("WAITLIST") }).passthrough().parse(await upstream(config.enrollmentUrl, `/internal/enrollment/adjustments/${id}/authority`, req, res));
+      if (source.branchId !== d.branchId) throw new HttpError(403, "FORBIDDEN", "Waitlist branch does not match");
+      const allowed = await transaction(async c => { const allowed = await currentCourseConsent(c, source.learnerId, source.branchId); await verify(); return allowed; });
+      res.json({ data: { allowed } });
+    });
+    app.get("/internal/crm/notifications/:id", async (req, res) => {
+      const id = Id.parse(req.params.id), token = bearer(req.get("authorization"));
+      const verify = () => verifyCommand(auth, token, "notification", "notification:deliver");
+      const user = await verify(), d = user.delegation;
+      if (d?.workflowId !== "WF-10" || d.operation !== "notification.deliver" || d.entity?.type !== "notification" || d.entity.id !== id || d.inputRef !== id)
+        throw new HttpError(403, "FORBIDDEN", "Notification source binding does not match");
+      if (!config.notificationUrl) throw new HttpError(503, "NOTIFICATION_UNAVAILABLE", "Notification authority required");
+      const source = z.object({ learnerId: Id, branchId: Id }).passthrough().parse(await upstream(config.notificationUrl, `/internal/notification/intents/${id}/authority`, req, res));
+      if (source.branchId !== d.branchId) throw new HttpError(403, "FORBIDDEN", "Notification branch does not match");
+      const data = await transaction(async c => {
+        const allowed = await currentCourseConsent(c, source.learnerId, source.branchId);
+        await verify();
+        return { allowed };
+      });
+      res.json({ data });
+    });
     app.get("/internal/crm/enrollment-authority", async (req, res) => {
       const { enrollmentId } = z.object({ enrollmentId: Id }).strict().parse(req.query), token = bearer(req.get("authorization"));
       const verify = () => verifyCommand(auth, token, "enrollment", "enrollment:write");

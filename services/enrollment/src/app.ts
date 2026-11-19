@@ -5,8 +5,9 @@ import { DemoTermsVersion, EnrollmentPreview, MachineClaims,RegistrationTrigger,
 import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
+import { registerAdjustments } from "./adjustments.js";
 
-export interface EnrollmentConfig { catalogUrl: string; classUrl: string; crmUrl: string; paymentUrl: string; sourceClientId: string; sourceClientSecret: string; }
+export interface EnrollmentConfig { catalogUrl: string; classUrl: string; crmUrl: string; paymentUrl: string; sourceClientId: string; sourceClientSecret: string; notificationUrl?: string; }
 // Database rows are converted at the HTTP boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -67,6 +68,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
     await enqueueEvent(c,RegistrationTrigger.parse({id:eventId,type,version:1,occurredAt:new Date().toISOString(),correlationId:r.correlation_id,entityId:r.id,entityVersion:r.version,payload:{entity,inputRef,contextRef}}));
   }
   return createApp("enrollment", app => {
+    registerAdjustments(app, pool, auth, config);
     app.get("/ready",async (_req,res)=>{await pool.query("SELECT id FROM enrollments LIMIT 0");res.json({ready:true});});
     app.use("/api/v1",authenticate(auth),allowRoles("center_director","branch_director","admissions"));
     app.post("/api/v1/enrollment-confirmations/preview",async(req,res)=>{

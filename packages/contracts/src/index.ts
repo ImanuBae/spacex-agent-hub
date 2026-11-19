@@ -9,3 +9,4 @@ export * from "./automation.js";
 export * from "./machine.js";
 export * from "./conversation.js";
 export * from "./enrollment.js";
+export * from "./adjustments.js";

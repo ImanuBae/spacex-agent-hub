@@ -49,10 +49,17 @@ it("forwards only reviewed enrollment/payment routes with a live session and kee
   });
   servers.push(upstream); await new Promise<void>(resolve => upstream.listen(0, "127.0.0.1", resolve));
   config.identityUrl = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
-  const gateway = createGatewayApp(config, { catalog: config.identityUrl, org: config.identityUrl, enrollment: config.identityUrl, payment: config.identityUrl }).listen(0, "127.0.0.1");
+  const gateway = createGatewayApp(config, { catalog: config.identityUrl, org: config.identityUrl, enrollment: config.identityUrl, payment: config.identityUrl, classes: config.identityUrl, notification: config.identityUrl }).listen(0, "127.0.0.1");
   servers.push(gateway); await new Promise<void>(resolve => gateway.once("listening", resolve));
   const base = `http://127.0.0.1:${(gateway.address() as AddressInfo).port}`;
   expect((await fetch(`${base}/api/v1/enrollments`)).status).toBe(401);
+  for (const path of ["class-changes", "adjustments", "refunds", "waitlist", "notifications", "student/enrollments", "student/invoices", "learner-identities"]) {
+    expect((await fetch(`${base}/api/v1/${path}`)).status).toBe(401);
+  }
+  for (const action of ["request", "verify"]) {
+    expect((await fetch(`${base}/api/v1/auth/otp/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(200);
+    expect((await fetch(`${base}/api/v1/auth/otp/${action}`)).status).toBe(401);
+  }
   const token = await signAccessToken({ id: randomUUID(), role: "admissions", branchIds: [randomUUID()] }, randomUUID(), config);
   const headers = { authorization: `Bearer ${token}`, "content-type": "application/json", "idempotency-key": randomUUID(), "x-actor-id": randomUUID() };
   const result = await fetch(`${base}/api/v1/enrollment-confirmations/preview`, { method: "POST", headers, body: JSON.stringify({ learnerId: randomUUID() }) });
@@ -60,10 +67,10 @@ it("forwards only reviewed enrollment/payment routes with a live session and kee
   const forwarded = (await result.json()).data;
   expect(forwarded).toMatchObject({ path: "/api/v1/enrollment-confirmations/preview", key: headers["idempotency-key"] });
   expect(forwarded.actor).toBeUndefined();
-  for (const path of ["enrollments", `enrollments/${randomUUID()}`, `enrollment-confirmations/${randomUUID()}`, `payment-requests/${randomUUID()}`]) {
+  for (const path of ["enrollments", `enrollments/${randomUUID()}`, `enrollment-confirmations/${randomUUID()}`, `payment-requests/${randomUUID()}`, "class-changes", "adjustments", "refunds", "waitlist", "notifications", "student/enrollments", "student/invoices", "learner-identities"]) {
     expect((await fetch(`${base}/api/v1/${path}`, { headers })).status).toBe(200);
   }
-  for (const path of ["/internal/classes/enrollments/commit", "/api/v1/payment-requests/webhook", `/api/v1/enrollments/${randomUUID()}/confirm`, "/api/v1/enrollment-confirmations/execute"]) {
+  for (const path of ["/internal/classes/enrollments/commit", "/internal/notification/otp", "/internal/notification/intents/send", "/internal/enrollment/adjustments/execute", "/api/v1/payment-requests/webhook", `/api/v1/enrollments/${randomUUID()}/confirm`, "/api/v1/enrollment-confirmations/execute"]) {
     const response = await fetch(`${base}${path}`, { method: "POST", headers, body: "{}" });
     expect(response.status).toBe(404);
   }

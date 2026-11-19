@@ -1,7 +1,7 @@
 import { authenticate, type AuthConfig } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 
-export function createGatewayApp(config: AuthConfig, targets: { catalog: string; org: string; classes?: string; crm?: string; conversation?: string; enrollment?: string; payment?: string }) {
+export function createGatewayApp(config: AuthConfig, targets: { catalog: string; org: string; classes?: string; crm?: string; conversation?: string; enrollment?: string; payment?: string; notification?: string }) {
   // Single-instance limit, keyed by verified actor or socket IP. Never trust
   // client-supplied forwarding headers. Multi-replica hosting needs shared storage.
   const windows = new Map<string, { start: number; count: number }>();
@@ -19,7 +19,7 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
   return createApp("gateway", app => {
     app.use("/api/v1", async (req, res, next) => {
       const path = req.originalUrl.split("?")[0];
-      const publicAuth = req.method === "POST" && ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"].includes(path);
+      const publicAuth = req.method === "POST" && ["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout", "/api/v1/auth/otp/request", "/api/v1/auth/otp/verify"].includes(path);
       if (/^\/api\/v1\/chat\/(session|messages|history|revoke)$/.test(path)) { limit(`chat:${req.socket.remoteAddress}`, 300); next(); return; }
       if (publicAuth) { limit(`auth:${req.socket.remoteAddress}`, 60); next(); return; }
       await authenticate(config)(req, res, next);
@@ -29,12 +29,17 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
       const path = req.originalUrl.split("?")[0];
       const enrollmentRoute = req.method === "GET" && /^\/api\/v1\/(enrollments|enrollment-confirmations)(\/[a-zA-Z0-9-]+)?$/.test(path)
         || req.method === "POST" && (/^\/api\/v1\/enrollment-confirmations\/preview$/.test(path) || /^\/api\/v1\/enrollment-confirmations\/[a-zA-Z0-9-]+\/(confirm|revoke)$/.test(path) || /^\/api\/v1\/enrollments\/[a-zA-Z0-9-]+\/cancel$/.test(path));
-      const target = /^\/api\/v1\/(auth|accounts|assignees)(\/|$)/.test(path) ? config.identityUrl
+      const target = /^\/api\/v1\/(auth|accounts|assignees|learner-identities)(\/|$)/.test(path) ? config.identityUrl
         : /^\/api\/v1\/(courses|packages)(\/|$)/.test(path) ? targets.catalog
         : /^\/api\/v1\/(branches|departments|employees|teachers|access-sync)(\/|$)/.test(path) ? targets.org
-        : /^\/api\/v1\/(classes|rooms|holds|hold-fixtures|teacher-time|operations)(\/|$)/.test(path) ? targets.classes
+        : /^\/api\/v1\/(classes|rooms|holds|hold-fixtures|teacher-time|operations|class-changes)(\/|$)/.test(path) ? targets.classes
         : /^\/api\/v1\/crm(\/|$)/.test(path) ? targets.crm
         : enrollmentRoute ? targets.enrollment
+        : (req.method === "GET" && /^\/api\/v1\/student\/(class-schedule|class-changes)(\/|$)/.test(path)) ? targets.classes
+        : (req.method === "POST" && /^\/api\/v1\/student\/class-changes\/[a-f0-9-]+\/choice$/.test(path)) ? targets.enrollment
+        : (/^\/api\/v1\/(adjustments|waitlist)(\/[a-f0-9-]+(\/(approve|revoke|choice|invite|accept|decline))?)?$/.test(path) || /^\/api\/v1\/student\/(enrollments|adjustments|waitlist)(\/[a-f0-9-]+)?$/.test(path)) ? targets.enrollment
+        : (/^\/api\/v1\/refunds(\/[a-f0-9-]+(\/execute)?)?$/.test(path) || /^\/api\/v1\/student\/invoices(\/[a-f0-9-]+(\/download)?)?$/.test(path)) ? targets.payment
+        : /^\/api\/v1\/notifications(\/|$)/.test(path) ? targets.notification
         : req.method === "GET" && /^\/api\/v1\/payment-requests(\/[a-zA-Z0-9-]+)?$/.test(path) ? targets.payment
         : (req.method === "GET" && /^\/api\/v1\/payment-reviews(\/[a-zA-Z0-9-]+)?$/.test(path) || req.method === "POST" && /^\/api\/v1\/payment-reviews\/[a-zA-Z0-9-]+\/(decision|approve)$/.test(path)) ? targets.payment
         : /^\/api\/v1\/(chat|conversations)(\/|$)/.test(path) ? targets.conversation : undefined;
@@ -50,6 +55,9 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
       } catch { throw new HttpError(502, "UPSTREAM_UNAVAILABLE", "Service unavailable"); }
       res.status(response.status);
       res.set("content-type", response.headers.get("content-type") ?? "application/json");
+      for (const name of ["content-disposition", "cache-control", "x-content-type-options"]) {
+        const value = response.headers.get(name); if (value) res.set(name, value);
+      }
       res.send(Buffer.from(await response.arrayBuffer()));
     });
   });

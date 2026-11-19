@@ -83,6 +83,10 @@ export async function runN8n05WorkflowCases(t){
   });
 
   await test("N8N-BROWSER-CONFIRMATION","Real Portal uses explicit confirmation and reads durable held/QR state after reload at1440/768/390px",async()=>{
+    if (h.startPortal) {
+      const selected=await selection(), origin=await h.startPortal();
+      return enrollmentBrowser({origin,directory:h.directory,email:staff.email,password,selection:selected,expectedStatus:"HELD",timeoutMs:30000});
+    }
     const selected=await selection(),gatewayPort=await h.freePort(),portalPort=await h.freePort(),origin=`http://localhost:${portalPort}`;
     await h.startService("gateway",{PORT:String(gatewayPort),HOST:"127.0.0.1"});
     const fd=await open(path.join(h.directory,"portal-private.log"),"w");

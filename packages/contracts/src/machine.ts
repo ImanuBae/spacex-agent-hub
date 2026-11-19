@@ -2,8 +2,8 @@ import { z } from "zod";
 import { AutomationInput } from "./automation.js";
 import { TokenClaims } from "./auth.js";
 
-export const MachineScope = z.enum(["automation:claim", "automation:checkpoint", "automation:result", "automation:read", "automation:authorize", "catalog:read", "classes:read", "classes:cancel", "channel:context", "crm:write", "enrollment:write", "payment:write", "classes:enroll", "automation:source"]);
-export const MachineAudience = z.enum(["automation-bridge", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment"]);
+export const MachineScope = z.enum(["automation:claim", "automation:checkpoint", "automation:result", "automation:read", "automation:authorize", "catalog:read", "classes:read", "classes:cancel", "channel:context", "crm:write", "enrollment:write", "payment:write", "classes:enroll", "automation:source", "classes:change", "classes:adjust", "enrollment:adjust", "payment:refund", "notification:deliver"]);
+export const MachineAudience = z.enum(["automation-bridge", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification"]);
 export const MachineGrant = z.object({ audience: MachineAudience, scopes: z.array(MachineScope).min(1) }).strict();
 export const MachinePrincipalInput = z.object({
   id: z.string().regex(/^[a-zA-Z0-9._-]{1,100}$/),
@@ -15,13 +15,13 @@ export const MachineTokenInput = z.object({
   workflows: MachinePrincipalInput.shape.workflows, ttlSeconds: z.number().int().min(1).max(300).default(300),
 }).strict();
 export const ReadOperation = z.enum(["catalog.read", "classes.read"]);
-export const DomainOperation = z.enum(["catalog.read", "classes.read", "classes.cancel", "crm.execute", "enrollment.execute", "payment.execute", "classes.enroll"]);
+export const DomainOperation = z.enum(["catalog.read", "classes.read", "classes.cancel", "crm.execute", "enrollment.execute", "payment.execute", "classes.enroll", "classes.change", "classes.adjust", "enrollment.adjust", "payment.refund", "notification.deliver"]);
 export const DelegationInput = AutomationInput.omit({ contextRef: true }).extend({
   eventId: z.uuid(), workflowId: z.string().regex(/^[a-zA-Z0-9._-]{1,100}$/),
   workflowVersion: z.number().int().positive(), branchId: z.uuid(),
   operations: z.array(DomainOperation).min(1),
 }).strict();
-export const JobOperation = z.enum(["catalog.read", "classes.read", "classes.cancel", "conversation.route", "conversation.send", "conversation.handoff", "crm.execute", "enrollment.execute", "payment.execute", "classes.enroll"]);
+export const JobOperation = z.enum(["catalog.read", "classes.read", "classes.cancel", "conversation.route", "conversation.send", "conversation.handoff", "crm.execute", "enrollment.execute", "payment.execute", "classes.enroll", "classes.change", "classes.adjust", "enrollment.adjust", "payment.refund", "notification.deliver"]);
 export const CommandFence = z.object({ leaseToken: z.uuid(), attempt: z.number().int().positive(), operation: JobOperation }).strict();
 export const CommandTokenInput = CommandFence.extend({ jobId: z.uuid() }).strict();
 export const CommandBinding = CommandTokenInput.extend({

@@ -1,0 +1,1102 @@
+{
+  "version": 1,
+  "ticket": "N8N-06",
+  "decision": {
+    "status": "ACCEPT_LOCAL",
+    "reviewer": "Codex agent",
+    "decidedAt": "2026-11-19T20:53:56.255Z",
+    "timezone": "Asia/Saigon",
+    "policyVersion": "DEMO-N8N06-2026-11-16-v1"
+  },
+  "scope": {
+    "workflowIds": [
+      "WF-08",
+      "WF-09",
+      "WF-10"
+    ],
+    "canonicalActive": false,
+    "budgetUsd": 0,
+    "syntheticOnly": true,
+    "providerRequests": 0
+  },
+  "canonical": {
+    "manifest": {
+      "file": "workflows/n8n/adjustment-manifest.json",
+      "sha256": "dccf2fff332ca0c83dcd13b8904ddc7635e0bca8baf847ac9fa6dff34330c9b5"
+    },
+    "workflows": [
+      {
+        "workflowId": "WF-08",
+        "file": "workflows/n8n/wf-08.json",
+        "sha256": "561e01d7e5782208db03f4134d19c5377408963d7db6f51d9bf55722a73caa77",
+        "active": false
+      },
+      {
+        "workflowId": "WF-09",
+        "file": "workflows/n8n/wf-09.json",
+        "sha256": "2f2bf5c5cc17c5356c98599f00297eaf6ff1059060a9899b40aef31187af025a",
+        "active": false
+      },
+      {
+        "workflowId": "WF-10",
+        "file": "workflows/n8n/wf-10.json",
+        "sha256": "9fd04e86c38ccf8dd5ec5cdb4df4cfdbfa78bec8f0df989b8b00c1f4da889006",
+        "active": false
+      }
+    ]
+  },
+  "evidenceInventory": {
+    "file": ".local/automation/n8n06-selective-71ab1b69058e/receipt-inventory.json",
+    "sha256": "8342ca455e991866c44a3eddc7194688bb1ed9e61e63280d1f34aa5667e592e1"
+  },
+  "documents": {
+    "matrix": "docs/acceptance-n8n-06.md",
+    "handoff": "docs/ban-giao-n8n-06.md",
+    "readiness": "docs/n8n-readiness.md"
+  },
+  "sourceFinal": {
+    "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/preflight.json",
+    "sha256": "71ae414b07073c61c8b41fbd1a89961c2a0f4e99e43e5d2aa88de52e50aebd43"
+  },
+  "counts": {
+    "executed": 34,
+    "inherited": 6,
+    "registrationCases": 50
+  },
+  "claims": [
+    {
+      "id": "N8N06-ENROLLMENT-UPGRADE",
+      "run": "initial",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/3"
+    },
+    {
+      "id": "WF08-WF10-IMPORT",
+      "run": "initial",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/4"
+    },
+    {
+      "id": "WF08-MANUAL-CANCEL",
+      "run": "initial",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/5",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/WF-08-manual-4-execution-private.json",
+          "sha256": "4c39c049d5f2a962f7a23b413a7968f140e95dbbba22a13c20cb6f5ec48da362"
+        }
+      ]
+    },
+    {
+      "id": "WF09-TRANSFER",
+      "run": "initial",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/6",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/WF-09-done-8-execution-private.json",
+          "sha256": "107b33cce2df62f8ba26419a694a65930ee08ae523cbc7a5ade69259591b3ba5"
+        }
+      ]
+    },
+    {
+      "id": "WF09-SIGKILL-AFTER-COMMIT",
+      "run": "initial",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/7",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/WF-09-done-13-execution-private.json",
+          "sha256": "63e146c541aac6eea3087c9d7236f5a12abbc540eccd5b08abbbe40175f5f6ed"
+        }
+      ]
+    },
+    {
+      "id": "WF10-OTP-RATE-RACE-REPLAY",
+      "run": "diagnostic",
+      "basis": "INHERITED",
+      "jsonPointer": "/cases/8"
+    },
+    {
+      "id": "WF10-SIGKILL-AFTER-MAIL",
+      "run": "physical",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-d8ccaf3d3bab/WF-10-done-12-execution-private.json",
+          "sha256": "730c7e8998e3b1a68cbc7faa79a64049bb8920d13755a8c5112e8b311ba8b2cb"
+        }
+      ]
+    },
+    {
+      "id": "WF10-CLASS-VERSION-ORDER",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-7-execution-private.json",
+          "sha256": "5e329b1d6d6bf2023235cd673879cbafacf33d1fa5c31ab0a63772475ae7bbae"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-10-done-8-execution-private.json",
+          "sha256": "8efb4efd291473fc90af4cbb79221d6d03f28ebcf7982b5ea8926ff3ea9cf22c"
+        }
+      ]
+    },
+    {
+      "id": "WF10-TRANSFER-MEMBERSHIP",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/1",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-10-execution-private.json",
+          "sha256": "44c771c9ab192db636873f420b7e6df1f46cecb63f42efff8a5bb8cd7ae32a23"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-10-done-11-execution-private.json",
+          "sha256": "e0d319c36873107574c3ad75a79ada0ca5b81d3e0350f9d081c5c6d1db6d298d"
+        }
+      ]
+    },
+    {
+      "id": "WF08-APPROVAL-AND-HISTORY",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/2",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-12-execution-private.json",
+          "sha256": "40c8f952a67a4f07d953bdd05e6e8068803eb8a762cabb50a561379f26a624c4"
+        }
+      ]
+    },
+    {
+      "id": "WF08-STALE-BEFORE-APPROVAL",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/3"
+    },
+    {
+      "id": "WF08-LEARNER-CHOICE",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/4",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-13-execution-private.json",
+          "sha256": "d3bf3faab937094268709515c282bedea047387664ecfc1d6e4c5fe9eaa554dc"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-14-execution-private.json",
+          "sha256": "b28b59bc4480cca41637244de74342b04a91cd57fd05301836c21f5ea0117ce9"
+        }
+      ]
+    },
+    {
+      "id": "WF08-WF09-LINKED-CANCELLATION",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/5",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-15-execution-private.json",
+          "sha256": "4e15d43301bdbd5edb91194cd28abae31e390fba6bd82fa0a5570cc18f58c297"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-16-execution-private.json",
+          "sha256": "780dd1e784461ef25af68d454e05ab31f2d2c0f68c1955ff2f4409c50dd89444"
+        }
+      ]
+    },
+    {
+      "id": "WF08-REGISTRATION-INTERLEAVING",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/6",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-dead-17-execution-private.json",
+          "sha256": "60723f3722fe957bf2fc8c12181771f1342a7d5d64130d3c4555dcaef24dc6b2"
+        }
+      ]
+    },
+    {
+      "id": "WF08-MINIMUM-AND-MAKEUP",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/7",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-18-execution-private.json",
+          "sha256": "83be701fc57201a52ebad3a10541fdd1b3b9423e83ca8466538fabde736fb926"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-08-done-19-execution-private.json",
+          "sha256": "86a2175e1a5482fece01b335349eeb28f1c6fb7e34594f9bfa30f3cfc88861fd"
+        }
+      ]
+    },
+    {
+      "id": "WF08-LEAVE-SCHEDULE-RACE",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/8"
+    },
+    {
+      "id": "WF09-REFUND-OVER-CAP-CONCURRENT",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/9",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-20-execution-private.json",
+          "sha256": "369540ca7f92f8a8f501ff8465b127cfa59f639bad7c71f210955bac039f6a9a"
+        }
+      ]
+    },
+    {
+      "id": "WF09-EXCESS-REFUND-KEEPS-TUITION",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/10",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-waiting-21-execution-private.json",
+          "sha256": "41b2502c75e966a21f37b801a84fe394300673c9714ce765d5aabc7a1b90d003"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-22-execution-private.json",
+          "sha256": "0cb573f8939ad3c7b19e3d793ccef83e0b5c9f47403864b92fd6eaf9e3de94b2"
+        }
+      ]
+    },
+    {
+      "id": "WF09-SUSPEND-RESUME",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/11",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-23-execution-private.json",
+          "sha256": "eb42e50f89a426bbe0c05ec9bbfad6601b57522b1ef3908199d0b9ccd42b095b"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-24-execution-private.json",
+          "sha256": "215332c3937c35d7e40af20f6e8bfeb98173f99226f7972af16b3e1db3d2aa2f"
+        }
+      ]
+    },
+    {
+      "id": "WF09-WAITLIST-LAST-SEAT",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/12",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-25-execution-private.json",
+          "sha256": "e3b902a9dc506eceeb607e812ba3fd4cb821ca9716b9105df4ff3420dcfe166b"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-26-execution-private.json",
+          "sha256": "eab512a6854c8e6ced028527609853870cda581a7e0bb04e5c090b2107ee9d58"
+        }
+      ]
+    },
+    {
+      "id": "WF09-WAITLIST-DECLINE-REVOKE",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/13"
+    },
+    {
+      "id": "WF09-INVITATION-AND-SUSPENSION-EXPIRY",
+      "run": "domains",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/14",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/WF-09-done-27-execution-private.json",
+          "sha256": "d53c52ab993aa0e86ba2663a187b69da2166dbf9b16f83b2efbf23977e859b78"
+        }
+      ]
+    },
+    {
+      "id": "WF10-MATCH-NOT-CONFIRMED",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0"
+    },
+    {
+      "id": "WF10-CONFIRMED-MAIL-PORTAL",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/1",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-done-7-execution-private.json",
+          "sha256": "d7aa0aeed091a61d3ddb9f037c73e12787b17539449de376f8d35c6c5da345ff"
+        }
+      ]
+    },
+    {
+      "id": "WF10-OTP-EXPIRY-OWNERSHIP",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/2"
+    },
+    {
+      "id": "WF10-CONSENT-DEDUP-REMINDER",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/3",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-done-8-execution-private.json",
+          "sha256": "c3cda6f3bfab78955f96177166fee769539b2ee7584a9def0d6c58226e5305a7"
+        }
+      ]
+    },
+    {
+      "id": "WF10-ADAPTER-REJECT",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/4",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-done-9-execution-private.json",
+          "sha256": "bb391ea7c92150b1f2c8c8503ddd67ad3d9b0067e0305fee09f556d7e1551620"
+        }
+      ]
+    },
+    {
+      "id": "WF10-ADAPTER-TIMEOUT_BEFORE",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/5",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-done-10-execution-private.json",
+          "sha256": "1e61ac5bfd70cae3380bbe00b99f4c8000d2e94eaafd6eddefa14f9f0f6a4000"
+        }
+      ]
+    },
+    {
+      "id": "WF10-ADAPTER-TIMEOUT_AFTER",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/6",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-done-11-execution-private.json",
+          "sha256": "20f231226b5113d9f1065648ede3ebab659cefaec17a67e5cca3baa68f9b6785"
+        }
+      ]
+    },
+    {
+      "id": "WF10-ADAPTER-UNKNOWN_NO_LOOKUP",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/7",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-10-dead-12-execution-private.json",
+          "sha256": "0a366d70bd4b0313129aaab87a2114712e5721d510a3b2c748a2476afa0cd1f8"
+        }
+      ]
+    },
+    {
+      "id": "WF09-TRANSFER-DELTA",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/8",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-waiting-13-execution-private.json",
+          "sha256": "6b32668f1d59a8952ef4bafba1d4b23b965a64249911076823843c6be061ed17"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-done-14-execution-private.json",
+          "sha256": "bfd61c405c5104846afa1398011222746988b070fee5da9a34764c159d3c9666"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-waiting-15-execution-private.json",
+          "sha256": "fdcda497892e61d73259b02f8ef9d99ce72ff01e5e8c67a8cffe6b304c835690"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-done-16-execution-private.json",
+          "sha256": "c09a8ef6de8bc4c2bde0a1920365ec46d56143d8e44cb55597e2f51028883899"
+        }
+      ]
+    },
+    {
+      "id": "WF09-REFUND-UNKNOWN_BEFORE",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/9",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-waiting-17-execution-private.json",
+          "sha256": "ab60a00b24881514d0b88a49ca6408e17e2d61b333ab10f97bb7317970d56bf5"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-dead-18-execution-private.json",
+          "sha256": "94a3dcb7cb575557d653a7656a4715d9277c611717b9ca0aa9d8e3cf29cc09ad"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-dead-19-execution-private.json",
+          "sha256": "db8f294cd24b239cce86d491169b93be2ae7a57d69ae64f4a55f856dd462d467"
+        }
+      ]
+    },
+    {
+      "id": "WF09-REFUND-UNKNOWN_AFTER",
+      "run": "notificationAndMoney",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/10",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-waiting-20-execution-private.json",
+          "sha256": "920f41028568fe9a95218f433c022a90a61c46e030f75ea19e7637cdc6dcf553"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-dead-21-execution-private.json",
+          "sha256": "34c058273fc246f53390b93f6f53a550f0056627e9af94b5ace5c327aa4f1b04"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/WF-09-done-22-execution-private.json",
+          "sha256": "a39173fc887e1f25c9185d39674c25c21bbcce89eeaf86d4ccfa950c58485d19"
+        }
+      ]
+    },
+    {
+      "id": "WF10-COMMAND-FENCE",
+      "run": "followUp1",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0"
+    },
+    {
+      "id": "WF09-WAITLIST-FIFO-CONSENT",
+      "run": "followUp1",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/1"
+    },
+    {
+      "id": "WF09-TRANSFER-CHARGE-COMPENSATION",
+      "run": "followUp1",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/2",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-waiting-7-execution-private.json",
+          "sha256": "e90a9101f82dc206e84203fcc72a3daae3ce6e868b204890207f43cd5c41365f"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-dead-8-execution-private.json",
+          "sha256": "8de4836af05463f3e8dd13252174c5f9782eb2a00ca0f679003bfc1b54510339"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-done-9-execution-private.json",
+          "sha256": "b17304a3b0497465d9b3baffd72e21a185ece5fd9f8140ed77666cf78ae07bcf"
+        }
+      ]
+    },
+    {
+      "id": "WF09-REVOKED-APPROVAL",
+      "run": "followUp1",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/3",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-dead-10-execution-private.json",
+          "sha256": "44a42987feb04c969bbac3d306dddbd3ca2a46dcddfaecf6b36da0a0736cf8dc"
+        }
+      ]
+    },
+    {
+      "id": "N8N06-BROWSER",
+      "run": "followUp1",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/4",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-learner-1440.png",
+          "sha256": "acc652696fd2c7ed78067e09c263b44a13274770dace258a05d09e0c11d7f302",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-learner-768.png",
+          "sha256": "4a92f6e379fda434107a3c26bf5dfaa94cdd0a74ecebbbc1387fda97908cfdb0",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-learner-390.png",
+          "sha256": "ff82a857d6d108ffdb61e84e2158c3642c4e78484799bd7c0638494c4c7718e2",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-adjustments-1440.png",
+          "sha256": "6933786f4b6ac4faa44e4f0460ba8fa66859b62e60cd675213d3c7299d5086a6",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-adjustments-768.png",
+          "sha256": "54412c2d25683ea27109de4def910d0298a526736c69218f1dc07ba86d852fcc",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-adjustments-390.png",
+          "sha256": "3f888a7a9ae1ad8868046f169b50d914bd757232becb91b1328649fef026871b",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-class-changes-1440.png",
+          "sha256": "5bc06d59adae0128b8fc4df93143909a881e60560660261f398aaf5231f417d4",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-class-changes-768.png",
+          "sha256": "a6ac1f4f19faed1267a01ad55008b1a1286ee569216b1ce5d84114607ea57083",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-class-changes-390.png",
+          "sha256": "87f8da04acc470b6a679a7d40a1da9797d54b1a94bbd026788a52e68cdbb7727",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-refunds-1440.png",
+          "sha256": "f1e3e8276887e20b8f122ee5986d4469ca3bf3f2a66800f18d3cee23786bd6a1",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-refunds-768.png",
+          "sha256": "4dd5bf65ff4e74991b5eaf3252b45d1f693ed2dfc77d46ced587f8e061ee5737",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-refunds-390.png",
+          "sha256": "bd7dfcbafafc53eea1b6fad0c7f04bc538fa1cdc9a6b0bb0ff4e7177355cd0ec",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-notifications-1440.png",
+          "sha256": "77ae37ce712e6006115bc345ddf40f6d6dbc94da9e0b379bccb9328f0da52ae3",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-notifications-768.png",
+          "sha256": "355f743e116f817a60957c308b52531019a1279cebb65a7ccb2de40d7c1ada99",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/portal-notifications-390.png",
+          "sha256": "9b87839934782df8414bcc6ef60323c61aa865f86846e1d3ad9e60e819c15e9c",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-waiting-11-execution-private.json",
+          "sha256": "328f6aa2c3cf03576fe2190136bba8e847f7f5b1e6884d42e446d4ff1e9e7961"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-09-done-12-execution-private.json",
+          "sha256": "48444373bb51ccae92ff5345c5990dc8ad91a5d1143057e8617099bff7ffe460"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/WF-08-done-13-execution-private.json",
+          "sha256": "ae9801079687fdd34abf6a6ad7a06a260a96153138eea8b2f2f5b11eb3d2f6b1"
+        }
+      ]
+    },
+    {
+      "id": "WF08-CANCEL-VS-REGISTRATION-COMMIT",
+      "run": "followUp2",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/WF-08-dead-8-execution-private.json",
+          "sha256": "f5c8310f6790e409f5b9d9801216b7477b5190706404fd9c69908dc068704884"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/WF-09-waiting-7-execution-private.json",
+          "sha256": "7525e6d368780243c27351e0eab7980011ca6ce9af7ad3042fa6a14dc03b216d"
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/WF-09-done-9-execution-private.json",
+          "sha256": "d8488effe87f1ce65027bd603462e1572ca06a66dade2c61ecbeea4d077a6b99"
+        }
+      ]
+    },
+    {
+      "id": "N8N06-BROWSER-RESPONSIVE",
+      "run": "followUp3",
+      "basis": "EXECUTED",
+      "jsonPointer": "/cases/0",
+      "artifacts": [
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-adjustments-1440.png",
+          "sha256": "63498260e11123f422f6a4bbabdb26b352a69025742581c754092a307d05b2eb",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-adjustments-768.png",
+          "sha256": "d5b391cc6911b188f7c60a52c15934c8a2618530c9218a8ba48c345a6b4e5198",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-adjustments-390.png",
+          "sha256": "e012e636af178103ed4f6bd2367a9c989db6fd2e5e1033140adb0210a64ae275",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-class-changes-1440.png",
+          "sha256": "5e14b274acd3b03b13b89e44eab94088e49233fed776240821657ce304b3ffda",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-class-changes-768.png",
+          "sha256": "7c870c23d4306ced20b9612b315cfc74989b0e6850f23277821831dffad511a7",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-class-changes-390.png",
+          "sha256": "6ead176e8eb064e22ee30e9a7dde6a154da192965eea7e3c095a696d66f7ec8b",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-refunds-1440.png",
+          "sha256": "8ebc84685f8091b59d78079461e6b85b012d8132abde9268ed26ca1dd852d1fa",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-refunds-768.png",
+          "sha256": "b97ab1659d46d9c1147007b14e1298d0095e5c75b02032fdd16a6af85e8fcca9",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-refunds-390.png",
+          "sha256": "31570d8d6e096c27564a8c52b79c46f29ccd0c25e14af5263d1661e0d8987397",
+          "width": 390
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-notifications-1440.png",
+          "sha256": "2881cced699d43f0ad6748d116e967e6e17cf2ad766e7d059c106697d0b2f54f",
+          "width": 1440
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-notifications-768.png",
+          "sha256": "185b557bc347da17134ceb5b21984859fe93ad36e5754414f2684d47640b1977",
+          "width": 768
+        },
+        {
+          "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/portal-notifications-390.png",
+          "sha256": "04217d4a5550b2d05849a4249ec20a8f0d06599f2d62ab10f07d8aaf12c46c4c",
+          "width": 390
+        }
+      ]
+    }
+  ],
+  "runs": {
+    "registration": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-6bde90d32314/preflight.json",
+        "sha256": "123bf197f24ebfe1a715bb81377c34964a11225a6eccd3527bee4d3703d1121a"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-6bde90d32314/acceptance-cases.json",
+        "sha256": "2edc19453f6a05e2c358c99870eefa33f9dc165c6587c22f691aa9d5dc7bcbfa"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-6bde90d32314/evidence.json",
+        "sha256": "44c92e0019213d3a66035942d475ce2410a487b991d235f66290523a979360cf"
+      },
+      "status": "FAIL",
+      "privateAcl": "SEE_SEPARATE_RECEIPT",
+      "casesByStatus": {
+        "PASS": 50
+      },
+      "drift": [
+        "apps/admin-portal/lib/services/adjustments.ts",
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-notification-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/enrollment/src/adjustments.ts",
+        "apps/admin-portal/app/dashboard/refunds/page.tsx",
+        "apps/admin-portal/app/login/page.tsx"
+      ],
+      "notReached": []
+    },
+    "diagnostic": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b5304dae0a44/preflight.json",
+        "sha256": "2967c89d81520f1e2eefddca38728786da11a191698750175b4825d6515b9a7c"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b5304dae0a44/acceptance-cases.json",
+        "sha256": "30e25eeebf38ab2236a43846c5b126fc86ae9231bdf7489f4b183853966a09de"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b5304dae0a44/evidence.json",
+        "sha256": "f78a37843061e407352876029f027ada13a9d9eb9c19b09ed160ef9318af591d"
+      },
+      "status": "FAIL",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 15,
+        "FAIL": 1
+      },
+      "drift": [
+        "apps/admin-portal/app/dashboard/adjustments/page.tsx",
+        "apps/admin-portal/app/dashboard/class-changes/page.tsx",
+        "apps/admin-portal/app/student/page.tsx",
+        "apps/admin-portal/lib/services/adjustments.ts",
+        "scripts/build-adjustment-workflows.mjs",
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-notification-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/class-schedule/src/changes.ts",
+        "services/enrollment/migrations/0002_adjustments.sql",
+        "services/enrollment/src/adjustments.ts",
+        "services/notification/migrations/0001.sql",
+        "services/notification/src/app.ts",
+        "services/notification/src/index.ts",
+        "services/payment/migrations/0002_adjustments.sql",
+        "services/payment/src/adjustments.ts",
+        "workflows/n8n/adjustment-manifest.json",
+        "workflows/n8n/wf-08.json",
+        "workflows/n8n/wf-09.json",
+        "workflows/n8n/wf-10.json",
+        "apps/admin-portal/app/dashboard/layout.tsx",
+        "apps/admin-portal/app/dashboard/refunds/page.tsx",
+        "apps/admin-portal/app/login/page.tsx",
+        "scripts/n8n05-workflow-cases.mjs",
+        "services/catalog/src/routes.ts"
+      ],
+      "notReached": []
+    },
+    "initial": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/preflight.json",
+        "sha256": "351c01084c1f459d140e0be2d6b13411c40ab1ece156c4bee01125d90cdfe5a9"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/acceptance-cases.json",
+        "sha256": "96f5616eec0e62c111b72ba62df3789e77521ff52c270edb6b5519cd914244d2"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-82f36f0beba1/evidence.json",
+        "sha256": "403c40e4b3e08eb561250df1f7594d827ca454accc40493a9a9a0b31e00356e5"
+      },
+      "status": "FAIL",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 8,
+        "FAIL": 1
+      },
+      "drift": [
+        "apps/admin-portal/lib/services/adjustments.ts",
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-notification-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/enrollment/src/adjustments.ts",
+        "apps/admin-portal/app/dashboard/refunds/page.tsx",
+        "apps/admin-portal/app/login/page.tsx"
+      ],
+      "notReached": []
+    },
+    "physical": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-d8ccaf3d3bab/preflight.json",
+        "sha256": "133c524d3465adc7a1cb21eb325a0e871a7895c96cf0464a7220069ec055156b"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-d8ccaf3d3bab/acceptance-cases.json",
+        "sha256": "77a6fe0afbcdfa0cd3eb29c8a1980f3097a4c1cd16bacb1c72bfef0ef8d4d7a9"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-d8ccaf3d3bab/evidence.json",
+        "sha256": "be18a7921505935c8d067ba3abaec46e129ff36d669fd8b1b7af06b2e793f685"
+      },
+      "status": "FAIL",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 1,
+        "FAIL": 1
+      },
+      "drift": [
+        "apps/admin-portal/lib/services/adjustments.ts",
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-notification-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/enrollment/src/adjustments.ts",
+        "apps/admin-portal/app/dashboard/refunds/page.tsx"
+      ],
+      "notReached": [
+        "WF10-TRANSFER-MEMBERSHIP"
+      ]
+    },
+    "domains": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/preflight.json",
+        "sha256": "8a6e7e6f116baa90fb6b7761ba237d02ed81bcd44fc28b7be922435cc221d949"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/acceptance-cases.json",
+        "sha256": "e88c3061adfe25d96c60a5bb93232972dd65e02ee31e6859418b9c89282bf508"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-ed94383e9a6d/evidence.json",
+        "sha256": "53798ec9c32c4b6414fd42fd4f47f9537bb5402ac666f2e36df15d27d9f57850"
+      },
+      "status": "PASS",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 15
+      },
+      "drift": [
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/enrollment/src/adjustments.ts"
+      ],
+      "notReached": []
+    },
+    "notificationAndMoney": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/preflight.json",
+        "sha256": "a047b5c8029ef78c1c637d8ad0ce420b389184f0eaac4b11c97cfb07efe8049a"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/acceptance-cases.json",
+        "sha256": "05215d4713975aaddc3eb40ea344f27f3f97729666f13ac21d3b1a8bbbb5debb"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-21bfa8fa76d5/evidence.json",
+        "sha256": "7ddcf812d3ad77420f9e08604e0fc57ecc0ea055ecbca9c45e9a9d5d19048dbb"
+      },
+      "status": "FAIL",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 11,
+        "FAIL": 1
+      },
+      "drift": [
+        "scripts/n8n06-adjustment-cases.mjs",
+        "scripts/n8n06-cases.mjs",
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs",
+        "services/enrollment/src/adjustments.ts"
+      ],
+      "notReached": [
+        "N8N06-BROWSER"
+      ]
+    },
+    "followUp1": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/preflight.json",
+        "sha256": "0101287fd0c8b6b3f8e2ecea2a47c1977fa2e1cc844bfd11b647581b589017d9"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/acceptance-cases.json",
+        "sha256": "2429b82be47a5c497468febdc2448a7a3a9ca96d92d2808e9e633ff14ff66ea5"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-b59eb238d154/evidence.json",
+        "sha256": "bbbc69057bfcb6d697bedc3ba318a318af25522281ad91b16060b8bd746052c5"
+      },
+      "status": "FAIL",
+      "privateAcl": "SEE_SEPARATE_RECEIPT",
+      "casesByStatus": {
+        "PASS": 5
+      },
+      "drift": [
+        "scripts/n8n06-class-cases.mjs",
+        "scripts/n8n06-portal.mjs",
+        "scripts/n8n06-runtime.mjs",
+        "scripts/test-n8n06.mjs"
+      ],
+      "notReached": []
+    },
+    "followUp2": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/preflight.json",
+        "sha256": "aa6f28bbcda7f47dbb08bf973cd46286ba6e31160e9a3ba58009b6ead0a69590"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/acceptance-cases.json",
+        "sha256": "206f5d4bd7a772a40822aeaecf8eb2ff78760f0201e205e24149c9679efd4a75"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-cd6adf391956/evidence.json",
+        "sha256": "3cb02a52dfdf9c00b7973247442e86b0cfcc0da17461b2cc7c11ffa2f4eae967"
+      },
+      "status": "PASS",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 1
+      },
+      "drift": [
+        "scripts/n8n06-portal.mjs",
+        "scripts/test-n8n06.mjs"
+      ],
+      "notReached": []
+    },
+    "followUp3": {
+      "preflight": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/preflight.json",
+        "sha256": "71ae414b07073c61c8b41fbd1a89961c2a0f4e99e43e5d2aa88de52e50aebd43"
+      },
+      "cases": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/acceptance-cases.json",
+        "sha256": "34662bae8dae96e64a86706edeb4d8cace5c53a5fe9b5a549d558e110fffadd1"
+      },
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-13b2da1f9281/evidence.json",
+        "sha256": "726c7c38cc9340e565666fe48f3ed5d043002372e9a4e0efa0220b0c003d07f2"
+      },
+      "status": "PASS",
+      "privateAcl": "PASS",
+      "casesByStatus": {
+        "PASS": 1
+      },
+      "drift": [],
+      "notReached": []
+    }
+  },
+  "retainedFailedRuns": {
+    "registration": {
+      "status": "FAIL",
+      "failureCaseIds": [],
+      "notReached": []
+    },
+    "diagnostic": {
+      "status": "FAIL",
+      "failureCaseIds": [
+        "WF10-CLASS-VERSION-ORDER"
+      ],
+      "notReached": []
+    },
+    "initial": {
+      "status": "FAIL",
+      "failureCaseIds": [
+        "WF10-SIGKILL-AFTER-MAIL"
+      ],
+      "notReached": []
+    },
+    "physical": {
+      "status": "FAIL",
+      "failureCaseIds": [
+        "WF10-CLASS-VERSION-ORDER"
+      ],
+      "notReached": [
+        "WF10-TRANSFER-MEMBERSHIP"
+      ]
+    },
+    "notificationAndMoney": {
+      "status": "FAIL",
+      "failureCaseIds": [
+        "WF09-REVOKED-APPROVAL"
+      ],
+      "notReached": [
+        "N8N06-BROWSER"
+      ]
+    },
+    "followUp1": {
+      "status": "FAIL",
+      "failureCaseIds": [],
+      "notReached": []
+    }
+  },
+  "regression": {
+    "bridgeAndIam": {
+      "evidence": {
+        "file": ".local/automation/space-agent-automation-test-bd28fd199763/evidence.json",
+        "sha256": "2961c14b2fb4500e60b8f94f84df445aea23930ba3d8117957dfc620f5a7f3a4"
+      },
+      "sourceHashesMatched": 24,
+      "status": "PASS"
+    },
+    "conversation": {
+      "evidence": {
+        "file": ".local/automation/space-agent-automation-test-806f27e847c5/evidence.json",
+        "sha256": "95df418b6ad07d399d47731238ad7084859be4fa5ac51da92b7470d7c44d30d8"
+      },
+      "sourceHashesMatched": 50,
+      "status": "PASS"
+    },
+    "registrationAcl": {
+      "evidence": {
+        "file": ".local/automation/n8n06-resume-a450a0199eb5/regression-registration-acl-recheck.json",
+        "sha256": "f59a76b7f4ca16032696227718c3286fa820c01980d3c8255363c45fed5a6c30"
+      },
+      "descendants": 1398
+    },
+    "registration": {
+      "run": "registration",
+      "caseCount": 50,
+      "receiptStatus": "FAIL"
+    }
+  },
+  "preservation": {
+    "evidence": {
+      "file": ".local/automation/n8n06-resume-a450a0199eb5/preservation-current.json",
+      "sha256": "f76bba764e315afb83fc2f95403a7d94649757ce2d3e2c27ae6c451dc24fdc51"
+    },
+    "protectedHashesMatched": 19
+  },
+  "browserAcl": {
+    "evidence": {
+      "file": ".local/automation/n8n06-selective-71ab1b69058e/browser-acl-recheck.json",
+      "sha256": "3f4c4992aaccc74c1d7ab59a8a2aaba8042024b1963b486e7bf16c59e8927617"
+    },
+    "items": 1486,
+    "extendedPaths": 16,
+    "status": "PASS"
+  },
+  "focusedSuite": {
+    "evidence": {
+      "file": ".local/automation/n8n06-resume-a450a0199eb5/focused-suite.log",
+      "sha256": "090356fcd378dad3f646dda4aa5d04ec468d17689f99545e4ed2227e3370f3f5"
+    },
+    "scope": "HISTORICAL_UNIT",
+    "skipsArePass": false
+  },
+  "liveGate": {
+    "status": "CLOSED",
+    "owners": [
+      "ACCOUNT_OWNER",
+      "OPERATIONS"
+    ],
+    "conditions": [
+      "PROVIDER_OR_SANDBOX_CREDENTIALS",
+      "ADAPTER_RECONCILIATION_VERIFICATION",
+      "PRODUCTION_APPROVAL",
+      "OPERATIONS_RUNBOOK"
+    ]
+  }
+}

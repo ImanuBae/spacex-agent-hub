@@ -24,6 +24,9 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
         { label: "Đăng ký học", href: "/dashboard/enrollments" },
+        { label: "Điều chỉnh quyền lợi", href: "/dashboard/adjustments" },
+        { label: "Đổi lịch và hủy lớp", href: "/dashboard/class-changes" },
+        { label: "Thông báo học viên", href: "/dashboard/notifications" },
         { label: "Khóa học & gói", href: "/dashboard/courses" },
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
@@ -37,6 +40,9 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
         { label: "Đăng ký học", href: "/dashboard/enrollments" },
+        { label: "Điều chỉnh quyền lợi", href: "/dashboard/adjustments" },
+        { label: "Đổi lịch và hủy lớp", href: "/dashboard/class-changes" },
+        { label: "Thông báo học viên", href: "/dashboard/notifications" },
         { label: "Khóa học & gói", href: "/dashboard/courses" },
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
@@ -47,6 +53,8 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Hộp thư", href: "/dashboard/mailbox" },
         { label: "Lead & đăng ký", href: "/dashboard/leads" },
         { label: "Đăng ký học", href: "/dashboard/enrollments" },
+        { label: "Điều chỉnh quyền lợi", href: "/dashboard/adjustments" },
+        { label: "Thông báo học viên", href: "/dashboard/notifications" },
         { label: "Xem khóa học", href: "/dashboard/courses" },
         { label: "Xem lịch", href: "/dashboard/schedule" },
       ];
@@ -55,12 +63,14 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Thanh toán", href: "/dashboard/finance" },
         { label: "Đối soát", href: "/dashboard/reconciliation" },
         { label: "Hoàn tiền", href: "/dashboard/refunds" },
+        { label: "Điều chỉnh quyền lợi", href: "/dashboard/adjustments" },
       ];
     case "teacher":
       return [
         { label: "Lịch dạy", href: "/dashboard/schedule" },
         { label: "Giờ rảnh", href: "/dashboard/availability" },
         { label: "Danh sách lớp", href: "/dashboard/classes" },
+        { label: "Đổi lịch và hủy lớp", href: "/dashboard/class-changes" },
       ];
     case "student":
     case "ai_agent":

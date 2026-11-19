@@ -11,3 +11,8 @@ Org sở hữu branches/departments/employees, IAM sở hữu role/branchIds c�
 Access sync lưu pending/applied/rejected, retry giữ nguyên idempotency-key/payload.
 API có lọc branch và quyền giảng viên theo accountId; không có auth bypass.
 Kiểm tích hợp trong `services/identity/src/stage1.test.ts` bằng suite test:db của IAM.
+
+WF08 dùng `CLASS_URL` cho `GET /internal/org/class-changes/:id/authority`.
+Org xác minh command `classes.change` đang có hiệu lực, đọc nguồn Class gắn với
+đúng kế hoạch rồi trả trạng thái chi nhánh và giảng viên đang hoạt động thuộc
+chi nhánh đó. Route nội bộ không dùng phiên quản trị dùng chung.

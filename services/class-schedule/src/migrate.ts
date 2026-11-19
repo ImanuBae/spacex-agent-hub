@@ -10,7 +10,7 @@ try {
   await client.query(
     "CREATE TABLE IF NOT EXISTS schema_migrations(version text PRIMARY KEY)",
   );
-  for (const version of ["0001", "0002_teacher_time", "0003_messaging", "0004_lifecycle", "0005_automation", "0006_enrollment"]) {
+  for (const version of ["0001", "0002_teacher_time", "0003_messaging", "0004_lifecycle", "0005_automation", "0006_enrollment", "0007_changes"]) {
     if ((await client.query("SELECT 1 FROM schema_migrations WHERE version=$1", [version])).rowCount) continue;
     await client.query(version === "0003_messaging" ? messagingSchema : await readFile(new URL(`../migrations/${version}.sql`, import.meta.url), "utf8"));
     await client.query("INSERT INTO schema_migrations(version) VALUES($1)", [version]);

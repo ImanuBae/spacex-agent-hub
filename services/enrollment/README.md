@@ -40,3 +40,12 @@ pinned Docker project, fresh roles/DBs, test secrets and protected receipts. Kee
 volumes/artifacts; never down-v/prune. Final acceptance and limitations are in
 [the matrix](../../docs/acceptance-n8n-05.md). No provider/live/production acceptance
 is implied by the synthetic adapter or fixture records.
+## N8N06 adjustments and learner ownership
+
+Migration `0002_adjustments.sql` adds effective entitlement, adjustment history, operation results, schedule choices, and waitlist invitations. Original confirmations, Enrollment rows and pricing snapshots remain the registration record. A transfer commits a distinct Class seat, records the effective entitlement, and only then authorizes release of the source seat. Suspension records the unused session count and a server expiry. It never reserves a new seat until a resume operation runs.
+
+Staff create `/api/v1/adjustments` with a UUID idempotency key, the expected effective entitlement version, and a reason. A director distinct from the requester approves the exact version. A mapped learner makes their own choice at `/api/v1/adjustments/:id/choice`. Learner reads use `/api/v1/student/enrollments` and `/api/v1/student/adjustments`. The IAM mapping and live session, rather than a claimed learner ID, authorize those reads. A class cancellation can link the exact affected adjustment using `classChangeId`.
+
+Use a UUID-named service principal with the `enrollment` audience, `automation:source` scope and `WF-09` allowance. Existing deployments that use `WF-07` retain their grant. `NOTIFICATION_URL` enables the bound WF10 authoritative entitlement projection. All mutating workflow calls require current IAM and Bridge bindings for the same adjustment and operation. A Class-approved target with stale quote, consent or class impact fails before commitment. Once a target commit exists, recovery reads it and continues forward.
+
+Waitlist eligibility requires a paid active or unexpired suspended source entitlement and verified current consent. An independent director offers a 24-hour invitation to the earliest eligible waiting entry while Class reports space. Accepting the invitation records learner choice and triggers normal target seat acquisition, which may still lose a capacity race. `POST /internal/enrollment/adjustment-deadlines` performs bounded expiry processing for WF09. Server-time checks also deny expired decisions when orchestration is offline.

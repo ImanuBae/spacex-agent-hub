@@ -145,3 +145,46 @@ a worker, late reacquisition/full class, cross-resource/branch/role denial, fina
 revocation/cancellation rollback and commit versus release. They are service checks;
 full N8N-05 acceptance additionally requires actual Enrollment/Payment, broker and n8n
 workflow evidence. Keep the test database, volume and artifacts for inspection.
+
+## N8N-06 class changes and adjustment seats
+
+Migration `0007_changes` adds schedule history, class change requests, decisions,
+and adjustment seat receipts. Run it through the existing migration entry point.
+Set `ENROLLMENT_URL`, `PAYMENT_URL`, and `NOTIFICATION_URL` for the new routes.
+Org uses `CLASS_URL` to verify which branch and teacher the plan names at apply.
+
+`POST /api/v1/class-changes` requires a UUID `idempotency-key`, `classId`,
+`classVersion`, `reason`, and a `kind` of `RESCHEDULE`, `MAKEUP`, `POSTPONE`,
+`CANCEL`, or `MINIMUM_SIZE`. Non-cancellation requests carry a full `ClassInput`
+schedule. `targetStatus` is optional and limited by the lifecycle. Teachers
+request only changes to their own classes. An independent director submits
+`POST /api/v1/class-changes/:id/decision` with `version`, `status` and `reason`.
+`GET` on the collection or request shows current state and the impact snapshot.
+
+Approval emits `class.change.approved` for WF08. The job looks up its plan with
+`GET /internal/classes/changes/:id` and applies it with `POST .../apply {}`
+using the bound `classes.change` command. If a planned enrollment still needs a
+choice or resolution, the result supplies a Bridge wait condition and deadline.
+Subscribe Bridge to `enrollment.class_change_resolution` as a wake event without
+adding a workflow binding. A new or changed seat invalidates the plan. Cancellation
+requires Enrollment's durable resolution and Class's seat release for every
+affected seat. Any outstanding N8N05 hold keeps its original schedule snapshot.
+Expired plans cannot execute. Applied events retain causation, correlation and
+the new schedule version.
+
+WF09 uses `classes.adjust` on `GET /internal/classes/adjustments/:id` and
+`POST .../hold-target`, `commit-target`, `release-target`, or `release-source`
+with an empty body. Enrollment owns authority for the original and target seat
+refs, and Payment owns the proof required for target commit. The two class rows
+are locked in UUID order. Failed attempts can release an uncommitted target
+hold, and a committed target requires forward recovery. The original seat is
+released only on an authorized effective entitlement change. The legacy
+`classes.enroll` routes retain their release guard and operation keys.
+
+Authenticated learners use `GET /api/v1/student/class-schedule/:enrollmentId`.
+The route verifies ownership through current Enrollment, then proves the exact
+committed seat before returning a schedule or active online link. Class plan
+prompts are available via `GET /api/v1/student/class-changes?enrollmentId=...`.
+WF10 uses the intent-bound `GET /internal/classes/notifications/:id/source` for
+schedule version and committed-seat verification. That response excludes the
+online link.

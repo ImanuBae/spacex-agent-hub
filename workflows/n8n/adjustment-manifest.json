@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "canonicalActive": false,
+  "generator": "scripts/build-adjustment-workflows.mjs",
+  "workflows": [
+    {
+      "id": "N8N06LocalWF08",
+      "workflowId": "WF-08",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1,
+      "eventType": "class.change.approved",
+      "file": "workflows/n8n/wf-08.json",
+      "sha256": "561e01d7e5782208db03f4134d19c5377408963d7db6f51d9bf55722a73caa77",
+      "credentialId": "N8N06LocalWF08Machine",
+      "credential": "WF-08-N8N06-machine"
+    },
+    {
+      "id": "N8N06LocalWF09",
+      "workflowId": "WF-09",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1,
+      "eventType": "adjustment.ready",
+      "file": "workflows/n8n/wf-09.json",
+      "sha256": "2f2bf5c5cc17c5356c98599f00297eaf6ff1059060a9899b40aef31187af025a",
+      "credentialId": "N8N06LocalWF09Machine",
+      "credential": "WF-09-N8N06-machine"
+    },
+    {
+      "id": "N8N06LocalWF10",
+      "workflowId": "WF-10",
+      "workflowVersion": 1,
+      "inputSchemaVersion": 1,
+      "eventType": "notification.requested",
+      "file": "workflows/n8n/wf-10.json",
+      "sha256": "9fd04e86c38ccf8dd5ec5cdb4df4cfdbfa78bec8f0df989b8b00c1f4da889006",
+      "credentialId": "N8N06LocalWF10Machine",
+      "credential": "WF-10-N8N06-machine"
+    }
+  ]
+}

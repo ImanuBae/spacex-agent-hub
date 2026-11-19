@@ -30,6 +30,7 @@ const server = createClassApp(pool, authConfig(), {
   enrollmentSecret: process.env.ENROLLMENT_SERVICE_SECRET,
   enrollmentUrl: process.env.ENROLLMENT_URL,
   paymentUrl: process.env.PAYMENT_URL,
+  notificationUrl: process.env.NOTIFICATION_URL,
   messagingEnabled: !!process.env.RABBITMQ_URL,
 }).listen(config.PORT, config.HOST);
 let working = false;

@@ -1,6 +1,8 @@
 # Đặc tả workflow n8n — WF-01 đến WF-12
 
 <!-- CURRENT_N8N_LINK -->
+WF08–10 đạt **N8N-06 ACCEPT_LOCAL** ngày 20/11/2026. [Matrix](acceptance-n8n-06.md), [index](../workflows/n8n/adjustment-evidence.json) và [manifest canonical inactive](../workflows/n8n/adjustment-manifest.json). Khối tiếp theo ghi trạng thái tại mốc chốt N8N-05.
+
 Hiện hành 16/11/26: **N8N-05 ACCEPT_LOCAL** — WF04–07 tổng hợp local, 49/49 nhóm tích hợp cuối và affected regressions đạt. [Matrix](acceptance-n8n-05.md), [evidence index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). **N8N03/04 ACCEPT local** giữ theo [hồ sơ lịch sử](acceptance-n8n-03-04.md). Canonical inactive; provider/live/production và WF08–12 vẫn đóng. Các snapshot có ngày bên dưới giữ quyết định tại thời điểm ghi; các ticket cha không được coi hoàn tất chỉ từ lát cắt N8N05.
 
 <details>

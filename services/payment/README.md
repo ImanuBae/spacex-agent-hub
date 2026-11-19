@@ -53,3 +53,12 @@ ledger allocation. It cannot invalidate a funded match or release its seat.
 Run node scripts/test-n8n05.mjs from root. Receipts, synthetic webhook bodies,
 credentials and execution traces stay only in its ACL-protected local directory.
 [Acceptance](../../docs/acceptance-n8n-05.md) separates local from provider/live gates.
+## N8N06 local adjustment settlement and invoices
+
+Migration `0002_adjustments.sql` adds separate adjustment reservations, decisions, operation results, immutable synthetic movement receipts, and invoice records. A refund reserves against allocated receipts plus earlier net synthetic charges, less earlier refunds and unresolved reservations under the original payment request lock. The excess variant protects the amount assigned to active tuition.
+
+Enrollment retains the initiating accountant and independent approving director for refunds. A signed-in accountant with current branch access authorizes execution at `/api/v1/refunds/:id/execute`. This records a decision and wakes the waiting workflow. The synthetic adapter commits the execution receipt under the payment transaction only after checking the durable Enrollment plan and current sessions for both financial decisions. `EXECUTED` requires an adapter receipt. `UNKNOWN` requires a receipt lookup and owner review before retry. A charge that committed before a target seat failure is reversed with its own append-only receipt once Class proves the target never committed.
+
+The adapter is enabled only in the isolated synthetic runtime. Optional `PAYMENT_ADJUSTMENT_FAULT=UNKNOWN_BEFORE|UNKNOWN_AFTER` selects a test-only uncertain-outcome case. A receipt exists only for the latter and can be recovered without replaying the movement. No bank provider is called.
+
+Student invoice creation, list and authenticated attachment download are under `/api/v1/student/invoices`. Payment verifies the mapped learner, active entitlement and allocated match before creation. It audits each download and returns an escaped attachment labeled as a simulation. Invoice rendering uses stored backend data and never provides a public file link.

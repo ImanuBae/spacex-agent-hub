@@ -37,14 +37,30 @@ function throwPackageError(error: unknown): never {
 }
 
 
-export function registerCatalogRoutes(app: Express, config: AuthConfig = authConfig()) {
+export function registerCatalogRoutes(app: Express, config: AuthConfig = authConfig(), enrollmentUrl = process.env.ENROLLMENT_URL) {
+    async function liveQuote(id: string, branchId: string) {
+        const { rows } = await pool.query("SELECT p.id AS \"packageId\",p.course_id AS \"courseId\",p.price_vnd AS \"priceVnd\",p.session_count AS \"sessionCount\",p.policy_version AS \"packageVersion\",c.policy_version AS \"courseVersion\",p.policy_text AS \"packagePolicy\",c.policy_text AS \"coursePolicy\",p.effective_at AS \"effectiveAt\",statement_timestamp() AS \"quotedAt\" FROM course_packages p JOIN courses c ON c.id=p.course_id WHERE p.id=$1 AND p.status='active' AND c.status='active' AND p.effective_at<=statement_timestamp() AND c.effective_at<=statement_timestamp() AND (cardinality(c.branch_ids)=0 OR $2::uuid=ANY(c.branch_ids))", [id, branchId]);
+        if (!rows[0]) throw new HttpError(409, "NOT_SELLABLE", "Offer inactive or outside branch");
+        return { ...rows[0], priceVnd: Number(rows[0].priceVnd), currency: "VND" };
+    }
     for (const kind of ["enrollment", "class"] as const) app.get(`/internal/catalog/${kind}-quote/:id`, async (req, res) => {
         const user = await verifyCommand(config, bearer(req.get("authorization")), kind === "class" ? "class-schedule" : "enrollment", kind === "class" ? "classes:enroll" : "enrollment:write");
         if (user.delegation?.entity?.type !== "enrollment") throw new HttpError(403, "FORBIDDEN", "Enrollment job required");
         const id = IdParam.parse(req.params.id), branchId = user.delegation.branchId;
-        const { rows } = await pool.query("SELECT p.id AS \"packageId\",p.course_id AS \"courseId\",p.price_vnd AS \"priceVnd\",p.session_count AS \"sessionCount\",p.policy_version AS \"packageVersion\",c.policy_version AS \"courseVersion\",p.policy_text AS \"packagePolicy\",c.policy_text AS \"coursePolicy\",p.effective_at AS \"effectiveAt\",statement_timestamp() AS \"quotedAt\" FROM course_packages p JOIN courses c ON c.id=p.course_id WHERE p.id=$1 AND p.status='active' AND c.status='active' AND p.effective_at<=statement_timestamp() AND c.effective_at<=statement_timestamp() AND (cardinality(c.branch_ids)=0 OR $2::uuid=ANY(c.branch_ids))", [id, branchId]);
-        if (!rows[0]) throw new HttpError(409, "NOT_SELLABLE", "Offer inactive or outside branch");
-        res.json({ data: { ...rows[0], priceVnd: Number(rows[0].priceVnd), currency: "VND" } });
+        res.json({ data: await liveQuote(id, branchId) });
+    });
+    app.get("/internal/catalog/adjustments/:id/quote", async (req, res) => {
+        const id = IdParam.parse(req.params.id), token = bearer(req.get("authorization"));
+        const u = await verifyCommand(config, token, "enrollment", "enrollment:adjust"), d = u.delegation;
+        if (d?.operation !== "enrollment.adjust" || d.workflowId !== "WF-09" || d.entity?.type !== "adjustment" || d.entity.id !== id || d.inputRef !== id) throw new HttpError(403, "FORBIDDEN", "Adjustment is outside the delegated offer");
+        if (!enrollmentUrl) throw new HttpError(503, "SOURCE_UNAVAILABLE", "Enrollment authority required");
+        let response: Response;
+        try { response = await fetch(`${enrollmentUrl}/internal/enrollment/adjustments/${id}/authority`, { headers: { authorization: `Bearer ${token}` }, redirect: "error", signal: AbortSignal.timeout(4000) }); }
+        catch { throw new HttpError(503, "SOURCE_UNAVAILABLE", "Enrollment authority unavailable"); }
+        if (!response.ok) throw new HttpError(response.status >= 500 ? 503 : 403, "SOURCE_DENIED", "Enrollment authority rejected");
+        const payload = z.object({ data: z.object({ id: IdParam, branchId: IdParam, type: z.enum(["TRANSFER", "RESUME", "WAITLIST"]), targetPackageId: IdParam }) }).parse(await response.json());
+        if (payload.data.id !== id || payload.data.branchId !== d.branchId) throw new HttpError(403, "FORBIDDEN", "Adjustment is outside the delegated offer");
+        res.json({ data: await liveQuote(payload.data.targetPackageId, d.branchId) });
     });
     app.use("/api/v1", authenticateDomain(config, "catalog", "catalog:read", /^\/(courses|packages)$|^\/packages\/[^/]+\/quote$/), allowRoles("center_director", "branch_director", "admissions", "teacher", "ai_agent"));
     app.use("/api/v1", (req, res, next) => {

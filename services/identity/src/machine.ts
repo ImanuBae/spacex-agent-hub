@@ -21,8 +21,30 @@ const target = (operation: string) => operation === "catalog.read"
   : operation === "crm.execute" ? { audience: "crm" as const, scope: "crm:write" as const }
   : operation === "enrollment.execute" ? { audience: "enrollment" as const, scope: "enrollment:write" as const }
   : operation === "payment.execute" ? { audience: "payment" as const, scope: "payment:write" as const }
+  : operation === "enrollment.adjust" ? { audience: "enrollment" as const, scope: "enrollment:adjust" as const }
+  : operation === "payment.refund" ? { audience: "payment" as const, scope: "payment:refund" as const }
+  : operation === "notification.deliver" ? { audience: "notification" as const, scope: "notification:deliver" as const }
+  : operation === "classes.change" ? { audience: "class-schedule" as const, scope: "classes:change" as const }
+  : operation === "classes.adjust" ? { audience: "class-schedule" as const, scope: "classes:adjust" as const }
   : { audience: "class-schedule" as const, scope: operation === "classes.cancel" ? "classes:cancel" as const : operation === "classes.enroll" ? "classes:enroll" as const : "classes:read" as const };
 const registrationOperations = ["enrollment.execute", "payment.execute", "classes.enroll"];
+const adjustmentOperations = ["enrollment.adjust", "payment.refund", "classes.adjust"];
+const newOperations = ["classes.change", ...adjustmentOperations, "notification.deliver"];
+const sourceWorkflows: Record<string, string[]> = { enrollment: ["WF-07", "WF-09"], payment: ["WF-06", "WF-07", "WF-09"], "class-schedule": ["WF-08"], notification: ["WF-10"] };
+function allowedNewHumanDelegation(input: z.infer<typeof DelegationInput>, role: Role) {
+  if (!input.operations.some(operation => newOperations.includes(operation))) return true;
+  if (input.workflowVersion !== 1 || input.inputRef !== input.entity.id) return false;
+  if (input.workflowId === "WF-08") return input.entity.type === "class-change" && input.operations.every(o => o === "classes.change") && ["center_director", "branch_director", "teacher"].includes(role);
+  if (input.workflowId === "WF-09") return input.entity.type === "adjustment" && input.operations.every(o => adjustmentOperations.includes(o)) && ["center_director", "branch_director", "admissions", "accountant"].includes(role);
+  return false;
+}
+export function allowedServiceDelegation(audience: string, input: z.infer<typeof DelegationInput>) {
+  if (!sourceWorkflows[audience]?.includes(input.workflowId) || input.workflowVersion !== 1) return false;
+  const operations = input.workflowId === "WF-08" ? ["classes.change"] : input.workflowId === "WF-09" ? adjustmentOperations : input.workflowId === "WF-10" ? ["notification.deliver"] : registrationOperations;
+  const entity = input.workflowId === "WF-08" ? "class-change" : input.workflowId === "WF-09" ? "adjustment" : input.workflowId === "WF-10" ? "notification" : "enrollment";
+  return input.entity.type === entity && input.operations.every(o => operations.includes(o)) &&
+    (!input.operations.some(o => newOperations.includes(o)) || input.inputRef === input.entity.id);
+}
 
 export function registerMachineRoutes(app: Express, pool: Pool, live: (token: string) => Promise<Principal>, authority?: MachineAuthority) {
   // Key material stays in IAM. Every consumer calls IAM and the Bridge again; no revocation cache.
@@ -79,7 +101,7 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     const service = (await pool.query("SELECT * FROM service_delegations WHERE id=$1 AND expires_at>clock_timestamp()", [z.uuid().parse(b.contextRef)])).rows[0];
     if (service) {
       const producer = await client(service.source_id), input = DelegationInput.parse(service.input);
-      if (producer.credential_version !== service.credential_version || !registrationOperations.includes(b.operation) ||
+      if (producer.credential_version !== service.credential_version || !allowedServiceDelegation(service.audience, input) ||
         input.eventId !== b.eventId || input.workflowId !== b.workflowId || input.workflowVersion !== b.workflowVersion ||
         input.inputRef !== b.inputRef || JSON.stringify(input.entity) !== JSON.stringify(b.entity) || !input.operations.includes(b.operation as z.infer<typeof DelegationInput>["operations"][number])) throw denied();
       grant(producer, service.audience, ["automation:source"], [input.workflowId]);
@@ -105,6 +127,7 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     if (!row) throw denied();
     const input = DelegationInput.parse(row.input);
     if (b.operation === "classes.cancel" && !["center_director", "branch_director"].includes(row.role)) throw denied();
+    if (!allowedNewHumanDelegation(input, row.role as Role)) throw denied();
     if (["crm.execute", ...registrationOperations].includes(b.operation) && !["center_director", "branch_director", "admissions", "accountant"].includes(row.role)) throw denied();
     if ((!readRoles.includes(row.role) && row.role !== "accountant") || (row.role !== "center_director" && !row.branch_ids.includes(input.branchId)) ||
       input.eventId !== b.eventId || input.workflowId !== b.workflowId || input.workflowVersion !== b.workflowVersion ||
@@ -158,7 +181,7 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     configured(); const input = MachineTokenInput.parse(req.body), c = await client(input.clientId);
     if (!await verifyPassword(input.clientSecret, c.secret_hash)) throw invalid();
     grant(c, input.audience, input.scopes, input.workflows);
-    const source = ["enrollment", "payment"].includes(input.audience) && input.scopes.every(s => s === "automation:source") && input.workflows.every(w => input.audience === "payment" ? ["WF-06", "WF-07"].includes(w) : w === "WF-07");
+    const source = input.scopes.every(s => s === "automation:source") && input.workflows.every(w => sourceWorkflows[input.audience]?.includes(w));
     if (input.audience !== "automation-bridge" && !source && !(input.audience === "conversation" && input.scopes.every(s => s === "channel:context") && input.workflows.every(w => w === "WF-02"))) throw denied();
     res.json({ data: { accessToken: await sign(c, input.audience, input.scopes, input.workflows, input.ttlSeconds), expiresIn: input.ttlSeconds } });
   });
@@ -170,7 +193,8 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
   app.post("/internal/iam/delegations", async (req, res) => {
     configured(); const user = await live(bearer(req.get("authorization"))), input = DelegationInput.parse(req.body);
     if (!readRoles.includes(user.role) && user.role !== "accountant") throw denied();
-    if (input.operations.some(o => !["catalog.read", "classes.read"].includes(o)) && !["center_director", "branch_director", "admissions", "accountant"].includes(user.role)) throw denied();
+    if (!allowedNewHumanDelegation(input, user.role)) throw denied();
+    if (input.operations.some(o => !["catalog.read", "classes.read"].includes(o)) && !["center_director", "branch_director", "admissions", "accountant"].includes(user.role) && !(user.role === "teacher" && input.workflowId === "WF-08" && input.operations.every(o => o === "classes.change"))) throw denied();
     checkBranch(user, input.branchId);
     const id = randomUUID();
     await mutate(user.sub, "delegation.created", "INSERT INTO automation_delegations(id,account_id,session_id,input) VALUES($1,$2,$3,$4)", [id, user.sub, user.sid, input], id);
@@ -186,11 +210,11 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     res.status(201).json({ data: { contextRef } });
   });
   app.post("/internal/iam/service-delegations", async (req, res) => {
-    const body = z.object({ audience: z.enum(["enrollment", "payment"]), input: DelegationInput }).strict().parse(req.body);
+    const body = z.object({ audience: z.enum(["enrollment", "payment", "class-schedule", "notification"]), input: DelegationInput }).strict().parse(req.body);
     const { c } = await verify(bearer(req.get("authorization")), body.audience, "automation:source", "machine");
     z.uuid().parse(c.id);
     const input = body.input, workflow = input.workflowId;
-    if (!(body.audience === "payment" ? ["WF-06", "WF-07"] : ["WF-07"]).includes(workflow) || input.workflowVersion !== 1 || input.entity.type !== "enrollment" || input.operations.some(o => !registrationOperations.includes(o))) throw denied();
+    if (!allowedServiceDelegation(body.audience, input)) throw denied();
     grant(c, body.audience, ["automation:source"], [workflow]);
     const id = randomUUID();
     const result = await pool.query(`INSERT INTO service_delegations(id,source_id,credential_version,input,audience) VALUES($1,$2,$3,$4,$5)
@@ -209,7 +233,7 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     const token = bearer(req.get("authorization")), input = CommandTokenInput.parse(req.body);
     const { c, claims } = await verify(token, "automation-bridge", "automation:authorize", "machine");
     const b = await binding(token, input), t = target(b.operation);
-    if (!["catalog.read", "classes.read", "classes.cancel", "crm.execute", ...registrationOperations].includes(b.operation)) throw denied();
+    if (!["catalog.read", "classes.read", "classes.cancel", "crm.execute", ...registrationOperations, ...newOperations].includes(b.operation)) throw denied();
     if (!claims.workflows.includes(b.workflowId)) throw denied();
     grant(c, t.audience, [t.scope], [b.workflowId]); await delegation(b);
     res.json({ data: { accessToken: await sign(c, t.audience, [t.scope], [b.workflowId], 30, b), expiresIn: 30, audience: t.audience, scope: t.scope } });
@@ -228,8 +252,18 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
   app.post("/internal/iam/commands/approval-session", async (req, res) => {
     const input = z.object({ accountId: z.uuid(), sessionId: z.uuid() }).strict().parse(req.body);
     const token = bearer(req.get("authorization"));
+    let unverified: ReturnType<typeof decodeJwt>;
+    try { unverified = decodeJwt(token); } catch { throw invalid(); }
+    const operation = CommandBinding.safeParse(unverified.binding);
+    if (operation.success && newOperations.includes(operation.data.operation)) {
+      if (operation.data.operation === "notification.deliver") throw denied();
+      const user = await currentCommand(token);
+      if (input.accountId === user.sub) throw denied();
+      await storedSession(input.accountId, input.sessionId, user.delegation.branchId, "director");
+      res.json({ data: { allowed: true } }); return;
+    }
     let audience: string;
-    try { audience = z.enum(["class-schedule", "crm", "payment"]).parse(decodeJwt(token).aud); } catch { throw invalid(); }
+    try { audience = z.enum(["class-schedule", "crm", "payment"]).parse(unverified.aud); } catch { throw invalid(); }
     const { claims } = await verify(token, audience, audience === "crm" ? "crm:write" : audience === "payment" ? "payment:write" : "classes:cancel", "command");
     const b = CommandBinding.parse(claims.binding), user = await delegation(b);
     if (!["classes.cancel", "crm.execute", "payment.execute"].includes(b.operation) || input.accountId === user.sub) throw denied();
@@ -238,6 +272,35 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
       AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`, [input.accountId, input.sessionId, user.delegation.branchId])).rows[0];
     if (!row) throw denied();
     res.json({ data: { allowed: true } });
+  });
+  async function currentCommand(token: string) {
+    let operation: z.infer<typeof CommandBinding>;
+    try { operation = CommandBinding.parse(decodeJwt(token).binding); } catch { throw invalid(); }
+    if (!newOperations.includes(operation.operation)) throw denied();
+    const t = target(operation.operation), { c, claims } = await verify(token, t.audience, t.scope, "command");
+    const b = CommandBinding.parse(claims.binding);
+    grant(c, "automation-bridge", ["automation:authorize"], [b.workflowId]);
+    const probe = await sign(c, "automation-bridge", ["automation:authorize"], [b.workflowId], 30);
+    if (JSON.stringify(await binding(probe, b)) !== JSON.stringify(b)) throw denied();
+    return delegation(b);
+  }
+  async function storedSession(accountId: string, sessionId: string, branchId: string, role: "student" | "accountant" | "director") {
+    const roles = role === "director" ? ["center_director", "branch_director"] : [role];
+    const row = (await pool.query(`SELECT a.id,l.learner_id FROM accounts a JOIN sessions s ON s.account_id=a.id
+      LEFT JOIN learner_identities l ON l.account_id=a.id AND l.branch_id=$3
+      WHERE a.id=$1 AND s.id=$2 AND a.active=true AND a.role=ANY($4::text[])
+      AND (a.role='center_director' OR $3=ANY(a.branch_ids))
+      AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`, [accountId, sessionId, branchId, roles])).rows[0];
+    if (!row || (role === "student" && !row.learner_id)) throw denied();
+    return row;
+  }
+  app.post("/internal/iam/commands/stored-session", async (req, res) => {
+    const input = z.object({ accountId: z.uuid(), sessionId: z.uuid(), branchId: z.uuid(), role: z.enum(["student", "accountant", "director"]) }).strict().parse(req.body);
+    const user = await currentCommand(bearer(req.get("authorization")));
+    const { workflowId } = user.delegation;
+    if (input.branchId !== user.delegation.branchId || !(workflowId === "WF-09" || workflowId === "WF-08" && input.role === "student")) throw denied();
+    const row = await storedSession(input.accountId, input.sessionId, input.branchId, input.role);
+    res.json({ data: { allowed: true, ...(row.learner_id ? { learnerId: row.learner_id } : {}) } });
   });
   app.post("/internal/iam/financial-proposal-session", async (req, res) => {
     const user = await live(bearer(req.get("authorization"))), input = z.object({accountId:z.uuid(),sessionId:z.uuid(),branchId:z.uuid().nullable()}).strict().parse(req.body);

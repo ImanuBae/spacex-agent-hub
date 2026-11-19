@@ -1,0 +1,949 @@
+[
+  {
+    "id": "N8N06LocalWF08",
+    "name": "N8N06 WF-08",
+    "active": false,
+    "nodes": [
+      {
+        "id": "Manual",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          200
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "Poll",
+        "name": "Poll",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1,
+        "position": [
+          220,
+          200
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "seconds",
+                "secondsInterval": 5
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "Machine-token",
+        "name": "Machine token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"automation-bridge\",\"scopes\":[\"automation:claim\",\"automation:checkpoint\",\"automation:result\",\"automation:authorize\",\"automation:read\"],\"workflows\":[\"WF-08\"],\"ttlSeconds\":180}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N06LocalWF08Machine",
+            "name": "WF-08-N8N06-machine"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Machine-ready",
+        "name": "Machine ready",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          660,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!(typeof $json.data?.accessToken === 'string') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Claim",
+        "name": "Claim",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          880,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\"workflowId\":\"WF-08\",\"workflowVersion\":1} }}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Job",
+        "name": "Job",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          200
+        ],
+        "parameters": {
+          "jsCode": "const job=$json.data;return job?.workflowId==='WF-08'&&job.workflowVersion===1&&job.entity?.type==='class-change'&&job.entity.id===job.inputRef&&/^[a-f0-9-]{36}$/.test(job.entity.id)&&job.leaseToken?[{json:job}]:[];"
+        }
+      },
+      {
+        "id": "Apply-class-plan-fence",
+        "name": "Apply class plan fence",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of []){if($(name).isExecuted){const v=$(name).first().json.data?.version;if(Number.isSafeInteger(v))version=Math.max(version,v);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'apply-class-plan',operation:{name:'classes.change'}}}];"
+        }
+      },
+      {
+        "id": "Apply-class-plan-intent",
+        "name": "Apply class plan intent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/checkpoint' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Apply-class-plan-intent-saved",
+        "name": "Apply class plan intent saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!(Number.isSafeInteger($json.data?.version)) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Apply-class-plan-authorize",
+        "name": "Apply class plan authorize",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1980,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/authorize' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,operation:'classes.change'} }}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Apply-class-plan-authorized",
+        "name": "Apply class plan authorized",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!(typeof $json.data?.accessToken === 'string') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Apply-class-plan-lookup",
+        "name": "Apply class plan lookup",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          200
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/changes/' + $('Job').first().json.entity.id + '' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Apply class plan authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Apply-class-plan-loaded",
+        "name": "Apply class plan loaded",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!($json.data !== undefined && !$json.error) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Apply-class-plan-result",
+        "name": "Apply class plan result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:$json}];"
+        }
+      },
+      {
+        "id": "Apply-class-plan-needed",
+        "name": "Apply class plan needed",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3080,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!(!(['EXECUTED','REVOKED','REJECTED','EXPIRED'].includes($json.data?.status))) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Apply-class-plan-mutate",
+        "name": "Apply class plan mutate",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3300,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4004/internal/classes/changes/' + $('Job').first().json.entity.id + '/apply' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Apply class plan authorize').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {} }}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Apply-class-plan-saved",
+        "name": "Apply class plan saved",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!($json.data !== undefined && !$json.error) }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Class-plan-waiting",
+        "name": "Class plan waiting",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          3740,
+          200
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!($json.data?.status==='WAITING') }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Wait-for-class-resolution",
+        "name": "Wait for class resolution",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3960,
+          200
+        ],
+        "parameters": {
+          "jsCode": "const date=$json.data?.deadlineAt;if(!date||new Date(date)<=new Date())return [{json:{outcome:'DEAD',errorCode:'DEADLINE_EXPIRED'}}];return [{json:{outcome:'WAITING',waitFor:{type:'enrollment.class_change_resolution',entityId:$('Job').first().json.entity.id},deadlineAt:new Date(date).toISOString()}}];"
+        }
+      },
+      {
+        "id": "Done",
+        "name": "Done",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4180,
+          200
+        ],
+        "parameters": {
+          "jsCode": "return [{json:{outcome:'DONE',resultRef:'class-change:'+$('Job').first().json.entity.id}}];"
+        }
+      },
+      {
+        "id": "Classify-failure",
+        "name": "Classify failure",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4400,
+          200
+        ],
+        "parameters": {
+          "jsCode": "\nconst error=$json.error;\nconst code=typeof error?.code==='string'?error.code:'';\nconst timeout=['ECONNABORTED','ETIMEDOUT','ADAPTER_TIMEOUT'].includes(code);\nconst network=['ECONNRESET','ECONNREFUSED','EPIPE','ENETUNREACH','EAI_AGAIN'].includes(code);\nconst retryCodes=['DEPENDENCY_UNAVAILABLE','SOURCE_UNAVAILABLE','UPSTREAM_UNAVAILABLE','IDENTITY_UNAVAILABLE','RATE_LIMITED','RETRY_OPERATION'];\nif(timeout||network||!code||retryCodes.includes(code))return [{json:{outcome:'RETRY',errorCode:timeout?'TIMEOUT':network?'NETWORK_ERROR':code==='RATE_LIMITED'?code:'UPSTREAM_UNAVAILABLE'}}];\nreturn [{json:{outcome:'DEAD',errorCode:/^[A-Z][A-Z0-9_]{0,79}$/.test(code)?code:'DOMAIN_DENIED'}}];"
+        }
+      },
+      {
+        "id": "Result-payload",
+        "name": "Result payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4620,
+          200
+        ],
+        "parameters": {
+          "jsCode": "let version=$('Job').first().json.version;for(const name of [\"Apply class plan intent\"]){if($(name).isExecuted){const v=$(name).first().json.data?.version;if(Number.isSafeInteger(v))version=Math.max(version,v);}}return [{json:{leaseToken:$('Job').first().json.leaseToken,attempt:$('Job').first().json.attempt,expectedVersion:version,step:'result',...$json}}];"
+        }
+      },
+      {
+        "id": "Result",
+        "name": "Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4840,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/result' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Machine token').first().json.data.accessToken }}"
+              },
+              {
+                "name": "Connection",
+                "value": "close"
+              },
+              {
+                "name": "x-correlation-id",
+                "value": "={{ $('Job').first().json.correlationId }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poll": {
+        "main": [
+          [
+            {
+              "node": "Machine token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine token": {
+        "main": [
+          [
+            {
+              "node": "Machine ready",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Machine ready": {
+        "main": [
+          [
+            {
+              "node": "Claim",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claim": {
+        "main": [
+          [
+            {
+              "node": "Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan fence",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan fence": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan intent": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan intent saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan intent saved": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan authorize",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Classify failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan authorize": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan authorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan authorized": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan lookup",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Classify failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan lookup": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan loaded",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan loaded": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan needed",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Classify failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan needed": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan mutate",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Apply class plan result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan mutate": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan saved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan saved": {
+        "main": [
+          [
+            {
+              "node": "Apply class plan result",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Classify failure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Apply class plan result": {
+        "main": [
+          [
+            {
+              "node": "Class plan waiting",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Class plan waiting": {
+        "main": [
+          [
+            {
+              "node": "Wait for class resolution",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait for class resolution": {
+        "main": [
+          [
+            {
+              "node": "Result payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Done": {
+        "main": [
+          [
+            {
+              "node": "Result payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Classify failure": {
+        "main": [
+          [
+            {
+              "node": "Result payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Result payload": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "executionTimeout": 55,
+      "saveDataErrorExecution": "none",
+      "saveDataSuccessExecution": "none",
+      "saveManualExecutions": false
+    },
+    "pinData": {},
+    "tags": []
+  }
+]

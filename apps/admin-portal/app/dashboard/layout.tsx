@@ -74,6 +74,11 @@ function DashboardContent({ children }: { children: ReactNode }) {
     "/dashboard/schedule",
     "/dashboard/classes",
     "/dashboard/availability",
+    "/dashboard/class-changes",
+    "/dashboard/adjustments",
+    "/dashboard/adjustments/waitlist",
+    "/dashboard/refunds",
+    "/dashboard/notifications",
   ].includes(pathname);
   return (
     <div className={`hub-theme hub-shell ${pathname === "/dashboard/availability" ? "hub-scheduling-shell" : pathname === "/dashboard/leads" ? "hub-crm-shell" : ""} ${inter.className}`}>

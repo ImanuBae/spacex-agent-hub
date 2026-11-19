@@ -1,0 +1,10 @@
+.student-login, .student-workspace { min-height: 100vh; background: var(--hub-bg); padding: 32px max(16px, calc((100vw - 1100px) / 2)); }
+.student-login { padding-inline: max(16px, calc((100vw - 460px) / 2)); }
+.student-brand { color: var(--hub-ink); text-decoration: none; font-size: 18px; font-weight: 600; }
+.student-login form { display: grid; gap: 16px; margin-top: 24px; }
+.student-login > p { margin-top: 20px; }
+.student-workspace .ops-panel { overflow-wrap: anywhere; }
+.student-workspace dl { display: grid; grid-template-columns: minmax(120px, 1fr) 2fr; gap: 8px 16px; }
+.student-workspace dd { margin: 0; }
+.student-workspace .student-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 700px) { .student-workspace .student-list { grid-template-columns: 1fr; } .student-workspace, .student-login { padding-top: 24px; } }

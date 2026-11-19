@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { AccessInput, BranchInput, DepartmentInput, EmployeeInput } from "@spacex/contracts";
-import { authenticate, allowRoles, principal, checkBranch, type AuthConfig, type Principal } from "@spacex/auth";
+import { authenticate, allowRoles, principal, checkBranch, bearer, verifyCommand, type AuthConfig, type Principal } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
 
 const Id = z.uuid();
@@ -11,7 +11,7 @@ const branchView = (r: Record<string, unknown>) => ({ id: r.id, code: r.code, na
 const deptView = (r: Record<string, unknown>) => ({ id: r.id, branchId: r.branch_id, name: r.name, description: r.description, active: r.active });
 const employeeView = (r: Record<string, unknown>) => ({ id: r.id, accountId: r.account_id, branchId: r.branch_id, departmentId: r.department_id, name: r.name, title: r.title, teacherProfile: r.teacher_profile, active: r.active });
 
-export function createOrgApp(pool: Pool, config: AuthConfig) {
+export function createOrgApp(pool: Pool, config: AuthConfig, classUrl?: string) {
   const scope = (user: Principal) => user.role === "center_director" ? null : user.branchIds;
   async function activeBranch(id: string) {
     const result = await pool.query("SELECT id FROM branches WHERE id=$1 AND active=true", [id]);
@@ -42,6 +42,21 @@ export function createOrgApp(pool: Pool, config: AuthConfig) {
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
   return createApp("org", app => {
+    app.get("/internal/org/class-changes/:id/authority",async(req,res)=>{
+      const id=Id.parse(req.params.id),token=bearer(req.get("authorization"));
+      const user=await verifyCommand(config,token,"class-schedule","classes:change"),d=user.delegation;
+      if(d?.operation!=="classes.change"||d.workflowId!=="WF-08"||d.entity?.type!=="class-change"||d.entity.id!==id||d.inputRef!==id)throw new HttpError(403,"FORBIDDEN","Bound class change required");
+      if(!classUrl)throw new HttpError(503,"CLASS_NOT_CONFIGURED","Class authority required");
+      let response:Response;
+      try{response=await fetch(`${classUrl}/internal/classes/changes/${id}/authority`,{headers:{authorization:`Bearer ${token}`},signal:AbortSignal.timeout(5000),redirect:"error"});}
+      catch{throw new HttpError(503,"CLASS_UNAVAILABLE","Class authority unavailable");}
+      if(!response.ok)throw new HttpError([401,403,404,409].includes(response.status)?response.status:503,"CLASS_DENIED","Class authority denied");
+      const source=z.object({branchId:Id,payload:z.object({input:z.object({teacherId:Id.nullable()}).passthrough().optional()}).passthrough()}).passthrough().parse((await response.json() as {data:unknown}).data);
+      if(source.branchId!==d.branchId)throw new HttpError(403,"FORBIDDEN","Branch mismatch");
+      const branch=(await pool.query("SELECT active,kind FROM branches WHERE id=$1",[source.branchId])).rows[0];
+      const teacher=source.payload.input?.teacherId?(await pool.query("SELECT id,account_id AS \"accountId\",branch_id AS \"branchId\" FROM employees WHERE id=$1 AND branch_id=$2 AND active AND teacher_profile IS NOT NULL",[source.payload.input.teacherId,source.branchId])).rows[0]:null;
+      res.json({data:{branchActive:!!branch?.active&&branch.kind==="branch",teacher:teacher??null}});
+    });
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM branches LIMIT 1"); res.json({ status: "ok" }); });
     app.use("/api/v1", authenticate(config), allowRoles("center_director", "branch_director", "admissions", "accountant", "teacher"));
     app.get("/api/v1/branches", async (_req, res) => {
