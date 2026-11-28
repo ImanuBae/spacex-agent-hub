@@ -235,7 +235,9 @@ describe("N8N-02 real PostgreSQL/RabbitMQ/IAM and Bridge process", () => {
     await iam.query("UPDATE accounts SET role='center_director' WHERE id=$1", [centerId]);
     const result = await call(path, input, center); expect(result.status).toBe(200);
     expect(result.body.data.jobId).toBe(old.jobId); expect(result.body.data.workflowVersion).toBe(old.workflowVersion);
-    expect(result.body.data.operationRefs).toEqual(old.operationRefs); expect(result.body.data.attempt).toBe(old.attempt);
+    expect(result.body.data.attempt).toBe(old.attempt);
+    expect(result.body.data.operationRefs).toBeUndefined();
+    expect((await call(`${base}/${old.jobId}`)).body.data.operationRefs).toEqual(old.operationRefs);
     expect((await call(path, input, center)).status).toBe(409);
     const audit = (await pool.query("SELECT * FROM automation_audit WHERE job_id=$1 AND action='REPLAY'", [old.jobId])).rows;
     expect(audit).toHaveLength(1); expect(audit[0].actor_id).toBe(centerId); expect(audit[0].reason).toBe(input.reason);

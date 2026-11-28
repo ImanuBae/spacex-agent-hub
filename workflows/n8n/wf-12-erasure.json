@@ -1,0 +1,152 @@
+[
+  {
+    "id": "N8N07LocalWF12Erasure",
+    "name": "WF-12 Verified erasure",
+    "active": false,
+    "nodes": [
+      {
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "parameters": {},
+        "id": "Manual",
+        "position": [
+          0,
+          80
+        ]
+      },
+      {
+        "name": "Poll",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "seconds",
+                "secondsInterval": 30
+              }
+            ]
+          }
+        },
+        "id": "Poll",
+        "position": [
+          0,
+          240
+        ]
+      },
+      {
+        "name": "Erasure token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "parameters": {
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"crm\",\"scopes\":[\"erasure:process\"],\"workflows\":[\"WF-12\"],\"ttlSeconds\":60}",
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N07LocalWF12ErasureMachine",
+            "name": "WF-12-erasure-machine"
+          }
+        },
+        "id": "Incident-token",
+        "position": [
+          240,
+          240
+        ]
+      },
+      {
+        "name": "Process verified erasure",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "parameters": {
+          "url": "http://host.docker.internal:4005/internal/crm/erasure/process",
+          "method": "POST",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $json.data.accessToken }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{}"
+        },
+        "id": "Record-incident-alerts",
+        "position": [
+          480,
+          240
+        ]
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Erasure token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poll": {
+        "main": [
+          [
+            {
+              "node": "Erasure token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Erasure token": {
+        "main": [
+          [
+            {
+              "node": "Process verified erasure",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "timezone": "Asia/Saigon",
+      "executionTimeout": 30,
+      "saveDataErrorExecution": "none",
+      "saveDataSuccessExecution": "none",
+      "saveManualExecutions": false
+    },
+    "pinData": {},
+    "tags": []
+  }
+]

@@ -47,13 +47,31 @@ export async function startPortal(h) {
   return origin;
 }
 
-async function staffLogin(page, origin, actor, password, route) {
+export async function staffLogin(page, origin, actor, password, route) {
   await page.goto(origin+"/login");
   await page.getByLabel("Email nhân viên",{exact:true}).fill(actor.email);
   await page.getByLabel("Mật khẩu",{exact:true}).fill(password);
   await page.getByRole("button",{name:/^Đăng nhập/}).click();
   await page.waitForURL(/\/dashboard\//);
   await page.goto(origin+"/dashboard/"+route);
+}
+
+export async function studentLogin(page, origin, h, actor, fromStaffLogin = false) {
+  await page.goto(origin + (fromStaffLogin ? "/login" : "/student/login"));
+  if (fromStaffLogin) {
+    await page.getByRole("link", { name: "Đăng nhập học viên" }).press("Enter");
+    await page.waitForURL(origin + "/student/login");
+  }
+  await page.getByLabel("Email đã xác minh").fill(actor.email);
+  await page.getByRole("button", { name: "Nhận mã đăng nhập" }).click();
+  const input = page.getByLabel("Mã xác minh"); await input.waitFor();
+  const latest = (await h.pools.identity.query("SELECT delivery_ref FROM otp_challenges WHERE account_id=$1 ORDER BY created_at DESC LIMIT 1", [actor.id])).rows[0];
+  const message = (await h.pools.notification.query("SELECT body FROM notification_mailbox WHERE intent_id=$1", [latest.delivery_ref])).rows[0];
+  const code = message?.body.match(/\b\d{6}\b/)?.[0]; assert(code);
+  await input.fill(code);
+  await page.getByRole("button", { name: "Xác minh và đăng nhập" }).click();
+  await page.waitForURL(origin + "/student");
+  return page;
 }
 
 export async function responsiveAcceptance({h, staff, director, accountant, password}) {
@@ -103,34 +121,16 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
       page.on("pageerror",e=>pageErrors.push(e.name));
       return page;
     }
-    async function studentLogin(actor, fromStaffLogin = false) {
-      const page = await newPage();
-      if (fromStaffLogin) {
-        await page.goto(origin+"/login");
-        await page.getByRole("link",{name:"Đăng nhập học viên"}).press("Enter");
-        await page.waitForURL(origin+"/student/login");
-      } else await page.goto(origin+"/student/login");
-      await page.getByLabel("Email đã xác minh").fill(actor.email);
-      await page.getByRole("button",{name:"Nhận mã đăng nhập"}).click();
-      const input = page.getByLabel("Mã xác minh"); await input.waitFor();
-      const latest = (await h.pools.identity.query("SELECT delivery_ref FROM otp_challenges WHERE account_id=$1 ORDER BY created_at DESC LIMIT 1",[actor.id])).rows[0];
-      const message = (await h.pools.notification.query("SELECT body FROM notification_mailbox WHERE intent_id=$1",[latest.delivery_ref])).rows[0];
-      const code = message?.body.match(/\b\d{6}\b/)?.[0]; assert(code);
-      await input.fill(code);
-      await page.getByRole("button",{name:"Xác minh và đăng nhập"}).click();
-      await page.waitForURL(origin+"/student");
-      return page;
-    }
     async function openStaff(actor, route) {
       const page = await newPage();
       await staffLogin(page,origin,actor,password,route);
       return page;
     }
-    const page = await studentLogin(user, true);
+    const page = await studentLogin(await newPage(), origin, h, user, true);
     await page.getByRole("heading",{name:"Hồ sơ học viên"}).waitFor();
     const entitlement = page.locator('[data-enrollment-id="'+source.id+'"]');
     await entitlement.getByRole("button",{name:"Xem lịch và link lớp"}).click();
-    await page.getByRole("link",{name:"Mở link lớp"}).waitFor();
+    await page.getByRole("link",{name:"Vào lớp",exact:true}).waitFor();
     await page.getByLabel("Đăng ký",{exact:true}).selectOption(source.id);
     await page.getByLabel("Tên người nhận").fill("DEMO Người nhận");
     await page.getByLabel("Địa chỉ").fill("DEMO địa chỉ tổng hợp");
@@ -148,7 +148,7 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
     assert(!await page.evaluate(()=>Object.values(localStorage).some(value=>/hub_access|refreshToken|accessToken/i.test(value))));
     const cookies = (await page.context().cookies()).filter(c=>["hub_access","hub_refresh"].includes(c.name));
     assert.equal(cookies.length,2); assert(cookies.every(c=>c.httpOnly));
-    const otherPage = await studentLogin(await student((await customer()).learnerId));
+    const otherPage = await studentLogin(await newPage(), origin, h, await student((await customer()).learnerId));
     const crossSchedule = await otherPage.request.get(origin+"/api/v1/student/class-schedule/"+source.id);
     const crossInvoice = await otherPage.request.get(origin+invoiceRoute);
     assert([403,404].includes(crossSchedule.status()));
@@ -160,8 +160,6 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
     const approver = await openStaff(director, "adjustments");
     const reason = "DEMO hoàn toàn bộ học phí từ Portal";
     await finance.getByLabel("Mã đăng ký",{exact:true}).fill(source.id);
-    const current = await api("enrollment", "/api/v1/student/enrollments/"+source.id, "GET", undefined, user.accessToken);
-    await finance.getByLabel("Phiên bản quyền lợi").fill(String(current.currentEntitlement.version));
     await finance.getByLabel("Số tiền hoàn (VND)").fill("100000");
     await finance.getByLabel("Phương án hoàn").selectOption("CANCEL");
     await finance.getByLabel("Lý do",{exact:true}).fill(reason);

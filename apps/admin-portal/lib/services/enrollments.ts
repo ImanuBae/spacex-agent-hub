@@ -8,7 +8,7 @@ export type EnrollmentSnapshot = {
 };
 export type PaymentRequest = {
   id: string; status: string; amountDue: number; reference: string;
-  expiresAt: string; qrPayload: string; qrImageDataUrl?: string; adapter: string;
+  expiresAt: string; qrPayload: string; qrImageDataUrl?: string; qrImageUrl?: string; adapter: string;
 };
 export type Enrollment = {
   id: string; confirmationId: string; status: string; version: number;

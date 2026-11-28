@@ -6,6 +6,6 @@
     "typecheck": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
     "lint": {},
-    "dev": { "cache": false, "persistent": true }
+    "dev": { "cache": false, "persistent": true, "passThroughEnv": ["CHAT_LOCAL_MODEL"] }
   }
 }

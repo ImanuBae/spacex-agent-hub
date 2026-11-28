@@ -61,8 +61,9 @@ export async function runAcceptance(h, receipt) {
       const { workflow } = fixtureWorkflow(canonical[wf], cases[1], ports);
       const file = path.join(h.directory, `${wf}.json`); await writeFile(file, JSON.stringify(workflow)); importFile(file);
     }
-    for (const test of cases) {
-      const row = receipt.acceptance.find(c => c.name === test.name);
+    for (const row of receipt.acceptance) {
+      const test = cases.find(c => c.name === row.name);
+      assert(test, `Unknown acceptance case: ${row.name}`);
       row.status = "FAIL";
       const transformed = fixtureWorkflow(canonical["WF-02"], test, ports);
       const bytes = JSON.stringify(transformed.workflow, null, 2) + "\n", file = path.join(h.directory, `${test.name}.json`);
@@ -120,6 +121,12 @@ export async function runAcceptance(h, receipt) {
       assert.equal(requests.filter(r => r.stage === "answer").length, ["answer", "quota", "budget"].includes(test.kind) ? 1 : 0);
       row.requestCounts = Object.fromEntries(["planner", "answer", "tool"].map(stage => [stage, requests.filter(r => r.stage === stage).length]));
       row.dbOutcomes = { mode: state.mode, errorCode: state.errorCode, messages: rows, audit, handoffEvents, jobStatus: job.status, jobAttempt: job.attempt, draftAccepted: true, draftReplayStatus: replay.status };
+      if (["tool", "timeout", "human"].includes(test.kind)) {
+        const claimed = await request(`/api/v1/conversations/${session.conversationId}/mode`, h.operator.accessToken, { mode: "HUMAN", expectedVersion: state.version });
+        assert.equal(claimed.ownerId, h.operator.user.id);
+        const { jobId, executionId } = await execute("WF-03", `${test.name}-owner`);
+        row.takeover = { mode: claimed.mode, ownerId: claimed.ownerId, jobId, executionId };
+      }
       row.status = "PASS"; delete row.reason;
       h.check(test.name);
     }

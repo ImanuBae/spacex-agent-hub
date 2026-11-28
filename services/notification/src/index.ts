@@ -9,12 +9,14 @@ function required(name: string) {
   if (!value) throw new Error(`${name} required`);
   return value;
 }
-if (required("NOTIFICATION_ADAPTER") !== "synthetic") throw new Error("Only the synthetic local mailbox is configured");
+if (required("NOTIFICATION_ADAPTER") !== "synthetic") throw new Error("Unknown course notification adapter");
+const otpAdapter = z.enum(["synthetic", "resend"]).parse(process.env.NOTIFICATION_OTP_ADAPTER ?? "synthetic");
 const ownerId = z.uuid().parse(required("NOTIFICATION_OWNER_ID"));
 const config = {
   enrollmentUrl: required("ENROLLMENT_URL"), classUrl: required("CLASS_URL"), crmUrl: required("CRM_URL"),
   sourceClientId: z.uuid().parse(required("SOURCE_CLIENT_ID")), sourceClientSecret: z.string().min(32).parse(required("SOURCE_CLIENT_SECRET")),
   iamNotificationSecret: z.string().min(32).parse(required("IAM_NOTIFICATION_SECRET")), ownerId, testFaults: process.env.NODE_ENV === "test",
+  otpEmail: otpAdapter === "resend" ? { apiKey: required("RESEND_API_KEY"), from: required("OTP_EMAIL_FROM") } : undefined,
 };
 const pool = new pg.Pool({ connectionString: required("DATABASE_URL"), connectionTimeoutMillis: 5000 });
 pool.on("error", () => console.error("notification.database_unavailable"));

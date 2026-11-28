@@ -1,6 +1,6 @@
 # N8N-06 — acceptance local
 
-**ACCEPT_LOCAL** ngày 20/11/2026 (Asia/Saigon). Codex agent quyết định theo [ủy quyền](prompt-hoan-thanh-n8n-06.md). Phạm vi WF08–10 và Portal với dữ liệu tổng hợp local, chi phí 0 USD. [Index bằng chứng](../workflows/n8n/adjustment-evidence.json).
+**ACCEPT_LOCAL** ngày 20/11/2026 (Asia/Saigon). Codex agent ghi quyết định trong receipt lịch sử. Phạm vi WF08–10 và Portal với dữ liệu tổng hợp local, chi phí 0 USD. [Policy và bàn giao](ban-giao-n8n-06.md) · [Index bằng chứng](../workflows/n8n/adjustment-evidence.json).
 
 Baseline trước sửa: `.local/automation/n8n06-20261115T172538-036c38e6/`. Đã snapshot 402 source files và 4 checkpoints; 312 source/config hashes cùng 117 refs của registration evidence được đối chiếu độc lập và khớp. Đây là kiểm integrity, không phải regression trên source sau sửa. N8N05 historical integrated receipt có 49 PASS; quyết định ACCEPT_LOCAL nằm ở index/checkpoint. Mọi FAIL/SKIP/UNKNOWN mới phải giữ trong receipt riêng.
 

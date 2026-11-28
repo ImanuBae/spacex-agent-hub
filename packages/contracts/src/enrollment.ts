@@ -3,6 +3,7 @@ import {EventEnvelope} from "./events.js";
 import {AutomationInput} from "./automation.js";
 
 export const DemoTermsVersion = "DEMO-N8N05-2026-11-14-v1";
+export const BankTransferTermsVersion = "BANK-TRANSFER-v1";
 export const EnrollmentPreview = z.object({ contactId: z.uuid(), learnerId: z.uuid(), payerId: z.uuid(), classId: z.uuid(), packageId: z.uuid() }).strict();
 export const EnrollmentStatus = z.enum(["PENDING_HOLD", "HELD", "CONFIRMING", "CONFIRMED", "PAYMENT_REVIEW", "EXPIRED", "CANCELLED", "REFUND_PENDING", "NEEDS_CONFIRMATION"]);
 export const SyntheticPaymentInput = z.object({
@@ -14,4 +15,4 @@ export const RegistrationTrigger = EventEnvelope.extend({type:z.enum(["crm.reque
 export const EnrollmentConfirmedEvent = EventEnvelope.extend({type:z.literal("enrollment.confirmed"),version:z.literal(1),causationId:z.uuid(),entityId:z.uuid(),entityVersion:z.number().int().positive(),payload:z.object({
   enrollmentId:z.uuid(),confirmationId:z.uuid(),learnerId:z.uuid(),contactId:z.uuid(),payerId:z.uuid(),classId:z.uuid(),courseId:z.uuid(),packageId:z.uuid(),holdId:z.uuid(),matchRef:z.uuid(),paymentRequestId:z.uuid(),branchId:z.uuid(),amountDue:z.number().int().positive(),currency:z.literal("VND"),snapshotVersion:z.string().regex(/^[a-f0-9]{64}$/),policyVersion:z.string(),termsVersion:z.string(),automationJobId:z.uuid(),
 }).strict()});
-export const PaymentReceivedEvent=EventEnvelope.extend({type:z.literal("payment.received"),version:z.literal(1),payload:z.object({ledgerId:z.uuid(),paymentId:z.uuid().nullable(),amount:z.number().int().positive(),currency:z.literal("VND"),adapter:z.literal("SYNTHETIC")}).strict()});
+export const PaymentReceivedEvent=EventEnvelope.extend({type:z.literal("payment.received"),version:z.literal(1),payload:z.object({ledgerId:z.uuid(),paymentId:z.uuid().nullable(),amount:z.number().int().positive(),currency:z.literal("VND"),adapter:z.enum(["SYNTHETIC","SEPAY"])}).strict()});

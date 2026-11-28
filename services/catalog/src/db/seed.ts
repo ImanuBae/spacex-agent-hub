@@ -1,6 +1,7 @@
-import { sql } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { demoOffers } from "@spacex/contracts";
 import { coursePackages, courses } from "./schema.js";
 
 const connectionString = process.env.DATABASE_URL;
@@ -73,22 +74,21 @@ try {
         })
         .onConflictDoNothing({ target: courses.code });
 
-    // --- Query courseId theo code để insert packages ---
+    await db.insert(courses).values(demoOffers.map(({ code, name, level, deliveryModes, description, goal, priceVnd }) => ({
+        code, name, level, deliveryModes: [...deliveryModes], description, goal, priceVnd, branchIds: [],
+        status: "active", policyText: "DEMO · Khóa học mẫu dùng trong danh mục thử nghiệm.",
+    }))).onConflictDoNothing({ target: courses.code });
+
     const seedCourses = await db
         .select({ id: courses.id, code: courses.code })
         .from(courses)
-        .where(
-            sql`${courses.code} IN ('OFFICE-BASIC', 'GRAPHIC-DESIGN', 'DATA-ANALYSIS')`,
-        );
+        .where(inArray(courses.code, ["OFFICE-BASIC", "GRAPHIC-DESIGN", "DATA-ANALYSIS", ...demoOffers.map(offer => offer.code)]));
 
     const courseMap = new Map(seedCourses.map((c) => [c.code, c.id]));
-
-    const officeId = courseMap.get("OFFICE-BASIC");
-    const graphicId = courseMap.get("GRAPHIC-DESIGN");
-    const dataId = courseMap.get("DATA-ANALYSIS");
-
-    if (!officeId || !graphicId || !dataId) {
-        throw new Error("Seed courses not found after insert");
+    function courseId(code: string) {
+        const id = courseMap.get(code);
+        if (!id) throw new Error(`Seed course not found: ${code}`);
+        return id;
     }
 
     // --- Thêm 3 gói ---
@@ -96,7 +96,7 @@ try {
         .insert(coursePackages)
         .values([
             {
-                courseId: officeId,
+                courseId: courseId("OFFICE-BASIC"),
                 code: "OFFICE-12",
                 name: "Gói 12 buổi",
                 sessionCount: 12,
@@ -104,7 +104,7 @@ try {
                 status: "draft",
             },
             {
-                courseId: graphicId,
+                courseId: courseId("GRAPHIC-DESIGN"),
                 code: "GRAPHIC-8",
                 name: "Gói 8 buổi",
                 sessionCount: 8,
@@ -112,17 +112,22 @@ try {
                 status: "active",
             },
             {
-                courseId: dataId,
+                courseId: courseId("DATA-ANALYSIS"),
                 code: "DATA-16",
                 name: "Gói 16 buổi chuyên sâu",
                 sessionCount: 16,
                 priceVnd: 3000000,
                 status: "active",
             },
+            ...demoOffers.map(({ code, packageCode, sessions, priceVnd }) => ({
+                courseId: courseId(code), code: packageCode, name: `Gói ${sessions} buổi`,
+                sessionCount: sessions, priceVnd, status: "active" as const,
+                policyText: "DEMO · Học phí áp dụng cho toàn bộ số buổi của gói.",
+            })),
         ])
         .onConflictDoNothing({ target: coursePackages.code });
 
-    console.log("Seed completed: 4 courses, 3 packages");
+    console.log("Seed completed: 8 course codes, 7 package codes");
 } finally {
     await pool.end();
 }

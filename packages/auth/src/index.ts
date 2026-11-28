@@ -1,7 +1,8 @@
 import { SignJWT, jwtVerify, decodeProtectedHeader } from "jose";
-import { TokenClaims, DelegatedPrincipal, type Role, type DomainOperation, type MachineAudience, type MachineScope } from "@spacex/contracts";
+import { TokenClaims, DelegatedPrincipal, MachineClaims, type Role, type DomainOperation, type MachineAudience, type MachineScope } from "@spacex/contracts";
 import { HttpError } from "@spacex/http";
 import type { RequestHandler, Response } from "express";
+export { applyErasureProof, erasureProofSchema, erasureTestEnabled, erasureWorker, readRestoreExclusions, registerErasureTarget, type ErasureClient } from "./erasure.js";
 
 export interface Principal extends TokenClaims { sid: string; delegation?: { branchId: string; jobId: string; operation: (typeof DomainOperation)["_output"]; source?: "guest" | "service"; inputRef?: string; entity?: {type: string; id: string; version?: number}; workflowId?: string }; }
 export interface AuthConfig { secret: string; issuer: string; audience: string; identityUrl: string; }
@@ -61,6 +62,12 @@ export async function iamRequest(identityUrl: string, path: string, token: strin
   if ([400, 401, 403, 409].includes(response.status)) throw new HttpError(response.status, "AUTHORIZATION_DENIED", "IAM authorization denied");
   if (!response.ok) throw new HttpError(503, "IDENTITY_UNAVAILABLE", "Identity service unavailable");
   return (await response.json() as { data: unknown }).data;
+}
+
+export async function verifyReportingMachine(config: AuthConfig, token: string, audience: "enrollment" | "payment" | "reporting") {
+  const scope = audience === "reporting" ? "reporting:project" : "reporting:source";
+  const claims = MachineClaims.parse(await iamRequest(config.identityUrl, "/internal/iam/machine/introspect", token, { audience, scope }));
+  if (!claims.workflows.includes("WF-11")) throw new HttpError(403, "FORBIDDEN", "Reporting scope requires WF-11");
 }
 
 export function authenticateDomain(config: AuthConfig, audience: "catalog" | "class-schedule", scope: "catalog:read" | "classes:read", paths: RegExp): RequestHandler {

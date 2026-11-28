@@ -7,6 +7,7 @@ import {
 } from "@spacex/contracts";
 import { receiveEvent } from "@spacex/messaging";
 import { HttpError } from "@spacex/http";
+import { recordIncident } from "./incidents.js";
 
 export const consumer = "automation.bridge.v1";
 const stale = () => new HttpError(409, "STALE_LEASE_OR_VERSION", "Job lease, attempt or version is no longer current");
@@ -104,15 +105,17 @@ export class BridgeStore {
     for (const row of expired) await this.fail(c, row, "LEASE_EXPIRED", "bridge");
     await this.wake(c);
   }
-  async fail(c: PoolClient, row: JobRow, errorCode: string, actor: string, retryAfterSeconds = 0, requireLive = false) {
+  async fail(c: PoolClient, row: JobRow, errorCode: string, actor: string, retryAfterSeconds = 0, requireLive = false, failedStep = row.step) {
     const result = await c.query<JobRow>(`UPDATE automation_jobs SET failure_count=failure_count+1,
       status=CASE WHEN failure_count+1>=8 THEN 'DEAD' ELSE 'RETRY' END,
       next_attempt_at=CASE WHEN failure_count+1>=8 THEN NULL ELSE clock_timestamp()+make_interval(secs=>GREATEST($2,LEAST(300,power(2,failure_count+1))::int)) END,
       lease_token=NULL,lease_owner=NULL,lease_expires_at=NULL,error_code=$3,version=version+1,updated_at=clock_timestamp()
       WHERE id=$1 AND (NOT $4 OR lease_expires_at>clock_timestamp()) RETURNING *`, [row.id, retryAfterSeconds, errorCode, requireLive]);
     if (!result.rows[0]) throw stale();
-    await this.audit(c, result.rows[0], result.rows[0].status, actor);
-    return result.rows[0];
+    const failed = result.rows[0];
+    await this.audit(c, failed, failed.status, actor);
+    if (failed.status === "DEAD") await recordIncident(c, failed, failedStep);
+    return failed;
   }
   async maintain() { await this.transaction(c => this.recover(c)); }
 
@@ -177,13 +180,16 @@ export class BridgeStore {
       const updated = (await c.query<JobRow>(`UPDATE automation_jobs SET step=$2,version=version+1,updated_at=clock_timestamp()
         WHERE id=$1 AND lease_expires_at>clock_timestamp() RETURNING *`, [id, input.step])).rows[0];
       if (!updated) throw stale();
-      if (input.outcome === "RETRY") return jobView(await this.fail(c, updated, input.errorCode!, owner, input.retryAfterSeconds, true));
+      const failedStep = row.step === "start" ? input.step : row.step;
+      if (input.outcome === "RETRY") return jobView(await this.fail(c, updated, input.errorCode!, owner, input.retryAfterSeconds, true, failedStep));
       const completed = await c.query(`UPDATE automation_jobs SET status=$2,wait_for=$3,deadline_at=$4,result_ref=$5,error_code=$6,
         wake_event_id=NULL,wake_reason=NULL,lease_token=NULL,lease_owner=NULL,lease_expires_at=NULL
         WHERE id=$1 AND lease_expires_at>clock_timestamp() RETURNING id`,
       [id, input.outcome, input.waitFor ?? null, input.deadlineAt ?? null, input.resultRef ?? null, input.errorCode ?? null]);
       if (!completed.rowCount) throw stale();
-      await this.audit(c, await this.row(c, id), input.outcome, owner);
+      const outcome = await this.row(c, id);
+      await this.audit(c, outcome, input.outcome, owner);
+      if (input.outcome === "DEAD") await recordIncident(c, outcome, failedStep);
       if (input.outcome === "WAITING") await this.wake(c);
       return jobView(await this.row(c, row.id));
     });

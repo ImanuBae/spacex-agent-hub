@@ -31,7 +31,9 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
         { label: "Tài chính", href: "/dashboard/finance" },
+        { label: "Đối soát", href: "/dashboard/reconciliation" },
         { label: "Tổ chức", href: "/dashboard/organization" },
+        { label: "Vận hành", href: "/dashboard/operations" },
         { label: "Audit", href: "/dashboard/audit" },
       ];
     case "branch_director":
@@ -47,6 +49,7 @@ export function getMenuByRole(role: UserRole): MenuItem[] {
         { label: "Lớp học và lịch", href: "/dashboard/schedule" },
         { label: "Giờ rảnh và nghỉ", href: "/dashboard/availability" },
         { label: "Tài chính chi nhánh", href: "/dashboard/finance" },
+        { label: "Đối soát", href: "/dashboard/reconciliation" },
       ];
     case "admissions":
       return [

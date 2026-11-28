@@ -3,14 +3,16 @@ import { randomUUID } from "node:crypto";
 import { AutomationInput, AutomationResult, WorkflowBindings, EventEnvelope, CommandFence, DelegationInput, MachineTokenInput } from "@spacex/contracts";
 
 const fence = { leaseToken: randomUUID(), attempt: 1, expectedVersion: 2, step: "smoke" };
-it("limits machine credentials and command/delegation input to the reviewed read slice", () => {
+it("limits machine credentials and command/delegation input to the reviewed scopes", () => {
   const token = { clientId: "worker", clientSecret: "x".repeat(32), audience: "automation-bridge", scopes: ["automation:claim"], workflows: ["read-smoke"] };
   expect(MachineTokenInput.parse(token).ttlSeconds).toBe(300);
   for (const extra of [{ ttlSeconds: 301 }, { scope: "admin" }, { actorId: "director" }, { scopes: ["classes:write"] }])
     expect(MachineTokenInput.safeParse({ ...token, ...extra }).success).toBe(false);
   const command = { leaseToken: fence.leaseToken, attempt: 1, operation: "catalog.read" };
   expect(CommandFence.safeParse(command).success).toBe(true);
-  expect(CommandFence.safeParse({ ...command, operation: "payment.refund" }).success).toBe(false);
+  expect(CommandFence.safeParse({ ...command, operation: "payment.refund" }).success).toBe(true);
+  expect(CommandFence.safeParse({ ...command, operation: "reporting.project" }).success).toBe(false);
+  expect(MachineTokenInput.safeParse({ ...token, audience: "reporting", scopes: ["reporting:project"], workflows: ["WF-11"] }).success).toBe(true);
   const context = { eventId: randomUUID(), workflowId: "read-smoke", workflowVersion: 1, entity: { type: "request", id: "synthetic" }, inputRef: "read:input", branchId: randomUUID(), operations: ["catalog.read"] };
   expect(DelegationInput.safeParse(context).success).toBe(true);
   for (const extra of [{ actorId: "director" }, { approvalRef: "fake" }, { operations: ["enrollment.create"] }])

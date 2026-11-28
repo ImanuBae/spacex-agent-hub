@@ -1,7 +1,7 @@
 import amqp from "amqplib";
 import { randomUUID } from "node:crypto";
 import { EventEnvelope } from "@spacex/contracts";
-export { messagingSchema, enqueueEvent, receiveEvent, dispatchOutbox, processInbox, replayDeadEvent } from "./postgres.js";
+export { messagingSchema, enqueueEvent, enqueueReportingRefresh, receiveEvent, dispatchOutbox, processInbox, replayDeadEvent } from "./postgres.js";
 
 export async function connectBroker(
   url: string,

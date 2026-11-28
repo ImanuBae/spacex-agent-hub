@@ -1,7 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
-  allPages,
   api,
   money,
   dateTime,
@@ -14,38 +13,27 @@ import {
   OperationDialog,
 } from "../components/OperationUI";
 import "../components/operations.css";
-import { OfferHistory } from "./CatalogSearch";
+import { OfferHistory, offerStatuses } from "./CatalogSearch";
 export default function PackagesPanel({
   courses,
   canEdit,
+  packages,
+  loading,
+  error,
+  load,
 }: {
   courses: Course[];
   canEdit: boolean;
+  packages: Package[];
+  loading: boolean;
+  error: unknown;
+  load: () => Promise<void>;
 }) {
-  const [packages, setPackages] = useState<Package[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState<unknown>(null),
-    [formError, setFormError] = useState<unknown>(null),
+  const [formError, setFormError] = useState<unknown>(null),
     [saving, setSaving] = useState(false),
     [editing, setEditing] = useState<Package | null | undefined>(undefined),
     [courseFilter, setCourseFilter] = useState("");
   const [historyId, setHistoryId] = useState<string | null>(null);
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setPackages(await allPages<Package>("packages"));
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  // Synchronize this view with the remote Catalog, including its loading state.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -77,16 +65,10 @@ export default function PackagesPanel({
     (p) => !courseFilter || p.courseId === courseFilter,
   );
   return (
-    <section className="ops ops-panel">
+    <section className="ops-panel" id="course-packages" aria-busy={loading}>
       <div className="ops-heading">
         <div>
           <h2>Gói học</h2>
-          <p className="muted">
-            Giá VND và số buổi từ Catalog.{" "}
-            {canEdit
-              ? "Chính sách có lịch sử phiên bản."
-              : "Chỉ giám đốc trung tâm được sửa."}
-          </p>
         </div>
         <div className="ops-actions">
           <button disabled={loading} onClick={() => void load()}>
@@ -123,70 +105,25 @@ export default function PackagesPanel({
       <ErrorMessage error={error} retry={() => void load()} />
       {loading ? (
         <p role="status">Đang tải gói học…</p>
-      ) : error ? (
-        <p>Chưa xác minh được gói học.</p>
-      ) : !filtered.length ? (
-        <p>
-          Chưa có gói phù hợp.{" "}
-          {canEdit
-            ? "Tạo khóa rồi thêm gói học."
-            : "Liên hệ giám đốc trung tâm để bổ sung."}
-        </p>
-      ) : (
-        <div className="ops-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Tên / Mã gói</th>
-                <th>Khóa học</th>
-                <th className="num">Số buổi</th>
-                <th className="num">Giá VND</th>
-                <th>Trạng thái</th>
-                <th>Phiên bản / Hiệu lực</th>
-                {canEdit && <th>Thao tác</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <strong>{p.name}</strong>
-                    <p className="muted">{p.code}</p>
-                  </td>
-                  <td>
-                    {courses.find((c) => c.id === p.courseId)?.name ?? "—"}
-                  </td>
-                  <td className="num">{p.sessionCount}</td>
-                  <td className="num">{money(p.priceVnd)}</td>
-                  <td>
-                    <span className="status">{p.status}</span>
-                  </td>
-                  <td>
-                    {p.policyVersion}
-                    <p className="muted">{dateTime(p.effectiveAt)}</p>
-                    <button onClick={() => setHistoryId(p.id)}>Xem lịch sử</button>
-                  </td>
-                  {canEdit && (
-                    <td>
-                      <button
-                        onClick={() => {
-                          setFormError(null);
-                          setEditing(p);
-                        }}
-                      >
-                        Sửa gói
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="muted">
-        {filtered.length} gói theo bộ lọc · dữ liệu đã tải toàn bộ trang.
-      </p>
+      ) : !error && <>
+        <p className="catalog-count muted" role="status">{filtered.length} gói học</p>
+        {!filtered.length && <p>Chưa có gói phù hợp.</p>}
+        <ul className="catalog-courses">
+          {filtered.map(p => <li className="catalog-course" key={p.id}>
+            <div>
+              <h3>{p.name}</h3>
+              <p>{courses.find(c => c.id === p.courseId)?.name ?? "—"}</p>
+              <p className="muted">{p.code} · {p.sessionCount} buổi</p>
+            </div>
+            <div className="catalog-price"><strong>{money(p.priceVnd)}</strong><p className="status">{offerStatuses[p.status]}</p></div>
+            <div><p>Phiên bản {p.policyVersion}</p><p className="muted">Hiệu lực {dateTime(p.effectiveAt)}</p></div>
+            <div className="ops-actions">
+              <button onClick={() => setHistoryId(p.id)}>Xem lịch sử<span className="sr-only"> gói {p.code}</span></button>
+              {canEdit && <button onClick={() => { setFormError(null); setEditing(p); }}>Sửa gói<span className="sr-only"> {p.code}</span></button>}
+            </div>
+          </li>)}
+        </ul>
+      </>}
       {editing !== undefined && (
         <OperationDialog
           title={editing ? "Sửa gói học" : "Thêm gói học"}

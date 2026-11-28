@@ -1,8 +1,8 @@
 "use client";
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../src/context/AuthContext";
-import { getMenuByRole } from "../../lib/roles";
+import { getMenuByRole, type UserRole } from "../../lib/roles";
 import Link from "next/link";
 import Brand from "../landing/Brand";
 import Planet from "../landing/Planet";
@@ -11,12 +11,25 @@ import "../landing/entry.css";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { reload } = useAuth();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const openDashboard = useCallback((role: UserRole) => {
+    const menu = getMenuByRole(role);
+    const review = new URLSearchParams(window.location.search).get("review");
+    if (review && /^[\da-f-]{36}$/i.test(review) && menu.some(item => item.href === "/dashboard/reconciliation")) {
+      window.location.replace(`/dashboard/reconciliation?review=${review}`);
+    } else {
+      router.replace(menu[0]?.href ?? "/dashboard");
+    }
+  }, [router]);
+  useEffect(() => {
+    if (user && getMenuByRole(user.role).length > 0) openDashboard(user.role);
+  }, [user, openDashboard]);
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -35,8 +48,7 @@ export default function LoginPage() {
             : (body.error?.message ?? "Đăng nhập thất bại."),
         );
       setPassword("");
-      await reload();
-      router.replace(getMenuByRole(body.data.role)[0]?.href ?? "/dashboard");
+      openDashboard(body.data.role);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không kết nối được hệ thống.");
     } finally {
@@ -68,6 +80,7 @@ export default function LoginPage() {
         </div>
         <section className="entry-form-panel" aria-labelledby="login-title">
           <h2 id="login-title">Đăng nhập Agent Hub</h2>
+          <Suspense><ReviewSessionNotice /></Suspense>
           <form onSubmit={submit} className="entry-form" aria-busy={busy}>
             <label htmlFor="login-email">
               Email nhân viên
@@ -110,7 +123,7 @@ export default function LoginPage() {
                 {error}
               </p>
             )}
-            <button disabled={busy} type="submit" className="entry-submit">
+            <button disabled={busy || loading} type="submit" className="entry-submit">
               {busy ? "Đang đăng nhập…" : "Đăng nhập"}
               <span aria-hidden="true">↗</span>
             </button>
@@ -126,4 +139,10 @@ export default function LoginPage() {
       </footer>
     </div>
   );
+}
+
+function ReviewSessionNotice() {
+  return useSearchParams().has("review")
+    ? <p className="entry-help">Đăng nhập lại bằng tài khoản vừa dùng để tiếp tục bản nháp đối soát trong tab này.</p>
+    : null;
 }

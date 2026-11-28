@@ -453,9 +453,26 @@ export function createClassApp(
       if (!response.ok) throw new HttpError(503, "UPSTREAM_UNAVAILABLE", "Cannot validate seat authority");
       return (await response.json() as { data: unknown }).data;
     }
+    app.get("/public/classes/:packageId", async (req, res) => {
+      const packageId = Id.parse(req.params.packageId), classId = Id.optional().parse(req.query.classId);
+      const c = await pool.connect();
+      try {
+        const { rows } = await c.query(`SELECT * FROM classes WHERE package_id=$1 AND status='OPEN'
+          AND registration_closes_at>clock_timestamp() AND ($2::uuid IS NULL OR id=$2) ORDER BY code,id`, [packageId, classId ?? null]);
+        const classes = [];
+        for (const row of rows) {
+          const cls = await view(c, row);
+          if (cls.missingConditions.length) continue;
+          classes.push({ id: cls.id, code: cls.code, name: cls.name, branchId: cls.branchId, packageId: cls.packageId,
+            courseId: cls.courseId, mode: cls.mode, version: cls.version, sessionCount: cls.sessions.length,
+            startsAt: cls.sessions[0]?.startsAt ?? null, availableSeats: Math.max(0, cls.available) });
+        }
+        res.json({ data: classes });
+      } finally { c.release(); }
+    });
     function seatActor(user: Principal) {
       if (!["center_director", "branch_director", "admissions", "accountant"].includes(user.role) &&
-        !(user.role === "ai_agent" && user.delegation?.source === "service" && ["WF-06", "WF-07"].includes(user.delegation.workflowId ?? "")))
+        !(user.role === "ai_agent" && user.delegation?.source === "service" && ["WF-05", "WF-06", "WF-07"].includes(user.delegation.workflowId ?? "")))
         throw new HttpError(403, "FORBIDDEN", "Current enrollment staff or scoped Payment/expiry service required");
     }
     function seatBinding(user: Principal, enrollmentId: string, source: z.infer<typeof seatAuthority>) {
@@ -553,7 +570,8 @@ export function createClassApp(
           if (count >= row.capacity) throw fail("SOLD_OUT", "Class has no available seat");
         }
         if (action === "hold") {
-          if (!["center_director", "branch_director", "admissions"].includes(user.role))
+          const selfRegistration = user.delegation?.source === "service" && user.delegation.workflowId === "WF-05";
+          if (!["center_director", "branch_director", "admissions"].includes(user.role) && !selfRegistration)
             throw new HttpError(403, "FORBIDDEN", "Only confirmed admissions requests may create holds");
           if (!["PENDING_HOLD", "HELD"].includes(source.state)) throw fail("INVALID_ENROLLMENT_STATE", "Enrollment cannot request a hold");
           if (source.quoteCurrent !== true) throw fail("QUOTE_CHANGED", "A new confirmation is required for the current offer");
@@ -561,9 +579,11 @@ export function createClassApp(
           if (hold) {
             if (hold.status !== "HELD" || hold.expires_at <= now) throw fail("HOLD_EXPIRED", "Existing hold is no longer available");
           } else {
-            const counts = (await c.query(`SELECT count(*) FILTER(WHERE status='HELD' AND expires_at>clock_timestamp())::int AS active,
-              count(*) FILTER(WHERE created_at>clock_timestamp()-interval '1 minute')::int AS recent FROM holds WHERE actor_id=$1`, [user.sub])).rows[0];
-            if (counts.active >= 5 || counts.recent >= 30) throw new HttpError(429, "HOLD_LIMIT", "Actor hold limit reached");
+            if (!selfRegistration) {
+              const counts = (await c.query(`SELECT count(*) FILTER(WHERE status='HELD' AND expires_at>clock_timestamp())::int AS active,
+                count(*) FILTER(WHERE created_at>clock_timestamp()-interval '1 minute')::int AS recent FROM holds WHERE actor_id=$1`, [user.sub])).rows[0];
+              if (counts.active >= 5 || counts.recent >= 30) throw new HttpError(429, "HOLD_LIMIT", "Actor hold limit reached");
+            }
             hold = (await c.query(`INSERT INTO holds(id,class_id,package_id,learner_id,enrollment_id,actor_id,status,expires_at,operation_key,request_payload)
               VALUES($1,$2,$3,$4,$5,$6,'HELD',clock_timestamp()+make_interval(secs=>$7),$5,$8) RETURNING *`,
             [randomUUID(), row.id, source.packageId, source.learnerId, id, user.sub, config.ttlSeconds,

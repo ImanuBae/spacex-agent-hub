@@ -192,6 +192,20 @@
 .ascend .btn:active {
   transform: translateY(1px);
 }
+.ascend .public-catalog-cta {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.ascend .public-catalog-cta:hover {
+  background: var(--accent-2);
+}
+.ascend .card .feature-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .ascend .hero {
   min-height: 100vh;
   display: flex;

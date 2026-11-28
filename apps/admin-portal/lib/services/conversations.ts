@@ -1,6 +1,7 @@
 import { request } from "../request";
-export interface ChatMessage { id: string; sender: string; text: string; delivery: string; createdAt: string; sources: { api: string; readAt: string }[]; }
-export interface Conversation { id: string; mode: "AI" | "HUMAN"; version: number; ownerId?: string; errorCode?: string; messages: ChatMessage[]; }
+import type { ChatSources } from "@spacex/contracts";
+export interface ChatMessage { id: string; sender: string; text: string; delivery: string; createdAt: string; sources: ReturnType<typeof ChatSources.parse>; }
+export interface Conversation { id: string; mode: "AI" | "HUMAN"; version: number; ownerId?: string; errorCode?: string; aiEnabled?: boolean; messages: ChatMessage[]; }
 export const conversations = {
   list: () => request<Conversation[]>("/api/v1/conversations"),
   get: (id: string) => request<Conversation>(`/api/v1/conversations/${id}`),

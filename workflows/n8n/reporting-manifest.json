@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "canonicalActive": false,
+  "syntheticOnly": true,
+  "id": "N8N07LocalWF11",
+  "workflowId": "WF-11",
+  "workflowVersion": 1,
+  "inputSchemaVersion": 1,
+  "eventType": "reporting.refresh_requested",
+  "file": "workflows/n8n/wf-11.json",
+  "sha256": "5f55ebd10a674cb83fc717b626f0959172e328f3653869f6add20fdfbc73e70e",
+  "credentialId": "N8N07LocalWF11Machine",
+  "credential": "WF-11-N8N07-machine"
+}

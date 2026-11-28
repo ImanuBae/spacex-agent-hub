@@ -1,17 +1,42 @@
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { SelfRegistrationBrowserProof } from "@spacex/contracts";
 import { apiError, checkOrigin, gatewayFetch, saveTokens } from "../../../../lib/server-session";
 
 export async function POST(request: Request, context: { params: Promise<{ action: string }> }) {
   if (!checkOrigin(request)) return apiError(403, "FORBIDDEN", "Invalid origin");
   const { action } = await context.params;
-  if (!["request", "verify"].includes(action)) return apiError(404, "NOT_FOUND", "Not found");
+  if (!["request", "verify", "checkout-request", "checkout-verify"].includes(action)) return apiError(404, "NOT_FOUND", "Not found");
   let input: Record<string, unknown>;
   try { input = await request.json(); if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error(); }
   catch { return apiError(400, "INVALID_JSON", "Dữ liệu không hợp lệ."); }
   try {
     const jar = await cookies();
+    if (action.startsWith("checkout-")) {
+      const order = SelfRegistrationBrowserProof.safeParse(input);
+      if (!order.success) return apiError(400, "INVALID_CHECKOUT", "Phiên đăng ký không hợp lệ.");
+      const cookieName = `hub_checkout_otp_${order.data.checkoutId}`;
+      const requesting = action === "checkout-request";
+      const [challengeId, sessionId] = jar.get(cookieName)?.value.split(".") ?? [];
+      if (!requesting && (!challengeId || !sessionId)) return apiError(401, "OTP_SESSION_REQUIRED", "Yêu cầu mã mới trên trình duyệt này.");
+      const challengeSessionId = requesting ? randomUUID() : sessionId;
+      const response = await gatewayFetch(`/api/v1/auth/checkout-otp/${requesting ? "request" : "verify"}`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...order.data, challengeSessionId, ...(requesting ? {} : { challengeId, code: input.code }) }),
+      });
+      const body = await response.json();
+      const headers = { "cache-control": "no-store" };
+      if (!response.ok) return NextResponse.json(body, { status: response.status, headers });
+      const options = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict" as const, path: "/api/student-session" };
+      if (requesting) {
+        jar.set(cookieName, `${body.data.challengeId}.${challengeSessionId}`, { ...options, maxAge: 300 });
+        return NextResponse.json({ data: { expiresAt: body.data.expiresAt } }, { headers });
+      }
+      await saveTokens(body.data);
+      jar.set(cookieName, "", { ...options, maxAge: 0 });
+      return NextResponse.json({ data: { verified: true } }, { headers });
+    }
     const challengeSessionId = action === "request" ? randomUUID() : jar.get("hub_otp_session")?.value;
     if (!challengeSessionId) return apiError(401, "OTP_SESSION_REQUIRED", "Yêu cầu mã mới trên trình duyệt này.");
     const payload = action === "request"

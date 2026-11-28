@@ -7,6 +7,7 @@ import { spawn, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import pg from "pg";
+import { demoOffers } from "@spacex/contracts";
 import { withAcceptanceRuntime, lookupFinishedJob } from "./n8n04-runtime.mjs";
 import { parseN8nOutput } from "./n8n-output.mjs";
 import { model, providerAccounting, selectBenchmarkCases, authorityFailure, plannedModelRequests } from "./n8n04-benchmark-guard.mjs";
@@ -38,7 +39,7 @@ if (preflight.authorization.dailyLimit === 50) {
 }
 const directory = `.local/automation/n8n04-model-benchmark-${randomBytes(6).toString("hex")}`;
 await mkdir(directory, { recursive: true });
-const corpus = await json("workflows/n8n/chat-benchmark.json");
+const corpus = await json(preflight.advisory ? "workflows/n8n/chat-advisory-cases.json" : "workflows/n8n/chat-benchmark.json");
 const tests = selectBenchmarkCases(corpus, preflight.caseIds);
 const receipt = { checkedAt: new Date().toISOString(), timezone: "Asia/Saigon", status: "NOT_STARTED", authorization: preflight.authorization, selectedCaseIds: tests.map(row => row.id), preflightFile, preflightSha256: sha(await readFile(preflightFile)), cases: corpus.map(c => ({ ...c, selected: tests.some(row => row.id === c.id), status: "SKIP", reason: "Not yet executed", actual: null })), fixtures: [], ...providerAccounting({ requests: [] }), credentialRead: false, humanReviewPending: true, pilotAccepted: false, customerRollout: "BLOCKED" };
 const evidenceFile = "workflows/n8n/chat-hardening-evidence.json";
@@ -73,6 +74,16 @@ try {
   receipt.plannedModelRequests = plannedModelRequests(tests);
   if (!preflight.syntheticOnly) assert(receipt.plannedModelRequests <= preflight.authorization.maxRequests, "Insufficient budget for selected functional cases; stop before any inference");
   const allowedChanges = new Set(["scripts/run-n8n04-benchmark.mjs", "scripts/n8n04-benchmark-guard.mjs", "scripts/n8n04-benchmark-guard.test.mjs", "scripts/build-chat-workflows.mjs", "scripts/accept-n8n04.mjs", "scripts/n8n04-fixture.mjs", "scripts/n8n04-acceptance-cases.mjs", "scripts/n8n04-workflow.test.mjs", "scripts/n8n04-clarification.mjs", "workflows/n8n/wf-02.json", "workflows/n8n/chat-manifest.json", "packages/contracts/src/machine.ts", "packages/auth/src/index.ts", "services/identity/src/machine.ts", "services/class-schedule/src/app.ts", "scripts/n8n04-runtime.mjs", "scripts/test-chat-faults.mjs", "services/conversation/src/workflow.test.ts", "scripts/test-automation.mjs", "scripts/test-chat-browser.mjs"]);
+  if (preflight.advisory) for (const file of [
+    "workflows/n8n/chat-advisory-cases.json", "packages/contracts/src/catalog-demo.ts", "packages/contracts/src/conversation.ts",
+    "services/conversation/src/app.ts", "services/conversation/src/index.ts", "services/conversation/src/migrate.ts", "services/catalog/src/routes.ts",
+    "infra/automation/compose.test.yml", "packages/messaging/src/postgres.ts", "services/automation-bridge/src/store.ts",
+    "services/automation-bridge/src/app.ts", "services/automation-bridge/src/postgres.test.ts",
+    "services/identity/src/app.ts", "services/identity/src/index.ts", "services/identity/src/migrate.ts", "services/class-schedule/src/migrate.ts",
+    "services/gateway/src/app.ts", "services/gateway/src/index.ts", "apps/admin-portal/app/api/v1/[...path]/route.ts",
+    "apps/admin-portal/app/chat/Messages.tsx", "apps/admin-portal/app/chat/page.tsx", "apps/admin-portal/app/dashboard/layout.tsx",
+    "apps/admin-portal/app/dashboard/mailbox/page.tsx", "apps/admin-portal/lib/services/conversations.ts",
+  ]) allowedChanges.add(file);
   for (const [file, expected] of Object.entries(prior.sourceChecks)) {
     assert(Object.hasOwn(preflight.sourceChecks, file), file);
     if (preflight.sourceChecks[file] !== expected) {
@@ -124,19 +135,36 @@ try {
       await h.startService("conversation", { DATABASE_URL: h.domainUrls.conversation, PORT: String(h.chatPort), HOST: "0.0.0.0", CHAT_BRANCH_ID: branch, AUTOMATION_BRIDGE_URL: `http://127.0.0.1:${h.bridgePort}`, CHANNEL_CLIENT_ID: "channel-source", CHANNEL_CLIENT_SECRET: source.clientSecret, AI_FREE_MODEL_READY: "true", CHAT_PROVIDER_DATA_POLICY: "synthetic-only" });
       for (const [pool, table] of [[db, "conversations"], [classesDb, "classes"]]) assert.equal(Number((await pool.query(`SELECT count(*) FROM ${table}`)).rows[0].count), 0);
       const policyText = "DEMO: Chính sách hoàn tiền/chuyển lớp chưa công bố; cần tư vấn viên. Chat chỉ tư vấn, không giữ chỗ hay tạo đơn.";
-      const course = await call(h.catalogPort, "/api/v1/courses", h.operator.accessToken, { code: "N8N04-DEMO-EXCEL", name: "DEMO — Excel cơ bản", description: "Dữ liệu kiểm thử tổng hợp", goal: "Học hàm Excel cơ bản và xử lý bảng tính", level: "beginner", deliveryModes: ["online"], branchIds: [branch], priceVnd: 100000, status: "active", policyText });
-      const offer = await call(h.catalogPort, "/api/v1/packages", h.operator.accessToken, { courseId: course.id, code: "N8N04-DEMO-ONE", name: "DEMO — Excel online một buổi", sessionCount: 1, priceVnd: 100000, status: "active", policyText });
-      const classId = randomUUID(), start = new Date(Date.now() + 14 * 86400000), end = new Date(start.getTime() + 3600000), closes = new Date(Date.now() + 10 * 86400000);
-      await classesDb.query("INSERT INTO classes(id,code,name,course_id,package_id,branch_id,mode,capacity,minimum_size,registration_closes_at,decision_at,status,session_count) VALUES($1,$2,$3,$4,$5,$6,'online',10,1,$7,$8,'OPEN',1)", [classId, "N8N04-DEMO-CLASS", "DEMO — Excel online", course.id, offer.id, branch, closes, new Date(Date.now() + 11 * 86400000)]);
-      await classesDb.query("INSERT INTO sessions(id,class_id,starts_at,ends_at) VALUES($1,$2,$3,$4)", [randomUUID(), classId, start, end]);
+      const samples = preflight.advisory ? demoOffers.filter(offer => ["DEMO-PYTHON", "DEMO-SQL"].includes(offer.code)) : [{
+        code: "N8N04-DEMO-EXCEL", name: "DEMO — Excel cơ bản", description: "Dữ liệu kiểm thử tổng hợp", goal: "Học hàm Excel cơ bản và xử lý bảng tính",
+        level: "beginner", deliveryModes: ["online"], priceVnd: 100000, packageCode: "N8N04-DEMO-ONE", sessions: 1,
+      }];
+      const fields = (item, keys) => Object.fromEntries(keys.map(k => [k, item[k]]));
+      const courses = [], packages = [];
+      for (const { code, name, description, goal, level, deliveryModes, priceVnd, packageCode, sessions } of samples) {
+        const course = await call(h.catalogPort, "/api/v1/courses", h.operator.accessToken, { code, name, description, goal, level, deliveryModes, branchIds: [branch], priceVnd, status: "active", policyText });
+        const offer = await call(h.catalogPort, "/api/v1/packages", h.operator.accessToken, { courseId: course.id, code: packageCode, name: preflight.advisory ? `Gói ${sessions} buổi` : "DEMO — Excel online một buổi", sessionCount: sessions, priceVnd, status: "active", policyText });
+        courses.unshift(fields(course, ["id", "name", "description", "goal", "level", "deliveryModes", "policyText", "policyVersion"]));
+        packages.unshift(fields(offer, ["id", "courseId", "name", "sessionCount", "priceVnd", "policyText", "policyVersion"]));
+      }
+      const [course] = courses, [offer] = packages;
+      const day = 86400000, hour = 3600000;
+      const classId = randomUUID(), start = Math.ceil(Date.now() / day) * day + 14 * day + 12 * hour, closes = new Date(start - day);
+      const name = preflight.advisory ? `DEMO · ${course.name} trực tuyến` : "DEMO — Excel online";
+      await classesDb.query("INSERT INTO classes(id,code,name,course_id,package_id,branch_id,mode,capacity,minimum_size,registration_closes_at,decision_at,status,session_count) VALUES($1,$2,$3,$4,$5,$6,'online',10,1,$7,$8,'OPEN',$9)", [classId, "N8N04-DEMO-CLASS", name, course.id, offer.id, branch, closes, new Date(start - hour), offer.sessionCount]);
+      const sessions = [];
+      for (let index = 0; index < offer.sessionCount; index++) {
+        const startsAt = new Date(start + index * 7 * day).toISOString(), endsAt = new Date(Date.parse(startsAt) + hour).toISOString();
+        await classesDb.query("INSERT INTO sessions(id,class_id,starts_at,ends_at) VALUES($1,$2,$3,$4)", [randomUUID(), classId, startsAt, endsAt]);
+        sessions.push({ startsAt, endsAt });
+      }
       const canonical = Object.fromEntries(await Promise.all(workflows.map(async wf => [wf, await json(`workflows/n8n/${wf.toLowerCase()}.json`)])));
       const nodes = canonical["WF-02"][0].nodes;
       const node = name => nodes.find(n => n.name === name);
       const systemPrompt = new Function("$json", node("Prompt").parameters.jsCode)({ data: { providerAllowed: true, modelReady: true, messages: [] } })[0].json.messages[0].content;
       const planner = new Function("$json", `return (${node("Model tool request").parameters.jsonBody.slice(3, -2)});`)({ messages: [] });
       const answer = new Function("$", `return (${node("Model answer").parameters.jsonBody.slice(3, -2)});`)(name => ({ first: () => ({ json: name === "Prompt" ? { messages: [] } : name === "Tool allowlist" ? { assistant: { tool_calls: [{ id: "offline" }] } } : { data: {} } }) }));
-      const fields = (item, keys) => Object.fromEntries(keys.map(k => [k, item[k]]));
-      const toolData = { courses: [fields(course, ["id", "name", "goal", "level", "deliveryModes", "policyText", "policyVersion"])], packages: [fields(offer, ["id", "courseId", "name", "sessionCount", "priceVnd", "policyText", "policyVersion"])], classSnapshot: { id: classId, name: "DEMO — Excel online", courseId: course.id, packageId: offer.id, mode: "online", registrationClosesAt: closes.toISOString(), status: "OPEN", version: 1, sessions: [{ startsAt: start.toISOString(), endsAt: end.toISOString() }], available: 10 }, notice: "Availability snapshot only; Class sellable=true is disabled. No hold/sale guarantee." };
+      const toolData = { courses, packages, classSnapshot: { id: classId, name, courseId: course.id, packageId: offer.id, mode: "online", registrationClosesAt: closes.toISOString(), status: "OPEN", version: 1, sessions, available: 10 }, notice: "Availability snapshot only; Class sellable=true is disabled. No hold/sale guarantee." };
       const seedFile = path.join(h.directory, "synthetic-corpus.json");
       await writeFile(seedFile, JSON.stringify({ branch, toolData, benchmark: tests }, null, 2) + "\n", { mode: 0o600 });
       receipt.corpus = { file: seedFile, sha256: sha(await readFile(seedFile)), synthetic: true, customerData: false };
@@ -279,7 +307,7 @@ finally {
     receipt.finalIntegrity = "PASS";
   } catch { receipt.finalIntegrity = "FAIL"; receipt.status = "BENCHMARK_STOPPED_SOURCE_INTEGRITY"; process.exitCode = 1; }
   await save();
-  if (preflight.authorization.dailyLimit === 50 && !preflight.syntheticOnly && receipt.boundPriorRequestAttempts !== undefined) {
+  if (preflight.authorization.dailyLimit === 50 && !preflight.syntheticOnly && receipt.boundPriorRequestAttempts !== undefined && receipt.providerRequestAttempts !== 0) {
     const index = await json(evidenceFile);
     index[`authorizedBenchmark${directory.split("-").at(-1)}`] = { checkedAt: receipt.finishedAt, priorRequestAttempts: receipt.boundPriorRequestAttempts, newProviderRequestAttempts: receipt.providerRequestAttempts, cumulativeProviderRequestAttempts: receipt.cumulativeProviderRequestAttempts, sourceChecks: preflight.sourceChecks, rawReceipt: { file: `${directory}/receipt.json`, sha256: sha(await readFile(`${directory}/receipt.json`)) }, status: receipt.status, summary: receipt.summary, review: "PENDING", syntheticOnly: false };
     await writeFile(evidenceFile, JSON.stringify(index, null, 2) + "\n");

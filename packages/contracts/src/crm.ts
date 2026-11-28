@@ -54,5 +54,5 @@ export type PersonView = PersonInput & { id: string; version: number; status: "A
 export type ConsentView = z.infer<typeof ConsentInput> & { id: string; personId: string; recordedAt: string; actorId: string };
 export type RelationshipView = z.infer<typeof RelationshipInput> & { id: string; version: number; status: "PENDING" | "VERIFIED" | "REJECTED"; evidenceRef: string; fromName: string; learnerName: string };
 export type LeadView = z.infer<typeof LeadInput> & { id: string; version: number; stage: z.infer<typeof LeadStage>; contactName: string; contactPhone: string; createdAt: string };
-export type ErasureTaskView = { service: z.infer<typeof ErasureService>; status: "PENDING" | "DONE" | "NOT_APPLICABLE" | "BLOCKED"; evidenceRef: string; version: number };
+export type ErasureTaskView = { service: z.infer<typeof ErasureService>; status: "PENDING" | "DONE" | "NOT_APPLICABLE" | "BLOCKED"; evidenceRef: string; outcomeCode?: string | null; version: number };
 export type ErasureView = { id: string; personId: string; branchId: string; personName: string; reason: string; status: "PENDING_VERIFICATION" | "VERIFIED" | "PROCESSING" | "COMPLETED" | "REJECTED"; version: number; tasks: ErasureTaskView[]; createdAt: string };

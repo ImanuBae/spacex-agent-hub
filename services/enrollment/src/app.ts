@@ -1,22 +1,26 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
-import { DemoTermsVersion, EnrollmentPreview, MachineClaims,RegistrationTrigger,EnrollmentConfirmedEvent } from "@spacex/contracts";
-import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
+import { BankTransferTermsVersion, DemoTermsVersion, EnrollmentPreview, MachineClaims,RegistrationTrigger,EnrollmentConfirmedEvent, ReportPeriod, reportTimezone } from "@spacex/contracts";
+import { authenticate, allowRoles, bearer, checkBranch, iamRequest, principal, verifyCommand, verifyReportingMachine, registerErasureTarget, type AuthConfig } from "@spacex/auth";
 import { createApp, HttpError } from "@spacex/http";
-import { enqueueEvent } from "@spacex/messaging";
+import { enqueueEvent, enqueueReportingRefresh } from "@spacex/messaging";
 import { registerAdjustments } from "./adjustments.js";
+import { registerSelfRegistration } from "./self-registration.js";
 
-export interface EnrollmentConfig { catalogUrl: string; classUrl: string; crmUrl: string; paymentUrl: string; sourceClientId: string; sourceClientSecret: string; notificationUrl?: string; }
+export interface EnrollmentConfig { catalogUrl: string; classUrl: string; crmUrl: string; paymentUrl: string; sourceClientId: string; sourceClientSecret: string; notificationUrl?: string; reportingEnabled?: boolean; bankTransfer?: boolean; selfRegistrationCrmSecret?: string; selfRegistrationIamSecret?: string; selfRegistrationPaymentSecret?: string; }
 // Database rows are converted at the HTTP boundary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 const denied = () => new HttpError(403, "FORBIDDEN", "Enrollment authority does not match");
 const conflict = (code: string) => new HttpError(409, code, "Reload the authoritative enrollment state");
-const terms = "DEMO tổng hợp: giữ chỗ 20 phút theo Class server; QR tổng hợp, không chuyển tiền thật. Review không gia hạn chỗ; ngoại lệ cần duyệt độc lập, hoàn/chuyển chưa thực hiện.";
+const demoTerms = "DEMO tổng hợp: giữ chỗ 20 phút theo Class server; QR tổng hợp, không chuyển tiền thật. Review không gia hạn chỗ; ngoại lệ cần duyệt độc lập, hoàn/chuyển chưa thực hiện.";
+const bankTransferTerms = "Chuyển khoản thật bằng QR của đơn. Vui lòng kiểm tra người thụ hưởng, số tiền và mã thanh toán. Hạn giữ chỗ hiển thị trên đơn. Khoản chuyển sai mã, sai số tiền hoặc đến sau hạn cần đối soát.";
 export function quoteVersion(quote: Row) { const { quotedAt: _time, ...stable } = quote; void _time; return createHash("sha256").update(JSON.stringify(stable)).digest("hex"); }
 
 export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: EnrollmentConfig) {
+  const termsVersion = config.bankTransfer ? BankTransferTermsVersion : DemoTermsVersion;
+  const terms = config.bankTransfer ? bankTransferTerms : demoTerms;
   async function tx<T>(work: (c: PoolClient) => Promise<T>) {
     const c = await pool.connect();
     try { await c.query("BEGIN"); await c.query("SET LOCAL lock_timeout='5s'"); const result = await work(c); await c.query("COMMIT"); return result; }
@@ -40,7 +44,8 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
     if (d?.entity?.type !== "enrollment" || d.entity.id !== id) throw denied();
     if(d.workflowId==="WF-05"){
       const s=await source(pool,id);
-      if(d.inputRef!==s.id||u.sub!==s.actor_id||u.sid!==s.session_id||d.branchId!==s.branch_id||s.status==="REVOKED")throw denied();
+      if(d.inputRef!==s.id||u.sub!==s.actor_id||u.sid!==s.session_id||d.branchId!==s.branch_id||s.status==="REVOKED"||
+        (s.snapshot.selfRegistration ? d.source!=="service"||s.context_id!==u.sid : !!d.source))throw denied();
     }else if(d.workflowId==="WF-06"){
       if(d.source!=="service")throw denied();
     }else if(d.workflowId==="WF-07"){
@@ -60,15 +65,45 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
     if (!r) throw new HttpError(404,"NOT_FOUND","Enrollment not found"); return r;
   }
   function view(r: Row) { return {id:r.id,confirmationId:r.confirmation_id,status:r.status,version:r.version,snapshot:r.snapshot,holdId:r.hold_id,expiresAt:r.expires_at,paymentRequestId:r.payment_id,matchRef:r.match_ref,releaseAuthorized:r.release_authorized}; }
-  async function sourceToken(){return (await iamRequest(auth.identityUrl,"/internal/iam/machine/token","",{clientId:config.sourceClientId,clientSecret:config.sourceClientSecret,audience:"enrollment",scopes:["automation:source"],workflows:["WF-07"],ttlSeconds:60}) as {accessToken:string}).accessToken;}
+  async function sourceToken(workflowId: "WF-05" | "WF-07"){return (await iamRequest(auth.identityUrl,"/internal/iam/machine/token","",{clientId:config.sourceClientId,clientSecret:config.sourceClientSecret,audience:"enrollment",scopes:["automation:source"],workflows:[workflowId],ttlSeconds:60}) as {accessToken:string}).accessToken;}
   async function emit(c: PoolClient, r: Row, type: string, inputRef: string, workflowId: "WF-07", eventId=randomUUID()) {
-    const accessToken=await sourceToken();
+    const accessToken=await sourceToken(workflowId);
     const entity={type:"enrollment",id:r.id,version:r.version};
     const {contextRef} = await iamRequest(auth.identityUrl,"/internal/iam/service-delegations",accessToken,{audience:"enrollment",input:{eventId,workflowId,workflowVersion:1,branchId:r.branch_id,entity,inputRef,operations:["enrollment.execute","classes.enroll","payment.execute"]}}) as {contextRef:string};
     await enqueueEvent(c,RegistrationTrigger.parse({id:eventId,type,version:1,occurredAt:new Date().toISOString(),correlationId:r.correlation_id,entityId:r.id,entityVersion:r.version,payload:{entity,inputRef,contextRef}}));
   }
   return createApp("enrollment", app => {
+    registerErasureTarget(app, auth, pool, async (c, scope) => {
+      const { rows:[row] } = await c.query(`SELECT EXISTS(SELECT 1 FROM confirmations WHERE branch_id=$1
+        AND $2::text IN (snapshot->>'learnerId',snapshot->>'contactId',snapshot->>'payerId')) AS found`, [scope.branchId,scope.personId]);
+      return row.found ? {status:"BLOCKED",code:"RETENTION"} : {status:"NOT_APPLICABLE",code:"NO_SCOPED_DATA"};
+    });
     registerAdjustments(app, pool, auth, config);
+    registerSelfRegistration(app, pool, config, {
+      terms, termsVersion, quoteVersion, tx, audit, identityUrl: auth.identityUrl,
+      async emit(c, draft) {
+        const entity = { type: "enrollment", id: draft.enrollment_id, version: 1 };
+        const { contextRef } = await iamRequest(auth.identityUrl, "/internal/iam/service-delegations", await sourceToken("WF-05"), {
+          audience: "enrollment", input: { eventId: draft.event_id, workflowId: "WF-05", workflowVersion: 1,
+            branchId: draft.offer.cls.branchId, entity, inputRef: draft.id, operations: ["enrollment.execute", "classes.enroll", "payment.execute"] },
+        }) as { contextRef: string };
+        await enqueueEvent(c, RegistrationTrigger.parse({ id: draft.event_id, type: "enrollment.requested", version: 1,
+          occurredAt: new Date().toISOString(), correlationId: entity.id, entityId: entity.id, entityVersion: 1,
+          payload: { entity, contextRef, inputRef: draft.id } }));
+        return contextRef;
+      },
+    });
+    app.get("/internal/reporting/source", async (req,res)=>{
+      await verifyReportingMachine(auth,bearer(req.get("authorization")),"enrollment");
+      const {start,end}=ReportPeriod.parse(req.query);
+      const {rows}=await pool.query(`SELECT to_char((event->>'occurredAt')::timestamptz AT TIME ZONE $3,'YYYY-MM-DD') AS day,
+        event->'payload'->>'branchId' AS "branchId",count(DISTINCT event->>'entityId')::text AS confirmed
+        FROM event_outbox WHERE event->>'type'='enrollment.confirmed'
+        AND (event->>'occurredAt')::timestamptz >= ($1::date::timestamp AT TIME ZONE $3)
+        AND (event->>'occurredAt')::timestamptz < (($2::date+1)::timestamp AT TIME ZONE $3)
+        GROUP BY 1,2 ORDER BY 1,2`,[start,end,reportTimezone]);
+      res.json({data:rows});
+    });
     app.get("/ready",async (_req,res)=>{await pool.query("SELECT id FROM enrollments LIMIT 0");res.json({ready:true});});
     app.use("/api/v1",authenticate(auth),allowRoles("center_director","branch_director","admissions"));
     app.post("/api/v1/enrollment-confirmations/preview",async(req,res)=>{
@@ -82,7 +117,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
         if(cls.branchId!==people.branchId||cls.packageId!==input.packageId||cls.status!=="OPEN")throw conflict("CLASS_NOT_SELLABLE");
         const quote=await api(config.catalogUrl,`/api/v1/packages/${input.packageId}/quote`,token);
         if(quote.courseId!==cls.courseId||quote.sessionCount!==cls.sessions.length||!Number.isSafeInteger(quote.priceVnd)||quote.priceVnd<=0)throw conflict("QUOTE_MISMATCH");
-        const snapshot={...input,classVersion:cls.version,actorId:u.sub,branchId:people.branchId,amountDue:quote.priceVnd,currency:"VND",quoteId:quoteVersion(quote),quoteVersion:quoteVersion(quote),policyVersion:`${quote.courseVersion}:${quote.packageVersion}`,termsVersion:DemoTermsVersion,terms,quote,crm:people};
+        const snapshot={...input,classVersion:cls.version,actorId:u.sub,branchId:people.branchId,amountDue:quote.priceVnd,currency:"VND",quoteId:quoteVersion(quote),quoteVersion:quoteVersion(quote),policyVersion:`${quote.courseVersion}:${quote.packageVersion}`,termsVersion,terms,quote,crm:people};
         await iamRequest(auth.identityUrl,"/api/v1/auth/introspect",token,{});
         const r=(await c.query("INSERT INTO confirmations(id,enrollment_id,actor_id,session_id,branch_id,snapshot,payload,operation_key,event_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",[randomUUID(),randomUUID(),u.sub,u.sid,people.branchId,snapshot,input,key,randomUUID()])).rows[0];
         await audit(c,r.id,u.sub,"confirmation.previewed",res.locals.correlationId);return r;
@@ -101,7 +136,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
           if(r.status==="REVOKED"||r.expires_at<=r.now)throw conflict("CONFIRMATION_EXPIRED");
           if(r.status!=="DRAFT")return {id,status:r.status};
           const quote=await api(config.catalogUrl,`/api/v1/packages/${r.snapshot.packageId}/quote`,token);
-          if(quoteVersion(quote)!==r.snapshot.quoteVersion||r.snapshot.termsVersion!==DemoTermsVersion)throw conflict("RECONFIRM_REQUIRED");
+          if(quoteVersion(quote)!==r.snapshot.quoteVersion||r.snapshot.termsVersion!==termsVersion)throw conflict("RECONFIRM_REQUIRED");
           await api(config.crmUrl,`/api/v1/crm/enrollment-authority?contactId=${r.snapshot.contactId}&learnerId=${r.snapshot.learnerId}&payerId=${r.snapshot.payerId}`,token);
           const entity={type:"enrollment",id:r.enrollment_id,version:1};
           const {contextRef}=await iamRequest(auth.identityUrl,"/internal/iam/delegations",token,{eventId:r.event_id,workflowId:"WF-05",workflowVersion:1,branchId:r.branch_id,entity,inputRef:id,operations:["enrollment.execute","classes.enroll","payment.execute"]}) as {contextRef:string};
@@ -122,8 +157,9 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
       const status=["DRAFT","CONFIRMED"].includes(r.status)&&r.expires_at<=r.now?"EXPIRED":r.status;
       res.json({data:{id:r.id,status,expiresAt:r.expires_at,snapshot:r.snapshot,enrollment}});
     });
-    app.get("/api/v1/enrollments",async(_req,res)=>{
-      const u=principal(res),rows=(await pool.query("SELECT * FROM enrollments WHERE ($1::uuid[] IS NULL OR branch_id=ANY($1)) AND ($2 OR actor_id=$3) ORDER BY created_at DESC LIMIT 100",[u.role==="center_director"?null:u.branchIds,u.role!=="admissions",u.sub])).rows;
+    app.get("/api/v1/enrollments",async(req,res)=>{
+      const learnerId=z.uuid().optional().parse(req.query.learnerId);
+      const u=principal(res),rows=(await pool.query("SELECT * FROM enrollments WHERE ($1::uuid[] IS NULL OR branch_id=ANY($1)) AND ($2 OR actor_id=$3) AND ($4::uuid IS NULL OR learner_id=$4) ORDER BY created_at DESC LIMIT 100",[u.role==="center_director"?null:u.branchIds,u.role!=="admissions",u.sub,learnerId??null])).rows;
       res.json({data:rows.map(view)});
     });
     app.get("/api/v1/enrollments/:id",async(req,res)=>{const r=await record(pool,z.uuid().parse(req.params.id)),u=principal(res);checkBranch(u,r.branch_id);if(u.role==="admissions"&&r.actor_id!==u.sub)throw denied();res.json({data:view(r)});});
@@ -176,7 +212,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
           try {
             const quote=await api(config.catalogUrl,`/internal/catalog/enrollment-quote/${s.snapshot.packageId}`,token);
             await api(config.crmUrl,`/internal/crm/enrollment-authority?enrollmentId=${id}`,token);
-            current=quoteVersion(quote)===s.snapshot.quoteVersion&&s.snapshot.termsVersion===DemoTermsVersion;
+            current=quoteVersion(quote)===s.snapshot.quoteVersion&&s.snapshot.termsVersion===termsVersion;
           } catch(error) { if(error instanceof HttpError&&error.status===409)current=false;else throw error; }
           const status=current?"PENDING_HOLD":"NEEDS_CONFIRMATION";
           r=(await c.query("INSERT INTO enrollments(id,confirmation_id,actor_id,branch_id,learner_id,class_id,snapshot,status,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",[id,s.id,s.actor_id,s.branch_id,s.snapshot.learnerId,s.snapshot.classId,s.snapshot,status,id])).rows[0];
@@ -192,7 +228,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
           }else if(action==="payment"){
             const p=await api(config.paymentUrl,`/internal/payment/enrollments/${id}/enrollment-authority`,token);
             if(!["HELD","CONFIRMING","CONFIRMED","PAYMENT_REVIEW"].includes(r.status)||p.enrollmentId!==id||p.amountDue!==r.snapshot.amountDue||!r.hold_id||new Date(p.expiresAt)>r.expires_at)throw conflict("PAYMENT_REQUEST_REQUIRED");
-            r=(await c.query("UPDATE enrollments SET payment_id=$2,version=version+1 WHERE id=$1 RETURNING *",[id,p.id])).rows[0];
+            if (r.payment_id !== p.id) r=(await c.query("UPDATE enrollments SET payment_id=$2,version=version+1 WHERE id=$1 RETURNING *",[id,p.id])).rows[0];
           }else if(action==="confirming"){
             const match=await api(config.paymentUrl,`/internal/payment/matches/${d.inputRef}/enrollment-authority`,token);
             if(!match.eligible||match.enrollmentId!==id)throw conflict("VERIFIED_MATCH_REQUIRED");
@@ -205,7 +241,9 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
             const match=await api(config.paymentUrl,`/internal/payment/matches/${r.match_ref}/enrollment-authority`,token);
             if(!match.eligible||match.enrollmentId!==id)throw conflict("VERIFIED_MATCH_REQUIRED");
             r=(await c.query("UPDATE enrollments SET status='CONFIRMED',hold_id=$2,release_authorized=false,version=version+1 WHERE id=$1 RETURNING *",[id,seat.hold.id])).rows[0];
-            await enqueueEvent(c,EnrollmentConfirmedEvent.parse({id:randomUUID(),type:"enrollment.confirmed",version:1,occurredAt:new Date().toISOString(),correlationId:r.correlation_id,causationId:match.eventId,entityId:id,entityVersion:r.version,payload:{enrollmentId:id,confirmationId:r.confirmation_id,learnerId:r.learner_id,contactId:r.snapshot.contactId,payerId:r.snapshot.payerId,classId:r.class_id,courseId:r.snapshot.quote.courseId,packageId:r.snapshot.packageId,holdId:r.hold_id,matchRef:r.match_ref,paymentRequestId:r.payment_id,branchId:r.branch_id,amountDue:r.snapshot.amountDue,currency:"VND",snapshotVersion:r.snapshot.quoteVersion,policyVersion:r.snapshot.policyVersion,termsVersion:r.snapshot.termsVersion,automationJobId:d.jobId}}));
+            const confirmed=EnrollmentConfirmedEvent.parse({id:randomUUID(),type:"enrollment.confirmed",version:1,occurredAt:new Date().toISOString(),correlationId:r.correlation_id,causationId:match.eventId,entityId:id,entityVersion:r.version,payload:{enrollmentId:id,confirmationId:r.confirmation_id,learnerId:r.learner_id,contactId:r.snapshot.contactId,payerId:r.snapshot.payerId,classId:r.class_id,courseId:r.snapshot.quote.courseId,packageId:r.snapshot.packageId,holdId:r.hold_id,matchRef:r.match_ref,paymentRequestId:r.payment_id,branchId:r.branch_id,amountDue:r.snapshot.amountDue,currency:"VND",snapshotVersion:r.snapshot.quoteVersion,policyVersion:r.snapshot.policyVersion,termsVersion:r.snapshot.termsVersion,automationJobId:d.jobId}});
+            await enqueueEvent(c,confirmed);
+            if(config.reportingEnabled)await enqueueReportingRefresh(c,[new Date(confirmed.occurredAt)],confirmed);
           }else{
             const seat=await api(config.classUrl,`/internal/classes/enrollments/${id}/enrollment-authority`,token);
             const money=await api(config.paymentUrl,`/internal/payment/enrollments/${id}/enrollment-authority`,token);
@@ -232,7 +270,7 @@ export function createEnrollmentApp(pool: Pool, auth: AuthConfig, config: Enroll
         const rows=(await c.query("SELECT * FROM enrollments WHERE status IN ('PENDING_HOLD','HELD','PAYMENT_REVIEW') AND COALESCE(expires_at,created_at+interval '21 minutes')<=clock_timestamp() AND deadline_version IS DISTINCT FROM version ORDER BY COALESCE(expires_at,created_at+interval '21 minutes') LIMIT 50 FOR UPDATE SKIP LOCKED")).rows;
         if(!rows.length)return 0;
         let response:Response;
-        try{response=await fetch(`${config.classUrl}/internal/classes/deadlines`,{method:"POST",headers:{authorization:`Bearer ${await sourceToken()}`,"content-type":"application/json"},body:JSON.stringify({enrollmentIds:rows.map(r=>r.id)}),signal:AbortSignal.timeout(4000),redirect:"error"});}
+        try{response=await fetch(`${config.classUrl}/internal/classes/deadlines`,{method:"POST",headers:{authorization:`Bearer ${await sourceToken("WF-07")}`,"content-type":"application/json"},body:JSON.stringify({enrollmentIds:rows.map(r=>r.id)}),signal:AbortSignal.timeout(4000),redirect:"error"});}
         catch{throw new HttpError(503,"CLASS_UNAVAILABLE","Class deadline source unavailable");}
         if(!response.ok)throw new HttpError(503,"CLASS_UNAVAILABLE","Class deadline source denied");
         const observed=(await response.json() as {data:Row[]}).data;let emitted=0;

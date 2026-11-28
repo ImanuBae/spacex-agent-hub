@@ -8,8 +8,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run src --passWithNoTests",
+    "dev": "node --env-file-if-exists=.env --watch dist/index.js",
     "start": "node dist/index.js",
-    "db:migrate": "tsx src/migrate.ts"
+    "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts"
   },
   "dependencies": {
     "@spacex/auth": "*",

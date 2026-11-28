@@ -1,0 +1,134 @@
+.public-page {
+  --hub-accent: var(--accent);
+  color-scheme: dark;
+}
+.public-page .public-frame {
+  width: min(calc(100% - 48px), 1180px);
+  margin-inline: auto;
+}
+.public-page .public-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.public-page .public-header nav {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 20px;
+}
+.public-header :is(.hub-brand-link, .btn) { width: fit-content; min-height: 44px; }
+.public-header .btn { justify-self: end; }
+.public-page .public-nav { display: flex; gap: 24px; }
+.public-page .public-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-weight: 600;
+  transition: color 160ms ease;
+}
+.public-page .public-nav a:is(:hover, [aria-current="page"]) { color: var(--ink); }
+.public-nav a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 7px; }
+.public-page :is(button, input, select, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.public-page .public-orbit {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(ellipse at 79% 60%, #193a64 0, transparent 45%),
+    linear-gradient(110deg, #0a1123 45%, #0b1d33 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+.public-orbit::before,
+.public-orbit::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+.public-orbit::before {
+  width: min(46%, 440px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  right: 4%;
+  top: 3%;
+  background: radial-gradient(ellipse at 34% 18%, #3e81a6, #182c55 28%, #080f24 61%);
+  box-shadow: inset 12px 9px 28px #78c9ec49, 0 0 45px #5cc3ff2e;
+  border: 1px solid #8ccded45;
+}
+.public-orbit::after {
+  width: min(60%, 570px);
+  height: 54%;
+  right: -3%;
+  top: 22%;
+  border: 1px solid #8abade52;
+  outline: 1px solid #9bc7ef24;
+  outline-offset: 14px;
+  transform: rotate(-23deg);
+  border-radius: 50%;
+}
+.public-page .public-display {
+  font-size: clamp(2.45rem, 6vw, 4.8rem);
+  line-height: 1.06;
+  letter-spacing: -.06em;
+  font-weight: 800;
+  text-wrap: balance;
+}
+.public-page .public-display em { font-style: normal; color: var(--accent); }
+.public-page .public-status {
+  padding: 48px 0;
+  min-height: 32vh;
+  color: var(--muted);
+}
+.public-page .public-status > * + * { margin-top: 14px; }
+.public-page .public-footer {
+  border-top: 1px solid var(--line);
+  padding-block: 24px 94px;
+  color: var(--muted);
+}
+.public-footer a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink); font-weight: 600; }
+.public-footer a:hover { color: var(--accent); }
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .public-orbit::before {
+      animation: public-orbit-drift auto linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0 320px;
+    }
+    .public-page .course-card {
+      animation: public-card-enter auto linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+@keyframes public-orbit-drift {
+  to { transform: translateY(24px); }
+}
+@keyframes public-card-enter {
+  from { transform: translateY(10px); opacity: .82; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .public-page .public-frame { width: calc(100% - 32px); }
+  .public-page .public-header nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 8px;
+    padding-block: 8px 3px;
+  }
+  .public-header .hub-brand-link { font-size: .9rem; letter-spacing: 0; }
+  .public-header .btn { padding-inline: 10px; font-size: .8125rem; }
+  .public-page .public-nav { grid-row: 2; grid-column: 1 / -1; }
+  .public-orbit::before { width: 60%; right: -18%; top: 14%; opacity: .53; }
+  .public-orbit::after { right: -34%; opacity: .65; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-page *, .public-page *::before, .public-page *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

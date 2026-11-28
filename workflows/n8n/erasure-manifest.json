@@ -1,0 +1,10 @@
+{
+  "id": "N8N07LocalWF12Erasure",
+  "workflowId": "WF-12",
+  "workflowVersion": 1,
+  "canonicalActive": false,
+  "file": "workflows/n8n/wf-12-erasure.json",
+  "sha256": "c80b0ea098a0649041ca2c73c868f9d90d523b4de3d874d286080dfeb06c1511",
+  "credentialId": "N8N07LocalWF12ErasureMachine",
+  "credential": "WF-12-erasure-machine"
+}

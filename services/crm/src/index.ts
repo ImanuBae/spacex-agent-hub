@@ -4,13 +4,15 @@ import { authConfig } from "@spacex/auth";
 import { createLogger } from "@spacex/logger";
 import { connectBroker, dispatchOutbox, receiveEvent, processInbox } from "@spacex/messaging";
 import { createCrmApp } from "./app.js";
+import { applyRestoreExclusions } from "./erasure.js";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
 const config = loadConfig({ ...process.env, SERVICE_NAME: "crm", PORT: process.env.PORT ?? "4005" });
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 5000 });
 const logger = createLogger("crm");
 pool.on("error", error => logger.error("database.idle_error", { errorName: error.name }));
-const server = createCrmApp(pool, authConfig(), { orgUrl: process.env.ORG_URL ?? "http://127.0.0.1:4003", catalogUrl: process.env.CATALOG_URL ?? "http://127.0.0.1:4001", conversationUrl: process.env.CONVERSATION_URL, enrollmentUrl: process.env.ENROLLMENT_URL, notificationUrl: process.env.NOTIFICATION_URL }).listen(config.PORT, config.HOST);
+if (process.env.WF12_RESTORE_EXCLUSIONS) await applyRestoreExclusions(pool,process.env.WF12_RESTORE_EXCLUSIONS,process.env.WF12_RESTORE_EXCLUSIONS_SHA256);
+const server = createCrmApp(pool, authConfig(), { orgUrl: process.env.ORG_URL ?? "http://127.0.0.1:4003", catalogUrl: process.env.CATALOG_URL ?? "http://127.0.0.1:4001", conversationUrl: process.env.CONVERSATION_URL, enrollmentUrl: process.env.ENROLLMENT_URL, notificationUrl: process.env.NOTIFICATION_URL, selfRegistrationSecret: process.env.ENROLLMENT_CRM_SECRET }).listen(config.PORT, config.HOST);
 let broker: Awaited<ReturnType<typeof connectBroker>> | undefined;
 let working = false, stopping = false;
 async function dispatch() {

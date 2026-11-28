@@ -1,265 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "../../../src/context/AuthContext";
+import { getMenuByRole } from "../../../lib/roles";
+import { allPages, api, money, type Branch, type Package } from "../../../lib/services/classes";
+import { courseService, type Course, type CourseInput } from "../../../lib/services/courses";
+import { ErrorMessage, Field } from "../components/OperationUI";
 import CourseModal from "./CourseModal";
 import PackagesPanel from "./PackagesPanel";
-import CatalogSearch from "./CatalogSearch";
-import { api, type Branch } from "../../../lib/services/classes";
-import { courseService } from "../../../lib/services/courses";
-import type { Course, CourseInput } from "../../../lib/services/courses";
+import CatalogSearch, { OfferHistory, courseLevels, courseModes, offerStatuses } from "./CatalogSearch";
+import "./courses.css";
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN").format(value) + " đ";
+const searchable = (value: string) => value.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replaceAll("đ", "d");
 
 export default function CoursesPage() {
   const { user } = useAuth();
   const canEdit = user?.role === "center_director";
+  const canEnroll = user && getMenuByRole(user.role).some(item => item.href === "/dashboard/enrollments");
   const [courses, setCourses] = useState<Course[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true), [loadingPackages, setLoadingPackages] = useState(true);
+  const [error, setError] = useState<unknown>(), [packageError, setPackageError] = useState<unknown>();
+  const [search, setSearch] = useState(""), [level, setLevel] = useState(""), [status, setStatus] = useState("");
+  const [editing, setEditing] = useState<Course | null>(), [historyId, setHistoryId] = useState<string>();
 
-  useEffect(() => {
-    let isMounted = true;
-
-    Promise.all([courseService.getAllCourses(), api<Branch[]>("branches")])
-      .then(([data, branchResponse]) => {
-        if (isMounted) {
-          setCourses(data);
-          setBranches(branchResponse.data);
-          setLoadError(null);
-        }
-      })
-      .catch((error: unknown) => {
-        if (isMounted) {
-          setLoadError(
-            error instanceof Error
-              ? error.message
-              : "Không thể tải danh sách khóa học.",
-          );
-        }
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const [rows, branchResponse] = await Promise.all([courseService.getAllCourses(), api<Branch[]>("branches")]);
+      setCourses(rows); setBranches(branchResponse.data);
+    } catch (failure) { setError(failure); }
+    finally { setLoading(false); }
   }, []);
+  const loadPackages = useCallback(async () => {
+    setLoadingPackages(true); setPackageError(null);
+    try { setPackages(await allPages<Package>("packages")); }
+    catch (failure) { setPackageError(failure); }
+    finally { setLoadingPackages(false); }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+    void loadPackages();
+  }, [load, loadPackages]);
 
-  const handleFormSubmit = async (formData: CourseInput) => {
-    if (selectedCourse) {
-      const updatedCourse = await courseService.updateCourse(
-        selectedCourse.id,
-        formData,
-      );
-      setCourses((current) =>
-        current.map((course) =>
-          course.id === updatedCourse.id ? updatedCourse : course,
-        ),
-      );
+  async function save(form: CourseInput) {
+    if (editing) {
+      const updated = await courseService.updateCourse(editing.id, form);
+      setCourses(current => current.map(row => row.id === updated.id ? updated : row));
     } else {
-      const createdCourse = await courseService.createCourse(formData);
-      setCourses((current) => [createdCourse, ...current]);
+      const created = await courseService.createCourse(form);
+      setCourses(current => [created, ...current]);
     }
-    setLoadError(null);
-  };
+  }
+  const query = searchable(search.trim());
+  const filtered = courses.filter(row => (!level || row.level === level) && (!status || row.status === status)
+    && (searchable(row.name).includes(query) || searchable(row.code).includes(query)));
 
-  const filteredCourses = courses.filter((course) => {
-    const query = searchTerm.toLowerCase();
-    return (
-      course.name.toLowerCase().includes(query) ||
-      course.code.toLowerCase().includes(query)
-    );
-  });
-
-  const getStatusStyle = (status: Course["status"]) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-700";
-      case "draft":
-        return "bg-amber-100 text-amber-700";
-      case "closed":
-        return "bg-slate-100 text-slate-600";
-      default:
-        return "bg-slate-100 text-slate-600";
-    }
-  };
-
-  return (
-    <div className="ops mx-auto w-full space-y-6">
-      {/* Top Banner / Header */}
-      <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">
-            Quản lý khóa học & Catalog
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {canEdit ? "Thêm mới, chỉnh sửa và theo dõi danh sách khóa học hệ thống." : "Bạn có quyền xem danh mục. Chỉ giám đốc trung tâm được thay đổi khóa học và giá."}
-          </p>
-        </div>
-
-        <button
-          disabled={!canEdit}
-          type="button"
-          onClick={() => {
-            setSelectedCourse(null);
-            setIsModalOpen(true);
-          }}
-          className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <span className="text-lg leading-none">+</span>
-          Thêm khóa học mới
-        </button>
-      </section>
-
-      {/* Search & Stats Bar */}
-      <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full sm:max-w-md">
-          <label htmlFor="course-search">Tìm khóa học</label>
-          <input
-            id="course-search"
-            type="text"
-            placeholder="Tìm kiếm theo tên hoặc mã khóa học..."
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-2.5 sm:min-w-44">
-          <span className="text-sm text-slate-500">Khóa học theo bộ lọc</span>
-          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-blue-100 px-2.5 py-0.5 text-sm font-bold text-blue-700">
-            {filteredCourses.length}
-          </span>
-        </div>
-      </section>
-
-      <CatalogSearch courses={courses} branches={branches} />
-      <PackagesPanel courses={courses} canEdit={canEdit} />
-      {/* Main Table Section */}
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="flex flex-col gap-1 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-semibold text-slate-800">
-            Danh sách khóa học
-          </h2>
-          <p className="text-sm text-slate-500">
-            Hiển thị {filteredCourses.length} / {courses.length} khóa học
-          </p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold  text-slate-500">
-                <th className="py-4 px-4 w-[16%]">Mã khóa học</th>
-                <th className="py-4 px-4 w-[20%]">Tên khóa học</th>
-                <th className="py-4 px-4 w-[24%]">Mô tả</th>
-                <th className="py-4 px-4 w-[12%]">Cấp độ</th>
-                <th className="num py-4 px-4 w-[14%]">Học phí</th>
-                <th className="py-4 px-4 w-[10%]">Trạng thái</th>
-                <th className="py-4 px-4 w-[10%] text-center">Thao tác</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-              {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-5 py-16 text-center text-slate-400 italic"
-                  >
-                    Đang tải danh sách khóa học từ Catalog API...
-                  </td>
-                </tr>
-              ) : loadError ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    role="alert"
-                    className="px-5 py-16 text-center text-red-600"
-                  >
-                    Không thể tải danh sách khóa học: {loadError} <button onClick={() => window.location.reload()}>Thử lại</button>
-                  </td>
-                </tr>
-              ) : filteredCourses.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center">
-                    <p className="font-semibold text-slate-700">
-                      {searchTerm
-                        ? "Không tìm thấy khóa học phù hợp"
-                        : "Chưa có khóa học nào"}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredCourses.map((course) => (
-                  <tr
-                    key={course.id}
-                    className="transition-colors hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-4 font-semibold text-slate-700 text-xs">
-                      {course.code}
-                    </td>
-                    <td className="px-4 py-4 font-semibold text-slate-800">
-                      {course.name}
-                    </td>
-                    <td className="px-4 py-4 text-slate-500 text-xs">
-                      <span className="line-clamp-2">
-                        {course.description || "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 capitalize text-slate-600">
-                      {course.level}
-                    </td>
-                    <td className="px-4 py-4 num font-semibold whitespace-nowrap">
-                      {formatCurrency(course.priceVnd)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(course.status)}`}
-                      >
-                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" />
-                        {course.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          disabled={!canEdit}
-                          type="button"
-                          onClick={() => {
-                            setSelectedCourse(course);
-                            setIsModalOpen(true);
-                          }}
-                          className="cursor-pointer rounded-md bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Sửa
-                        </button>
-
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {isModalOpen && (
-        <CourseModal
-          key={selectedCourse?.id ?? "new-course"}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleFormSubmit}
-          initialData={selectedCourse}
-        />
-      )}
-    </div>
-  );
+  return <div className="ops catalog-page">
+    <header className="ops-heading">
+      <h1>Khóa học &amp; Gói</h1>
+      {canEdit && <button className="primary" type="button" disabled={loading} onClick={() => setEditing(null)}>Thêm khóa học mới</button>}
+    </header>
+    <section className="ops-panel" aria-labelledby="catalog-courses-title">
+      <div className="ops-heading"><h2 id="catalog-courses-title">Danh sách khóa học</h2></div>
+      <div className="ops-filters">
+        <Field name="course-search" label="Tên hoặc mã khóa học">
+          <input id="course-search" type="search" value={search} onChange={event => setSearch(event.target.value)} />
+        </Field>
+        <Field name="course-level" label="Trình độ">
+          <select id="course-level" value={level} onChange={event => setLevel(event.target.value)}>
+            <option value="">Tất cả trình độ</option>
+            {Object.entries(courseLevels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </Field>
+        <Field name="course-status" label="Trạng thái">
+          <select id="course-status" value={status} onChange={event => setStatus(event.target.value)}>
+            <option value="">Tất cả trạng thái</option>
+            {Object.entries(offerStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div aria-busy={loading}>
+        <ErrorMessage error={error} retry={() => void load()} />
+        {loading ? <p role="status">Đang tải khóa học…</p> : !error && <>
+          <p className="catalog-count muted" role="status">{filtered.length} / {courses.length} khóa học</p>
+          {!filtered.length && <p>{courses.length ? "Không tìm thấy khóa học phù hợp." : "Chưa có khóa học."}</p>}
+          <ul className="catalog-courses">
+            {filtered.map(row => {
+              const related = packages.filter(pkg => pkg.courseId === row.id);
+              return <li key={row.id} className="catalog-course">
+              <div>
+                <h3>{row.name}</h3>
+                <p className="muted">{row.code} · {courseLevels[row.level]} · {row.deliveryModes.map(mode => courseModes[mode]).join(" / ")}</p>
+                {row.description && <p>{row.description}</p>}
+              </div>
+              <div className="catalog-price"><strong>{money(row.priceVnd)}</strong><p className="status" data-status={row.status}>{offerStatuses[row.status]}</p></div>
+              <div>
+                <p className="muted">Gói học</p>
+                {loadingPackages ? <p>Đang tải gói…</p> : packageError ? <a href="#course-packages">Xem lỗi tải gói</a>
+                  : related.length
+                    ? <ul>{related.map(pkg => <li key={pkg.id}>
+                      <strong>{pkg.name}</strong><p className="muted">{pkg.sessionCount} buổi · {money(pkg.priceVnd)} · {offerStatuses[pkg.status]}</p>
+                      {canEnroll && row.status === "active" && pkg.status === "active" &&
+                        <Link className="ops-link" href={`/dashboard/enrollments?package=${pkg.id}`}>Tìm lớp<span className="sr-only"> {row.name} · {pkg.name}</span></Link>}
+                    </li>)}</ul>
+                    : <p>Chưa có gói.</p>}
+              </div>
+              <div className="ops-actions">
+                <button type="button" onClick={() => setHistoryId(row.id)}>Xem lịch sử<span className="sr-only"> của {row.name}</span></button>
+                {canEdit && <button type="button" onClick={() => setEditing(row)}>Sửa<span className="sr-only"> {row.name}</span></button>}
+              </div>
+            </li>;
+            })}
+          </ul>
+        </>}
+      </div>
+    </section>
+    <CatalogSearch courses={courses} branches={branches} />
+    <PackagesPanel courses={courses} canEdit={canEdit} packages={packages} loading={loadingPackages} error={packageError} load={loadPackages} />
+    {editing !== undefined && <CourseModal key={editing?.id ?? "new"} onClose={() => setEditing(undefined)} onSubmit={save} initialData={editing} />}
+    {historyId && <OfferHistory resource="courses" id={historyId} onClose={() => setHistoryId(undefined)} />}
+  </div>;
 }

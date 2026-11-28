@@ -17,6 +17,13 @@ version 1 of the relevant workflow and its stored resource. WF10 accepts only a
 Notification source delegation. The delivery command resolves its recipient
 through the bound intent and a current learner mapping. See [Notification](../notification/README.md).
 
+Migration `0006_self_registration` links a confirmed self-registration to an
+active student account only after a browser-bound checkout OTP succeeds. The
+email comes from the paid Enrollment and its CRM record. IAM reuses the account
+for an existing student email and adds the new Enrollment reference once.
+Set `ENROLLMENT_URL` and the matching `ENROLLMENT_IAM_SECRET`. Regular student
+OTP login can access all linked learner profiles.
+
 N8N-05 current: migration `0004_service` adds source-owned, immutable service
 delegations for synthetic Enrollment deadlines and verified Payment events.
 Domain audiences/scopes are `crm`/`crm:write`, `enrollment`/`enrollment:write`,

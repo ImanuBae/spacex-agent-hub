@@ -5,11 +5,12 @@ import { z } from "zod";
 import {
   PersonInput, PersonUpdate, PersonQuery, LeadInput, LeadUpdate, LeadQuery, ConsentInput,
   RelationshipInput, RelationshipDecision, ErasureInput, ErasureDecision, ErasureTaskUpdate, ErasureService, VersionInput, ListQuery,
-  CrmAutomationInput, CrmMergeInput, CrmMergeApproval,
+  CrmAutomationInput, CrmMergeInput, CrmMergeApproval, SelfRegistrationPerson, CourseNoticesConsent, RegistrationConsent,
 } from "@spacex/contracts";
 import { authenticate, authenticateCommand, verifyCommand, bearer, iamRequest, allowRoles, principal, checkBranch, type AuthConfig, type Principal } from "@spacex/auth";
-import { createApp, HttpError } from "@spacex/http";
+import { createApp, HttpError, requireServiceSecret } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
+import { anonymizeCrmSubject, registerCrmErasure } from "./erasure.js";
 
 // Explicit conversion of the PostgreSQL row boundary, matching the other services.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,7 +24,7 @@ const personView = (r: Row, full = false) => ({ id: r.id, branchId: r.branch_id,
 const leadView = (r: Row, full = true) => ({ id: r.id, branchId: r.branch_id, contactId: r.contact_id, learnerId: r.learner_id, payerId: r.payer_id, courseId: r.course_id, source: r.source, ownerId: r.owner_id, stage: r.stage, notes: full ? r.notes : "", version: r.version, createdAt: r.created_at, contactName: r.contact_name, contactPhone: maskedPhone(r.contact_phone) });
 const consentView = (r: Row) => ({ id: r.id, personId: r.person_id, purpose: r.purpose, status: r.status, statementVersion: r.statement_version, statementText: r.statement_text, method: r.method, actorId: r.actor_id, recordedAt: r.recorded_at });
 
-export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: string; catalogUrl: string; conversationUrl?: string; enrollmentUrl?: string; notificationUrl?: string }) {
+export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: string; catalogUrl: string; conversationUrl?: string; enrollmentUrl?: string; notificationUrl?: string; selfRegistrationSecret?: string }) {
   async function transaction<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await pool.connect();
     try { await c.query("BEGIN"); await c.query("SET LOCAL lock_timeout='5s'"); const result = await work(c); await c.query("COMMIT"); return result; }
@@ -67,8 +68,8 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
     }
     return rows;
   }
-  async function idempotent(c: PoolClient, req: Request, res: Response, namespace: string, input: unknown, create: () => Promise<string>) {
-    const key = Id.parse(req.get("idempotency-key")), actor = principal(res).sub;
+  async function idempotent(c: PoolClient, req: Request, res: Response, namespace: string, input: unknown, create: () => Promise<string>, key = Id.parse(req.get("idempotency-key"))) {
+    const actor = principal(res).sub;
     const hash = createHash("sha256").update(JSON.stringify(input)).digest("hex");
     await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,4005))", [`${actor}:${namespace}:${key}`]);
     const old = (await c.query("SELECT * FROM crm_operations WHERE actor_id=$1 AND namespace=$2 AND operation_key=$3", [actor, namespace, key])).rows[0];
@@ -91,7 +92,7 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
     if (!row) throw missing(); checkBranch(user, row.branch_id); return row;
   };
   async function erasureView(c: PoolClient, row: Row) {
-    const tasks = (await c.query("SELECT service,status,evidence_ref AS \"evidenceRef\",version FROM crm_erasure_tasks WHERE request_id=$1 ORDER BY service", [row.id])).rows;
+    const tasks = (await c.query("SELECT service,status,evidence_ref AS \"evidenceRef\",outcome_code AS \"outcomeCode\",version FROM crm_erasure_tasks WHERE request_id=$1 ORDER BY service", [row.id])).rows;
     return { id: row.id, personId: row.person_id, branchId: row.branch_id, personName: row.person_name, reason: row.reason, status: row.status, version: row.version, createdAt: row.created_at, tasks };
   }
   async function erasureRow(c: PoolClient, id: string, user: Principal) {
@@ -139,6 +140,50 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
   const requestView = (row: Row) => ({ id: row.id, branchId: row.branch_id, action: row.payload.action, status: row.status, result: row.result, source: row.source, jobId: row.job_id, erased: !!row.erasure_request_id });
 
   return createApp("crm", app => {
+    app.post("/internal/crm/self-registration/:id", async (req, res) => {
+      requireServiceSecret(config.selfRegistrationSecret, req.get("x-enrollment-crm-secret"));
+      const input = z.object({ person: SelfRegistrationPerson, branchId: Id, actorId: Id, termsVersion: z.string().max(120) }).strict().parse(req.body);
+      const key = Id.parse(req.params.id);
+      const { person, branchId, actorId, termsVersion } = input;
+      const user: Principal = { sub: actorId, branchIds: [branchId], role: "ai_agent", sid: key, exp: Math.floor(Date.now() / 1000) + 60 };
+      res.locals.principal = user;
+      const data = await transaction(async c => {
+        const learnerId = await idempotent(c, req, res, "self-registration", input, async () => {
+          const contactId = randomUUID(), learnerId = randomUUID(), payerId = randomUUID();
+          const notes = [person.birthYear && `Năm sinh ${person.birthYear}`, person.address && `Địa chỉ ${person.address}`, person.notes].filter(Boolean).join("\n");
+          for (const [id, kind] of [[contactId, "CONTACT"], [learnerId, "LEARNER"], [payerId, "PAYER"]]) {
+            await c.query("INSERT INTO crm_people(id,branch_id,kind,full_name,phone,email,notes) VALUES($1,$2,$3,$4,$5,$6,$7)",
+              [id, branchId, kind, person.fullName, person.phone, person.email, kind === "LEARNER" ? notes : ""]);
+          }
+          for (const fromId of [contactId, payerId]) {
+            await c.query("INSERT INTO crm_relationships(id,from_person_id,learner_id,kind,status,evidence_ref,actor_id) VALUES($1,$2,$3,'SELF','VERIFIED',$4,$5)",
+              [randomUUID(), fromId, learnerId, `self-registration:${key}`, actorId]);
+          }
+          for (const [id, purpose, statement] of [[contactId, "ADMISSIONS", RegistrationConsent], [learnerId, "COURSE_NOTICES", CourseNoticesConsent]]) {
+            await c.query(`INSERT INTO crm_consents(id,person_id,purpose,status,statement_version,statement_text,method,actor_id)
+              VALUES($1,$2,$3,'GRANTED',$4,$5,'WEB_FORM',$6)`, [randomUUID(), id, purpose, termsVersion, statement, actorId]);
+          }
+          await audit(c, res, "crm.self_registration_recorded", learnerId, branchId);
+          return learnerId;
+        }, key);
+        const { rows } = await c.query("SELECT p.id,p.kind FROM crm_relationships r JOIN crm_people p ON p.id=r.from_person_id WHERE r.learner_id=$1 AND r.evidence_ref=$2", [learnerId, `self-registration:${key}`]);
+        const contactId = rows.find(row => row.kind === "CONTACT")?.id, payerId = rows.find(row => row.kind === "PAYER")?.id;
+        if (!contactId || !payerId) throw missing();
+        return enrollmentAuthority(c, { contactId, learnerId, payerId }, user);
+      });
+      res.json({ data });
+    });
+    app.get("/internal/crm/self-registration/:id/learner", async (req, res) => {
+      requireServiceSecret(config.selfRegistrationSecret, req.get("x-enrollment-crm-secret"));
+      const key = Id.parse(req.params.id);
+      const row = (await pool.query(`SELECT p.id AS "learnerId",p.branch_id AS "branchId",p.full_name AS name,p.email
+        FROM crm_operations o JOIN crm_people p ON p.id=o.resource_id
+        WHERE o.operation_key=$1 AND o.namespace='self-registration' AND p.status='ACTIVE' AND p.merged_into IS NULL
+        AND NOT EXISTS (SELECT 1 FROM crm_erasure_requests e WHERE e.person_id=p.id AND e.status IN ('VERIFIED','PROCESSING'))`, [key])).rows[0];
+      if (!row) throw missing();
+      res.set("cache-control", "no-store").json({ data: row });
+    });
+    registerCrmErasure(app,pool,auth);
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM crm_people LIMIT 1"); res.json({ status: "ok" }); });
     async function currentCourseConsent(c: PoolClient, learnerId: string, branchId: string) {
       const person = (await c.query("SELECT * FROM crm_people WHERE id=$1 FOR SHARE", [learnerId])).rows[0];
@@ -390,7 +435,8 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
         const relationships = (await c.query("SELECT r.*,a.full_name AS from_name,b.full_name AS learner_name FROM crm_relationships r JOIN crm_people a ON a.id=r.from_person_id JOIN crm_people b ON b.id=r.learner_id WHERE r.from_person_id=$1 OR r.learner_id=$1 ORDER BY r.id", [id])).rows.map(r => ({ id: r.id, fromPersonId: r.from_person_id, learnerId: r.learner_id, kind: r.kind, status: r.status, version: r.version, evidenceRef: r.evidence_ref, fromName: r.from_name, learnerName: r.learner_name }));
         const duplicates = row.status === "ACTIVE" && !row.merged_into ? (await c.query("SELECT * FROM crm_people WHERE branch_id=$1 AND kind=$2 AND id<>$3 AND status='ACTIVE' AND merged_into IS NULL AND (($4<>'' AND phone=$4) OR ($5<>'' AND email=$5)) ORDER BY created_at LIMIT 20", [row.branch_id, row.kind, id, row.phone, row.email])).rows.map(r => personView(r)) : [];
         await audit(c, res, "crm.person.read", id, row.branch_id, row.version, false);
-        return { person: personView(row, true), consents, relationships, duplicates };
+        const selfRegistration = row.kind === "LEARNER" && !!(await c.query("SELECT 1 FROM crm_operations WHERE namespace='self-registration' AND resource_id=$1", [id])).rowCount;
+        return { person: { ...personView(row, true), selfRegistration }, consents, relationships, duplicates };
       }); res.json({ data });
     });
     app.put("/api/v1/crm/people/:id", async (req, res) => {
@@ -556,15 +602,7 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
         const [person] = await people(c, [initial.person_id], principal(res), false); const row = await erasureRow(c, id, principal(res));
         if (row.version !== version) throw conflict("STALE_VERSION", "Yêu cầu đã thay đổi, hãy tải lại");
         if (row.status !== "VERIFIED") throw conflict("VERIFICATION_REQUIRED", "Cần xác minh người yêu cầu trước khi ẩn danh");
-        await c.query("UPDATE crm_people SET full_name='Đã ẩn danh',phone='',email='',notes='',status='ERASED',version=version+1 WHERE id=$1", [person.id]);
-        await c.query("UPDATE crm_leads SET stage='LOST',notes='',version=version+1 WHERE contact_id=$1 OR learner_id=$1 OR payer_id=$1", [person.id]);
-        await c.query("UPDATE crm_relationships SET status='REJECTED',evidence_ref='',version=version+1 WHERE from_person_id=$1 OR learner_id=$1", [person.id]);
-        await c.query("UPDATE crm_consents SET status='REVOKED',statement_text='Nội dung đã được loại bỏ theo yêu cầu xóa' WHERE person_id=$1", [person.id]);
-        await c.query("INSERT INTO crm_erasure_tombstones(person_id,branch_id,request_id) VALUES($1,$2,$3)", [person.id, person.branch_id, id]);
-        // Idempotency hashes can contain fingerprints of identifying input.
-        await c.query("UPDATE crm_operations SET request_hash='ERASED' WHERE resource_id=$1 OR resource_id IN (SELECT id FROM crm_leads WHERE contact_id=$1 OR learner_id=$1 OR payer_id=$1) OR resource_id IN (SELECT id FROM crm_consents WHERE person_id=$1) OR resource_id IN (SELECT id FROM crm_relationships WHERE from_person_id=$1 OR learner_id=$1)", [person.id]);
-        await c.query("UPDATE crm_erasure_tasks SET status='DONE',evidence_ref='CRM_TRANSACTION',actor_id=$2,version=version+1 WHERE request_id=$1 AND service='CRM'", [id, principal(res).sub]);
-        await c.query("UPDATE crm_erasure_requests SET status='PROCESSING',version=version+1 WHERE id=$1", [id]);
+        await anonymizeCrmSubject(c,{id,person_id:person.id,branch_id:person.branch_id},principal(res).sub);
         await audit(c, res, "crm.person.anonymized", person.id, person.branch_id, person.version + 1);
         return erasureView(c, await erasureRow(c, id, principal(res)));
       }); res.json({ data });
@@ -572,13 +610,13 @@ export function createCrmApp(pool: Pool, auth: AuthConfig, config: { orgUrl: str
     app.post("/api/v1/crm/erasure-requests/:id/tasks/:service", allowRoles("center_director", "branch_director"), async (req, res) => {
       const id = Id.parse(req.params.id), service = ErasureService.parse(req.params.service), input = ErasureTaskUpdate.parse(req.body);
       if (service === "CRM") throw new HttpError(403, "FORBIDDEN", "Trạng thái CRM chỉ cập nhật bởi thao tác ẩn danh thực tế");
+      if (input.status !== "BLOCKED") throw conflict("SERVICE_PROOF_REQUIRED","Cần bằng chứng do dịch vụ sở hữu dữ liệu ghi");
       const data = await transaction(async c => {
         const row = await erasureRow(c, id, principal(res));
         if (row.status !== "PROCESSING") throw conflict("INVALID_TRANSITION", "Cần hoàn thành xác minh và ẩn danh CRM trước");
-        const changed = await c.query("UPDATE crm_erasure_tasks SET status=$3,evidence_ref=$4,actor_id=$5,version=version+1 WHERE request_id=$1 AND service=$2 AND version=$6", [id, service, input.status, input.evidenceRef, principal(res).sub, input.version]);
+        const changed = await c.query("UPDATE crm_erasure_tasks SET status='BLOCKED',outcome_code='OWNER_REVIEW',evidence_ref=$3,actor_id=$4,version=version+1 WHERE request_id=$1 AND service=$2 AND version=$5 AND status IN ('PENDING','BLOCKED')", [id, service, input.evidenceRef, principal(res).sub, input.version]);
         if (!changed.rowCount) throw conflict("STALE_VERSION", "Trạng thái xử lý đã thay đổi, hãy tải lại");
-        const remaining = (await c.query("SELECT 1 FROM crm_erasure_tasks WHERE request_id=$1 AND status NOT IN ('DONE','NOT_APPLICABLE') LIMIT 1", [id])).rowCount;
-        await c.query("UPDATE crm_erasure_requests SET status=$2,version=version+1 WHERE id=$1", [id, remaining ? "PROCESSING" : "COMPLETED"]);
+        await c.query("UPDATE crm_erasure_requests SET version=version+1 WHERE id=$1", [id]);
         await audit(c, res, "crm.erasure.task_recorded", id, row.branch_id, row.version + 1); return erasureView(c, await erasureRow(c, id, principal(res)));
       }); res.json({ data });
     });

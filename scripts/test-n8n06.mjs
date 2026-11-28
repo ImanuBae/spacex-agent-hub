@@ -11,6 +11,9 @@ import { runN8n05WorkflowCases } from "./n8n05-workflow-cases.mjs";
 import { runN8n06Cases } from "./n8n06-cases.mjs";
 import { responsiveAcceptance, startPortal } from "./n8n06-portal.mjs";
 import { runN8n05ReviewCases } from "./n8n05-review-cases.mjs";
+import { reconciliationAcceptance } from "./portal-follow-up-cases.mjs";
+import { paymentDemoAcceptance } from "./portal-payment-demo.mjs";
+import { selfRegistrationAcceptance } from "./self-registration-browser.mjs";
 import { messagingSchema } from "@spacex/messaging";
 
 const bindings=[
@@ -26,10 +29,20 @@ const args=process.argv.slice(2);
 assert(args.every(arg=>["--n8n06-only","--regression-only"].includes(arg)||/^--case=[A-Z0-9_-]+$/.test(arg)), "Use --case=ID for each selected N8N06 case");
 const selected=new Set(args.filter(arg=>arg.startsWith("--case=")).map(arg=>arg.slice("--case=".length)));
 const targeted=selected.size>0, regressionOnly=args.includes("--regression-only"), n8n06Only=args.includes("--n8n06-only");
+const checkoutCase = [...selected].find(id => ["SELF-REGISTRATION", "SELF-REGISTRATION-EDGES"].includes(id));
+const selfRegistration = !!checkoutCase;
+assert(!selfRegistration || selected.size === 1, "Run the self-registration case alone so the runtime can use the isolated SePay adapter");
 assert(!regressionOnly||(!targeted&&!n8n06Only),"--regression-only cannot be combined with N8N06 selection");
-const evidence={authorization:"USER_DELEGATED_N8N06",decision:"NOT_ACCEPTED",scope:targeted?"N8N06_SELECTED":regressionOnly?"REGRESSION":n8n06Only?"N8N06":"N8N06_AND_REGRESSION",...(targeted?{selectedCases:[...selected]}:{}),providerRequests:0,personalEnvRead:false,keyRead:false,cases:[]};
+const erasure = selected.has("WF12-ERASURE");
+const reporting = erasure || [...selected].some(id => id.startsWith("REPORTING-"));
+const operations = selected.has("WF12-INCIDENT-REPLAY");
+const restoreDrill = selected.has("WF12-RESTORE");
+const followUp = reporting || [...selected].some(id => id.startsWith("PORTAL-"));
+if (reporting) bindings.push({ eventType:"reporting.refresh_requested",workflowId:"WF-11",workflowVersion:1,inputSchemaVersion:1 });
+const evidence={authorization:"LOCAL_SYNTHETIC_INVOCATION",decision:"NOT_ACCEPTED",scope:targeted?"N8N06_SELECTED":regressionOnly?"REGRESSION":n8n06Only?"N8N06":"N8N06_AND_REGRESSION",...(targeted?{selectedCases:[...selected]}:{}),providerRequests:0,personalEnvRead:false,keyRead:false,cases:[]};
 const sha=b=>createHash("sha256").update(b).digest("hex");
 await withN8n06Runtime(async h=>{
+  h.restoreDrill = restoreDrill;
   let portal;
   h.startPortal = () => portal ??= startPortal(h);
   console.log(`PRIVATE_ARTIFACTS ${h.directory}`);
@@ -58,14 +71,24 @@ await withN8n06Runtime(async h=>{
   }
   const staff=await account("admissions"),second=await account("admissions"),director=await account("branch_director"),accountant=await account("accountant"),outsider=await account("admissions",[otherBranch]),otherDirector=await account("branch_director",[otherBranch]);
   const provision=(id,grants,workflows)=>h.iamCall("/internal/iam/principals",{id,grants,workflows},h.operator.accessToken);
-  const sourceEnrollment=await provision(randomUUID(),[{audience:"enrollment",scopes:["automation:source"]}],["WF-07","WF-09"]);
+  const sourceEnrollment=await provision(randomUUID(),[{audience:"enrollment",scopes:["automation:source"]}],["WF-07","WF-09",...(selfRegistration?["WF-05"]:[])]);
   const sourcePayment=await provision(randomUUID(),[{audience:"payment",scopes:["automation:source"]}],["WF-06","WF-07"]);
   const sourceChannel=await provision("n8n06-regression-channel",[{audience:"conversation",scopes:["channel:context"]}],["WF-02"]);
   const worker=await provision("n8n06-worker",[{audience:"automation-bridge",scopes:["automation:claim","automation:checkpoint","automation:result","automation:authorize","automation:read"]},{audience:"crm",scopes:["crm:write"]},{audience:"enrollment",scopes:["enrollment:write"]},{audience:"payment",scopes:["payment:write"]},{audience:"class-schedule",scopes:["classes:enroll"]}],["WF-04","WF-05","WF-06","WF-07"]);
   const adjustmentWorker=await provision("n8n06-adjustment-worker",[{audience:"automation-bridge",scopes:["automation:claim","automation:checkpoint","automation:result","automation:authorize","automation:read"]},{audience:"class-schedule",scopes:["classes:change","classes:adjust"]},{audience:"enrollment",scopes:["enrollment:adjust"]},{audience:"payment",scopes:["payment:refund"]},{audience:"notification",scopes:["notification:deliver"]}],["WF-08","WF-09","WF-10"]);
   const notificationSource=await provision(randomUUID(),[{audience:"notification",scopes:["automation:source"]}],["WF-10"]);
+  if (operations) h.incidentWorker = await provision("n8n07-incident-worker", [{ audience:"automation-bridge", scopes:["automation:incidents"] }], ["WF-12"]);
+  if (erasure) h.erasureWorker = await provision("n8n07-erasure-worker",[{audience:"crm",scopes:["erasure:process"]}],["WF-12"]);
+  if (reporting) {
+    h.reportingWorker = await provision("n8n07-reporting-worker", [
+      {audience:"automation-bridge",scopes:["automation:claim","automation:result"]}, {audience:"reporting",scopes:["reporting:project"]},
+    ], ["WF-11"]);
+    const source = await provision(randomUUID(), [{audience:"enrollment",scopes:["reporting:source"]},{audience:"payment",scopes:["reporting:source"]}], ["WF-11"]);
+    await h.startService("reporting", { REPORTING_SOURCE_CLIENT_ID: source.id, REPORTING_SOURCE_CLIENT_SECRET: source.clientSecret });
+  }
   await h.startService("crm");
-  await h.startService("conversation",{CHAT_BRANCH_ID:branch,CHANNEL_CLIENT_ID:sourceChannel.id,CHANNEL_CLIENT_SECRET:sourceChannel.clientSecret});
+  const startConversation = (extra={}) => h.startService("conversation",{CHAT_BRANCH_ID:branch,CHANNEL_CLIENT_ID:sourceChannel.id,CHANNEL_CLIENT_SECRET:sourceChannel.clientSecret,...extra});
+  await startConversation();
   await h.startService("enrollment",{SOURCE_CLIENT_ID:sourceEnrollment.id,SOURCE_CLIENT_SECRET:sourceEnrollment.clientSecret});
   const startPayment = fault => h.startService("payment",{SOURCE_CLIENT_ID:sourcePayment.id,SOURCE_CLIENT_SECRET:sourcePayment.clientSecret,REVIEW_OWNER_ID:accountant.id,...(fault?{PAYMENT_ADJUSTMENT_FAULT:fault}:{})});
   await startPayment();
@@ -101,14 +124,18 @@ await withN8n06Runtime(async h=>{
   }
   async function finish(ctx){return api("automation-bridge",`/internal/automation/jobs/${ctx.job.jobId}/result`,"POST",{leaseToken:ctx.job.leaseToken,attempt:ctx.job.attempt,expectedVersion:ctx.job.version,step:"complete",outcome:"DONE",resultRef:`enrollment:${ctx.job.entity.id}`},ctx.token);}
   async function step(ctx,operation,service,route,body={},expected=200){const token=await authorize(ctx,operation);return {token,...await request(service,route,"POST",body,token,expected)};}
-  async function purchase(selection){
-    const p=await preview(selection),s=await confirm(p),ctx=await claim("WF-05"),id=s.enrollment_id;assert.equal(ctx.job.entity.id,id);
+  async function preparePayment(p,s){
+    const ctx=await claim("WF-05"),id=s.enrollment_id;assert.equal(ctx.job.entity.id,id);
     await step(ctx,"enrollment.execute","enrollment",`/internal/enrollment/enrollments/${id}/create`);
     await step(ctx,"classes.enroll","class-schedule",`/internal/classes/enrollments/${id}/hold`);
     await step(ctx,"enrollment.execute","enrollment",`/internal/enrollment/enrollments/${id}/held`);
     const pay=await step(ctx,"payment.execute","payment",`/internal/payment/enrollments/${id}/create`);
     await step(ctx,"enrollment.execute","enrollment",`/internal/enrollment/enrollments/${id}/payment`);
     await finish(ctx);return {id,confirmation:p,source:s,ctx,payment:pay.data};
+  }
+  async function purchase(selection){
+    const p=await preview(selection);
+    return preparePayment(p,await confirm(p));
   }
   async function webhook(payment,{amount=payment.amountDue,reference=payment.reference,transactionId=randomUUID()}={},expected=200){const payload={provider:"SYNTHETIC",account:"DEMO-N8N05",transactionId,reference,amount,currency:"VND"};const signature=createHmac("sha256",h.runtime.SYNTHETIC_PAYMENT_WEBHOOK_SECRET).update(JSON.stringify(payload)).digest("hex");return request("payment","/internal/payment/synthetic-webhook","POST",payload,"",expected,undefined,{"x-demo-signature":signature});}
 
@@ -154,12 +181,18 @@ await withN8n06Runtime(async h=>{
     assert.deepEqual((await upgrade.query("SELECT * FROM enrollments WHERE id=$1",[purchased.id])).rows[0],before);
     await assert.rejects(upgrade.query("UPDATE enrollments SET snapshot='{}' WHERE id=$1",[purchased.id]),/Immutable confirmed snapshot/);
     const versions=(await upgrade.query("SELECT version FROM schema_migrations ORDER BY version")).rows.map(r=>r.version);
-    assert.deepEqual(versions,["0001","0002"]);
+    assert.deepEqual(versions,["0001","0002","0003","0004"]);
     return {versions,id:purchased.id,holdId:before.hold_id,paymentId:before.payment_id,status:before.status,snapshotSha256:sha(JSON.stringify(before.snapshot)),priorSchemaSha256:sha(versionOne)};
   });
   if (!regressionOnly) {
+    if (checkoutCase) await test(checkoutCase, "Browser registration in the isolated SePay runtime", () =>
+      selfRegistrationAcceptance({ h, api, offer, customer, staff, password, worker, adjustmentWorker, edgesOnly: checkoutCase === "SELF-REGISTRATION-EDGES" }));
+    if (selected.has("PORTAL-PAYMENT-DEMO")) await test("PORTAL-PAYMENT-DEMO", "Catalog seed and Portal registration, QR, scoped finance, reconciliation and learner partial failure", () => paymentDemoAcceptance({
+      h, api, request, customer, offer, preparePayment, webhook, claim, step, finish, staff, accountant, director, otherDirector, otherAccountant: () => account("accountant",[otherBranch]), branch, otherBranch, password,
+    }));
+    if (selected.has("PORTAL-RECONCILIATION")) await test("PORTAL-RECONCILIATION", "Real Portal review, role/branch/version guards, preserved draft and durable DB history", () => reconciliationAcceptance({h,request,api,purchase,customer,offer,webhook,accountant,director,otherDirector,staff,password}));
     await test("N8N06-BROWSER-RESPONSIVE","Staff views fit 1440/768/390 and the mobile menu is keyboard operable",()=>responsiveAcceptance({h,staff,director,accountant,password}));
-    if (!targeted||evidence.cases.length<selected.size) await runN8n06Cases({h,evidence,test,selected:targeted?selected:null,request,api,offer,customer,preview,confirm,claim,authorize,finish,step,purchase,webhook,staff,second,director,otherDirector,accountant,outsider,branch,otherBranch,adjustmentWorker,password,startPayment});
+    if (!targeted||evidence.cases.length<selected.size) await runN8n06Cases({h,evidence,test,selected:targeted?selected:null,request,api,offer,customer,preview,confirm,claim,authorize,finish,step,purchase,webhook,staff,second,director,otherDirector,accountant,outsider,branch,otherBranch,adjustmentWorker,password,startPayment,startConversation});
   }
   if (!n8n06Only&&!targeted) {
   await runN8n05ApiCases({h,evidence,test,request,api,offer,customer,preview,confirm,claim,authorize,finish,step,purchase,webhook,staff,second,director,accountant,outsider,branch,otherBranch,worker});
@@ -169,4 +202,4 @@ await withN8n06Runtime(async h=>{
   assert(!targeted||[...selected].every(id=>evidence.cases.some(row=>row.id===id)),"Selection contains unknown case IDs");
   evidence.decision="NOT_ACCEPTED";evidence.completedAt=new Date().toISOString();await save();
   evidence.sourceHashes={};for(const file of ["services/enrollment/src/app.ts","services/payment/src/app.ts","services/identity/src/machine.ts","services/class-schedule/src/app.ts","services/crm/src/app.ts","services/conversation/src/app.ts","scripts/test-n8n05.mjs"]){evidence.sourceHashes[file]=sha(await readFile(file));}
-},evidence,bindings);
+},evidence,bindings,{provenanceFile:restoreDrill||erasure?"docs/runbook-wf12.md":operations?"docs/n8n-workflows.md":followUp?"docs/acceptance-portal-wf11.md":"docs/ban-giao-n8n-06.md",args,reporting,operations:operations||restoreDrill,erasure,selfRegistration});

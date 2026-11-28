@@ -1,0 +1,23 @@
+{
+  "name": "@spacex/reporting",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run src --passWithNoTests",
+    "dev": "node --env-file-if-exists=.env --watch dist/index.js",
+    "start": "node dist/index.js",
+    "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts"
+  },
+  "dependencies": {
+    "@spacex/auth": "*",
+    "@spacex/contracts": "*",
+    "@spacex/http": "*",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": { "@types/pg": "^8.23.1", "tsx": "^4.23.15" }
+}

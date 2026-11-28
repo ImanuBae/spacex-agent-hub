@@ -18,7 +18,7 @@ Ngày hiệu lực local: 16/11/2026 (Asia/Saigon). Người quyết định/rev
 
 ## Bảo toàn và nguồn
 
-Snapshot trước sửa: `.local/automation/n8n06-20261115T172538-036c38e6/`. N8N05 ACCEPT_LOCAL giữ lịch sử riêng. Không ghi registration-evidence.json, không sinh lại WF01–07. Các prompt cũ bị xóa không được khôi phục; harness mới dùng [yêu cầu hiện tồn tại](prompt-hoan-thanh-n8n-06.md) và hash thật.
+Snapshot trước sửa: `.local/automation/n8n06-20261115T172538-036c38e6/`. N8N05 ACCEPT_LOCAL giữ lịch sử riêng. Preflight mới ghi tham số gọi runner và SHA‑256 của tài liệu áp dụng cho lượt chạy. Ca N8N‑06 dùng policy trong bàn giao này. Ca Portal/WF‑11 dùng [hồ sơ nghiệm thu](acceptance-portal-wf11.md). Receipt cũ lưu đường dẫn và hash của nguồn tại thời điểm chạy.
 
 Sự cố Next tự load personal `.env.local` trong N8N05 vẫn là lịch sử có thật. Mọi build/start mới phải env allowlist và preload `scripts/no-personal-env.cjs` đến workers, có fixture tự kiểm.
 

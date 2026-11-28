@@ -15,6 +15,6 @@ const machines = process.env.IAM_MACHINE_PRIVATE_KEY_FILE ? {
   bridgeUrl: process.env.AUTOMATION_BRIDGE_URL ?? "http://127.0.0.1:4006",
   channelUrl: process.env.CONVERSATION_URL,
 } : undefined;
-const learners = process.env.IAM_NOTIFICATION_SECRET ? { crmUrl: process.env.CRM_URL ?? "http://127.0.0.1:4005", notificationUrl: process.env.NOTIFICATION_URL ?? "http://127.0.0.1:4010", notificationSecret: process.env.IAM_NOTIFICATION_SECRET } : undefined;
+const learners = process.env.IAM_NOTIFICATION_SECRET ? { crmUrl: process.env.CRM_URL ?? "http://127.0.0.1:4005", notificationUrl: process.env.NOTIFICATION_URL ?? "http://127.0.0.1:4010", notificationSecret: process.env.IAM_NOTIFICATION_SECRET, enrollmentUrl: process.env.ENROLLMENT_URL, enrollmentSecret: process.env.ENROLLMENT_IAM_SECRET } : undefined;
 const server = createIdentityApp(pool, authConfig(), process.env.ORG_URL ?? "http://127.0.0.1:4003", machines, learners).listen(config.PORT, config.HOST);
 for (const signal of ["SIGINT", "SIGTERM"] as const) process.once(signal, () => { server.close(() => { void pool.end().then(() => process.exit(0)); }); setTimeout(() => process.exit(1), 10000).unref(); });

@@ -1,7 +1,7 @@
 # SpaceX Agent Hub — Product Plan v3: n8n điều phối nghiệp vụ
 
 <!-- CURRENT_N8N_LINK -->
-Hiện hành 16/11/26: **N8N-05 ACCEPT_LOCAL** — WF04–07 tổng hợp local, 49/49 nhóm tích hợp cuối và affected regressions đạt. [Matrix](acceptance-n8n-05.md), [evidence index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). **N8N03/04 ACCEPT local** giữ theo [hồ sơ lịch sử](acceptance-n8n-03-04.md). Canonical inactive; provider/live/production và WF08–12 vẫn đóng. Các snapshot có ngày bên dưới giữ quyết định tại thời điểm ghi; các ticket cha không được coi hoàn tất chỉ từ lát cắt N8N05.
+Hiện hành 20/11/26, WF‑11 đã kiểm local ba chỉ số Enrollment/Payment theo chi nhánh và kỳ, cùng Portal Đối soát và luồng quyền lợi. [Evidence](acceptance-portal-wf11.md). **N8N‑06 ACCEPT_LOCAL** cho WF08–10. [Matrix](acceptance-n8n-06.md). **N8N‑05 ACCEPT_LOCAL** cho WF04–07, 49/49 nhóm tích hợp cuối. [Matrix](acceptance-n8n-05.md). **N8N03/04 ACCEPT local** theo [hồ sơ lịch sử](acceptance-n8n-03-04.md). [Readiness và phạm vi các mốc](n8n-readiness.md).
 
 <details>
 <summary>Lịch sử kiểm chứng đến 11/11/2026 — giữ nguyên receipts và quyết định cũ</summary>
@@ -437,7 +437,7 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | ENR-8 | Import quyền lợi qua API | Import/đối chiếu | WF-11 | U19 | COND | E0; C12, không ghi thẳng DB |
 | PAY-1 | SePay adapter/QR/lookup | QR/hạn | WF-05 | U08, N12 | COND | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | PAY-2 | Webhook/auth/ledger/dedup | Trạng thái giao dịch | WF-06 | U09, U10 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
-| PAY-3 | Allocation/review/deadline | Hàng đợi kế toán | WF-07 | U10, U11 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
+| PAY-3 | Allocation/review/deadline | Hàng đợi kế toán | WF-07 | U10, U11 | PARTIAL | [Hàng đợi, đề xuất, duyệt và chứng từ mô phỏng](acceptance-portal-wf11.md) |
 | PAY-4 | Refund/phê duyệt/bằng chứng | Tạo/duyệt/thực hiện | WF-09 | U14 | TODO | E0 |
 | PAY-5 | Đối soát/chênh lệch | Đối soát | WF-11 | U18 | TODO | E0 |
 | PAY-6 | Hóa đơn mô phỏng/file | Form/tải file | WF-10 | U02, U17 | TODO | E0; ghi không giá trị pháp lý |
@@ -458,8 +458,8 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | NT-3 | Nhắc theo scheduleVersion/consent | Nhắc học | WF-10 | U13, U16 | TODO | E0 |
 | NT-4 | Đổi/hủy/delivery lỗi | Theo dõi thông báo | WF-08, WF-10 | U13, N07 | TODO | E0 |
 | RP-1 | Audit đọc/ghi bất biến | Audit theo quyền | WF-12 | U02, N09 | PARTIAL | E1/E3/E4; chưa audit tập trung |
-| RP-2 | Event store/read model/checkpoint | Lag/rebuild | WF-11 | U18, N08 | TODO | E0; receipt vận hành chưa đủ |
-| RP-3 | Chỉ số lead/đơn/tiền | Dashboard thật | WF-11 | U18 | TODO | E0; overview còn trộn mock |
+| RP-2 | Event store/read model/checkpoint | Lag/rebuild | WF-11 | U18, N08 | PARTIAL | [Checkpoint ngày/event, replay và rebuild đối chiếu nguồn local](acceptance-portal-wf11.md) |
+| RP-3 | Chỉ số lead/đơn/tiền | Dashboard thật | WF-11 | U18 | PARTIAL | [Ba chỉ số đơn và dòng tiền local](acceptance-portal-wf11.md) |
 | RP-4 | Fill/response/AI metrics | Kỳ/định nghĩa | WF-11 | U18, N05 | TODO | E0 |
 | WEB-1 | BFF/session | Login/menu/401/403 | — | U01, U02 | LOCAL | E1 |
 | WEB-2 | Conversation API | Hộp thư/handoff | WF-01–WF-03 | U03–U05, U20 | PARTIAL | N8N-04 browser/API/model thật local; scope rộng hơn còn backlog |
@@ -467,7 +467,7 @@ Trạng thái: **LOCAL** = có bàn giao local trong phạm vi cũ, cần regres
 | WEB-4 | Catalog/Class API | Khóa/gói/lớp/lịch | WF-02, WF-08 | U06, U13, U20 | PARTIAL | E3; cần khép quyền lợi/lifecycle |
 | WEB-5 | Payment API | Kế toán/hoàn | WF-07, WF-09 | U10, U14 | TODO | Lát cắt N8N05 local ACCEPT: [matrix](acceptance-n8n-05.md); trạng thái ticket rộng hơn không được nghiệm thu bởi hồ sơ này |
 | WEB-6 | Teacher-time API | Giờ rảnh/lịch/nghỉ | WF-08 | U02, U13, U20 | PARTIAL | E3; chưa quy trình ảnh hưởng toàn chuỗi |
-| WEB-7 | Reporting API | Dashboard | WF-11 | U18 | TODO | E0 |
+| WEB-7 | Reporting API | Dashboard | WF-11 | U18 | PARTIAL | [Tổng quan với kỳ và scope chi nhánh, kiểm ở 1440/768/390 px](acceptance-portal-wf11.md) |
 | WEB-8 | Web chat API | Widget/reconnect | WF-01 | U03, U20 | PARTIAL | N8N-04 browser gửi/nhận/reconnect local |
 | WEB-9 | IAM learner/ownership API | Student Portal | WF-09, WF-10 | U02, N10 | TODO | E0 |
 | PM-1 | Quyết định C01–C12/version | Biên bản/quy tắc | — | UAT-1 | PARTIAL | Quyết định hướng v3 đã chốt; chưa duyệt policy/customer |
@@ -488,7 +488,7 @@ Dependency chỉ yêu cầu phần contract/acceptance cần cho lát cắt đan
 | N8N-04 | WF-01/02/03 web chat/AI/tool/handoff và benchmark | CH-1/2,CV-1/2/3,AG-1/2/5/6/7/9,N8N-03 | ACCEPT LOCAL — 10/10 corpus cuối, 8 câu trả lời model, 2 nhánh deterministic; 16 generation 0 USD; [matrix hiện hành](acceptance-n8n-03-04.md); production/WF-08–12 vẫn đóng; LLM mutation vẫn đóng |
 | N8N-05 | WF-04/05/06/07 nối CRM/Enrollment/Payment và crash/race acceptance | CRM, ENR-1/2/3, PAY-1/2/3, CS-4, N8N-02/03 | ACCEPT_LOCAL — [matrix](acceptance-n8n-05.md), 49/49 + affected regressions; provider/live BLOCKED riêng |
 | N8N-06 | WF-08/09/10, phê duyệt Portal, thông báo, quyền lợi và test bù trừ | CS-5/7, ENR-4/5/6/7, PAY-4/6, NT-1–4 | **ACCEPT_LOCAL** ngày 20/11/2026. [Matrix](acceptance-n8n-06.md), [policy DEMO](ban-giao-n8n-06.md) và [index](../workflows/n8n/adjustment-evidence.json). Gate live còn đóng |
-| N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | TODO — [dependency thực](n8n-readiness.md) |
+| N8N-07 | WF-11/12, mapping import/read model/erasure/recovery và test nguồn | RP-1–4, CRM-2/4/5, CV-4, OPS-1 | PARTIAL — [lát cắt báo cáo WF‑11 local](acceptance-portal-wf11.md) |
 | N8N-08 | VPS/HTTPS, gate provider, registry workflow/credential, clean import/restore, evidence final | Bắt đầu với N8N-01; đóng sau N8N-02–07, CH-3/4, phần backup/restore OPS-1 | TODO — [gate còn thiếu](n8n-readiness.md) |
 
 ## 5. Nghiệm thu và quản lý thay đổi

@@ -1,0 +1,43 @@
+.public-page .contact-main { padding-block: 28px 96px; }
+.contact-page .contact-hero { padding: clamp(24px, 6vw, 76px); }
+.contact-page .contact-hero p {
+  max-width: 45ch;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: clamp(1rem, 2vw, 1.125rem);
+}
+.contact-page .contact-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  margin-top: 22px;
+  gap: 16px;
+  align-items: start;
+}
+.contact-content section {
+  padding: clamp(20px, 4vw, 40px);
+  background: #0c1428;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.contact-content h2 { font-size: clamp(1.35rem, 2.5vw, 1.8rem); font-weight: 720; letter-spacing: -.035em; line-height: 1.2; }
+.contact-content p { color: var(--muted); margin-top: 8px; line-height: 1.6; }
+.contact-content .contact-branch { margin-top: 24px; }
+.contact-branch label { display: block; margin-bottom: 6px; font-weight: 650; }
+.contact-branch select {
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: var(--bg-2);
+  font: inherit;
+}
+.contact-branch p { font-size: .875rem; }
+.contact-page .btn { min-height: 44px; }
+.contact-content .btn { margin-top: 18px; }
+.contact-page .contact-text-link { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px; width: fit-content; font-weight: 600; }
+.contact-text-link:hover { color: var(--accent); }
+@media (max-width: 680px) {
+  .contact-page .contact-content { grid-template-columns: minmax(0, 1fr); }
+}

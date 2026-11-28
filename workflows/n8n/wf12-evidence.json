@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "parentN8N07": "PARTIAL",
+  "dataset": "SYNTHETIC",
+  "budgetUsd": 0,
+  "providerRequests": 0,
+  "baseline": "e9a6a9200602e5be7ed087813f50d86cd6170f7e",
+  "incidents": {
+    "status": "PASS_LOCAL",
+    "canonical": {
+      "file": "workflows/n8n/wf-12-incidents.json",
+      "sha256": "5ad79a7d67de6c2e0f14da184a56cd97b7b04eeaea8bf0f83a4d75eff5dd86ea",
+      "active": false
+    },
+    "manifest": "workflows/n8n/incident-manifest.json",
+    "project": "space-agent-n8n07-acceptance-84df8d3222e2",
+    "evidence": {
+      "file": ".local/automation/space-agent-n8n07-acceptance-84df8d3222e2/evidence.json",
+      "sha256": "d8f9df7dd692d1b27a6c6c91c9755c645f2264f18ee818af8186ee767aa7cf12"
+    },
+    "caseId": "WF12-INCIDENT-REPLAY",
+    "api": { "wrongRole": 403, "staleVersion": 409, "repeatedReplay": 409, "revokedSession": 401 },
+    "db": { "alertsPerIncident": 1, "validReplayAudits": 1, "paymentReceiptsBeforeAndAfter": [1, 1] },
+    "browser": { "engine": "msedge", "widths": [1440, 768, 390], "reload": "DONE" },
+    "initialPass": ".local/automation/space-agent-n8n07-acceptance-e08022366ff0/evidence.json"
+  },
+  "restore": {
+    "status": "PASS_LOCAL",
+    "caseId": "WF12-RESTORE",
+    "source": {
+      "file": ".local/automation/space-agent-n8n07-acceptance-12d7acdea2f9/evidence.json",
+      "sha256": "7c4af5b2ba78672e9918a3c13d73e992d95477bed643295e15c0425da44b3eaf"
+    },
+    "target": {
+      "file": ".local/automation/space-agent-n8n07-acceptance-a89d29a1a53d/evidence.json",
+      "sha256": "2e23bb444b6ee99eadd703a5dbaa2f667f8526084c3c4b4a024072c499fec66f"
+    },
+    "backupMs": 21175,
+    "restoreVerifiedMs": 89350,
+    "restoreWithReplayMs": 98274,
+    "previousAttempts": [
+      ".local/automation/space-agent-n8n07-acceptance-ec7a709b2bb2/evidence.json",
+      ".local/automation/space-agent-n8n07-acceptance-424900a0ead9/evidence.json"
+    ]
+  },
+  "erasure": {
+    "status": "PASS_LOCAL",
+    "caseId": "WF12-ERASURE",
+    "canonical": {
+      "file": "workflows/n8n/wf-12-erasure.json",
+      "sha256": "c80b0ea098a0649041ca2c73c868f9d90d523b4de3d874d286080dfeb06c1511",
+      "active": false
+    },
+    "manifest": "workflows/n8n/erasure-manifest.json",
+    "evidence": {
+      "file": ".local/automation/space-agent-n8n07-acceptance-98980c42c5a2/evidence.json",
+      "sha256": "a1a613bd483278f9d4110ba694f9321544fd23b9e65b2f2941ce4b6777fc5e86"
+    },
+    "initialPass": ".local/automation/space-agent-n8n07-acceptance-0b0c595558a4/evidence.json",
+    "retryCase": ["PROCESSING", "COMPLETED"],
+    "retentionCase": "PROCESSING",
+    "olderBackupCase": {
+      "restoredDatabases": ["crm", "conversation"],
+      "crm": "ERASED",
+      "oldChatSessionStatus": 401,
+      "invalidExclusionHashBlockedStartup": true
+    },
+    "regressionCases": ["N8N06-ENROLLMENT-UPGRADE"],
+    "crmDbTestsPassed": 22,
+    "isolatedPortalBuild": "wf12-portal-build-fd8b6cb8bd41"
+  }
+}

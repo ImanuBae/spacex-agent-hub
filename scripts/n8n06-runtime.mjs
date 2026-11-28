@@ -51,7 +51,7 @@ function verifyPrivateAcl(directory, acl) {
 
 // Same mount/resource checks as the historical N8N-04 helper, bound to the new project namespace.
 function verifyIsolation(project, compose, running = false) {
-  assert.match(project, /^space-agent-n8n06-acceptance-[a-f0-9]{12}$/);
+  assert.match(project, /^space-agent-n8n0[67]-acceptance-[a-f0-9]{12}$/);
   const docker = (...args) => execFileSync("docker", args, { env: hostEnv, encoding: "utf8" }).trim();
   const config = JSON.parse(compose("config", "--format", "json"));
   assert.equal(config.name, project);
@@ -98,21 +98,26 @@ function verifyIsolation(project, compose, running = false) {
   return { status: "PASS", project, stage: running ? "actual-mounts-before-import" : "resolved-config-and-resource-absence", volumes: Object.values(config.volumes).map(v => v.name), networks: Object.values(config.networks).map(n => n.name) };
 }
 
-export async function withN8n06Runtime(run, record, bindings) {
-  assert(Array.isArray(bindings) && bindings.length && bindings.every(b => /^WF-0[4-9]$|^WF-10$/.test(b.workflowId)), "Explicit reviewed WF-04–10 bindings required");
+export async function withN8n06Runtime(run, record, bindings, { provenanceFile, args, reporting = false, operations = false, erasure = false, restore, selfRegistration = false }) {
+  assert(Array.isArray(bindings) && bindings.length && bindings.every(b => /^WF-0[4-9]$|^WF-10$/.test(b.workflowId) || reporting && b.workflowId === "WF-11"), "Explicit reviewed workflow bindings required");
   assert(!process.env.DOCKER_HOST || /^(npipe:\/\/|unix:\/\/)/.test(process.env.DOCKER_HOST), "Local Docker Engine required");
   const endpoint = execFileSync("docker", ["context", "inspect", "--format", "{{.Endpoints.docker.Host}}"], { env: hostEnv, encoding: "utf8" }).trim();
   assert(/^(npipe:\/\/|unix:\/\/)/.test(endpoint), "Local Docker context required");
   const root = fileURLToPath(new URL("../", import.meta.url)); process.chdir(root);
-  const project = `space-agent-n8n06-acceptance-${randomBytes(6).toString("hex")}`;
+  const project = `space-agent-n8n0${reporting || operations || restore ? 7 : 6}-acceptance-${randomBytes(6).toString("hex")}`;
   const directory = path.join(root, ".local", "automation", project), acl = await privateDirectory(directory);
   const evidence = record;
   Object.assign(evidence, { project, startedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), status: "FAIL", runtimeChecks: [], artifacts: { ...record.artifacts }, services: [], acl });
   const paths = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "utf8" }).split("\0").filter(f =>
     ["package.json", "package-lock.json", "turbo.json"].includes(f) || /^(services|packages|scripts|workflows|infra|apps)\//.test(f) && /\.(ts|tsx|sql|mjs|cjs|json|yml|css)$/.test(f));
   const sourceHashes = Object.fromEntries(await Promise.all([...new Set(paths)].map(async file => [file, sha(await readFile(file))])));
-  const promptFile = "docs/prompt-hoan-thanh-n8n-06.md";
-  await writeFile(path.join(directory,"preflight.json"),JSON.stringify({authorization:"USER_DELEGATED_N8N06",promptFile,promptSha256:sha(await readFile(promptFile)),createdAt:evidence.startedAt,policyVersion:"DEMO-N8N06-2026-11-16-v1",syntheticOnly:true,budgetUsd:0,inferenceAllowed:false,sourceHashes},null,2),{flag:"wx",mode:0o600});
+  const provenance = {
+    authorization: record.authorization,
+    provenanceFile,
+    provenanceSha256: sha(await readFile(provenanceFile)),
+    args,
+  };
+  await writeFile(path.join(directory,"preflight.json"),JSON.stringify({...provenance,createdAt:evidence.startedAt,policyVersion:"DEMO-N8N06-2026-11-16-v1",syntheticOnly:true,budgetUsd:0,inferenceAllowed:false,sourceHashes},null,2),{flag:"wx",mode:0o600});
   await writeFile(path.join(directory,"run-marker.json"),JSON.stringify({project,status:"RUNNING",resumeAllowed:false}),{flag:"wx",mode:0o600});
   const children = [], services = new Map(), pools = {}, domainUrls = {}, allocated = new Set();
   async function freePort() {
@@ -121,14 +126,19 @@ export async function withN8n06Runtime(run, record, bindings) {
         const server = createServer(); server.once("error", reject);
         server.listen(0, "127.0.0.1", () => { const available = server.address().port; server.close(() => resolve(available)); });
       });
-      if (!allocated.has(port)) { allocated.add(port); return port; }
+      if (!allocated.has(port) && !restore?.sourcePorts.includes(port)) { allocated.add(port); return port; }
     }
   }
   const ports = {};
-  for (const name of ["automation-bridge", "identity", "org", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification", "n8n"]) ports[name] = await freePort();
+  const domainServices = ["automation-bridge", "identity", "org", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification"];
+  if (reporting) domainServices.push("reporting");
+  for (const name of [...domainServices, "n8n"]) ports[name] = await freePort();
   const urls = Object.fromEntries(Object.entries(ports).map(([name, port]) => [name, `http://127.0.0.1:${port}`]));
   const envFile = path.join(directory, "runtime.env"), brokerPassword = secret();
-  await writeFile(envFile, [`N8N_POSTGRES_ADMIN_PASSWORD=${secret()}`, `N8N_DB_PASSWORD=${secret()}`, `N8N_ENCRYPTION_KEY=${secret()}`, `N8N_LOCAL_PORT=${ports.n8n}`, `AUTOMATION_TEST_ADMIN_PASSWORD=${secret()}`, `AUTOMATION_TEST_BROKER_PASSWORD=${brokerPassword}`, ""].join("\n"), { mode: 0o600 });
+  const encryptionKey = restore ? (await readFile(path.join(restore.directory,"n8n-encryption-key-private"), "utf8")).trim() : secret();
+  assert.match(encryptionKey, /^[a-f0-9]{64}$/);
+  if (restore) assert.equal(sha(encryptionKey), restore.hashes["n8n-encryption-key-private"], "Backup key digest mismatch");
+  await writeFile(envFile, [`N8N_POSTGRES_ADMIN_PASSWORD=${secret()}`, `N8N_DB_PASSWORD=${secret()}`, `N8N_ENCRYPTION_KEY=${encryptionKey}`, `N8N_LOCAL_PORT=${ports.n8n}`, `AUTOMATION_TEST_ADMIN_PASSWORD=${secret()}`, `AUTOMATION_TEST_BROKER_PASSWORD=${brokerPassword}`, ""].join("\n"), { mode: 0o600 });
   const overlay = path.join(directory, "compose.acceptance.json");
   await writeFile(overlay, JSON.stringify(acceptanceOverlay));
   const composeArgs = ["compose", "--env-file", envFile, "-p", project, "-f", "infra/n8n/compose.yml", "-f", "infra/automation/compose.test.yml", "-f", overlay];
@@ -142,6 +152,12 @@ export async function withN8n06Runtime(run, record, bindings) {
   }
   const cli = (...args) => compose("run", "--rm", "-T", "--no-deps", "n8n", ...args);
   const sql = query => compose("exec", "-T", "postgres", "psql", "-U", "n8n_admin", "-d", "n8n", "-v", "ON_ERROR_STOP=1", "-Atc", query).trim();
+  async function restoreDb(service, file, role, database = role) {
+    const input = path.join(restore.directory, file + ".sql");
+    assert.equal(sha(await readFile(input)), restore.hashes[file + ".sql"], "Backup digest mismatch");
+    compose("cp", input, service + ":/tmp/snapshot.sql");
+    compose("exec", "-T", service, "psql", "-X", "-U", role, "-d", database, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", "/tmp/snapshot.sql");
+  }
   const check = name => { evidence.runtimeChecks.push(name); console.log(`PASS ${name}`); };
   async function runNode(args, env = hostEnv, cwd = root, log = "node.log") {
     const fd = openSync(path.join(directory, log), "wx");
@@ -160,12 +176,21 @@ export async function withN8n06Runtime(run, record, bindings) {
   try {
     for (const file of ["scripts/n8n06-runtime.mjs", "scripts/n8n04-isolation.mjs", "infra/n8n/compose.yml", "infra/n8n/init.sql", "infra/automation/compose.test.yml"]) evidence.artifacts[file] = sha(await readFile(file));
     evidence.isolation = verifyIsolation(project, compose);
+    if (restore) {
+      compose("up", "-d", "--pull", "never", "--wait", "--wait-timeout", "240", "postgres", "bridge-db", "rabbitmq");
+      assert.equal(sql("SELECT to_regclass('workflow_entity')"), "");
+      await restoreDb("postgres", "n8n", "n8n");
+      assert.equal(sql('SELECT count(*) FROM workflow_entity WHERE active OR "activeVersionId" IS NOT NULL'), "0");
+      check("Clean target n8n DB restored with all workflow triggers disabled");
+    }
     compose("up", "-d", "--pull", "never", "--wait", "--wait-timeout", "240");
     evidence.actualIsolation = verifyIsolation(project, compose, true);
     const backendHost = compose("exec", "-T", "n8n", "node", "-e", "require('node:dns').lookup('host.docker.internal',{family:4},(error,address)=>{if(error)throw error;process.stdout.write(address);})").trim();
     assert(isIPv4(backendHost) && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(backendHost), "Private Docker host address required");
-    assert.equal(sql("SELECT count(*) FROM workflow_entity"), "0");
-    assert.equal(sql("SELECT count(*) FROM credentials_entity"), "0");
+    if (!restore) {
+      assert.equal(sql("SELECT count(*) FROM workflow_entity"), "0");
+      assert.equal(sql("SELECT count(*) FROM credentials_entity"), "0");
+    }
     evidence.backendHost = backendHost;
     evidence.runtime = { node: process.version, docker: execFileSync("docker", ["version", "--format", "{{.Server.Version}}"], { env: hostEnv, encoding: "utf8" }).trim(), compose: execFileSync("docker", ["compose", "version", "--short"], { env: hostEnv, encoding: "utf8" }).trim(), postgres: compose("exec", "-T", "bridge-db", "postgres", "--version").trim(), rabbitmq: compose("exec", "-T", "rabbitmq", "rabbitmqctl", "version").trim(), images: JSON.parse(compose("images", "--format", "json")) };
     const dbPort = Number(compose("port", "bridge-db", "5432").trim().split(":").at(-1));
@@ -183,8 +208,12 @@ export async function withN8n06Runtime(run, record, bindings) {
       evidence.databases.push({ service, database: name, role: name, privateConnectionFile: "database-urls-private.json" });
       return pools[service];
     }
-    for (const service of ["automation-bridge", "identity", "org", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification"]) {
+    for (const service of domainServices) {
       createDatabase(service);
+      if (restore) {
+        const { database, role } = evidence.databases.at(-1);
+        await restoreDb("bridge-db", service, role, database);
+      }
       for (const pass of [1, 2]) await runNode([path.join(root, "node_modules/tsx/dist/cli.mjs"), service === "catalog" ? "src/db/migrate.ts" : "src/migrate.ts"], { ...hostEnv, DATABASE_URL: domainUrls[service] }, path.join(root, "services", service), `${service}-migration-${pass}.log`);
     }
     await writeFile(path.join(directory, "database-urls-private.json"), JSON.stringify(domainUrls, null, 2), { mode: 0o600 });
@@ -204,19 +233,29 @@ export async function withN8n06Runtime(run, record, bindings) {
     const runtime = {
       DATABASE_URL: domainUrls["automation-bridge"], RABBITMQ_URL: `amqp://automation_test:${brokerPassword}@127.0.0.1:${rabbitPort}`, NODE_ENV: "test", HOST: "0.0.0.0",
       AUTOMATION_MACHINE_PUBLIC_KEY_FILE: publicFile, AUTOMATION_MACHINE_ISSUER: "n8n06-test-authority", AUTOMATION_BRIDGE_URL: urls["automation-bridge"],
-      AUTOMATION_MACHINE_SUBJECTS: JSON.stringify({ "n8n06-worker": ["WF-04", "WF-05", "WF-06", "WF-07"], "n8n06-adjustment-worker": ["WF-08", "WF-09", "WF-10"] }),
+      AUTOMATION_MACHINE_SUBJECTS: JSON.stringify({ "n8n06-worker": ["WF-04", "WF-05", "WF-06", "WF-07"], "n8n06-adjustment-worker": ["WF-08", "WF-09", "WF-10"], ...(reporting ? { "n8n07-reporting-worker": ["WF-11"] } : {}), ...(operations ? { "n8n07-incident-worker": ["WF-12"] } : {}) }),
       AUTOMATION_BINDINGS: JSON.stringify(bindings), AUTOMATION_EVENT_PATTERNS: JSON.stringify([...new Set([...bindings.map(b => b.eventType), "payment.adjustment_authorized", "enrollment.class_change_resolution"])]),
       AUTH_SECRET: secret(), AUTH_ISSUER: "n8n06-test-identity", AUTH_AUDIENCE: "n8n06-test-services", IDENTITY_URL: urls.identity,
       ORG_URL: urls.org, CATALOG_URL: urls.catalog, CLASS_URL: urls["class-schedule"], CONVERSATION_URL: urls.conversation, CRM_URL: urls.crm, ENROLLMENT_URL: urls.enrollment, PAYMENT_URL: urls.payment, NOTIFICATION_URL: urls.notification, IAM_NOTIFICATION_SECRET: secret(), NOTIFICATION_ADAPTER: "synthetic",
       AI_FREE_MODEL_READY: "false", CHAT_PROVIDER_DATA_POLICY: "blocked", PAYMENT_ADAPTER: "synthetic", SYNTHETIC_PAYMENT_WEBHOOK_SECRET: secret(),
+      ...(reporting ? { REPORTING_URL: urls.reporting, REPORTING_EVENTS_ENABLED: "true" } : {}),
+      ...(erasure ? { WF12_ERASURE_TEST:"true", WF12_BACKUP_REGISTRY:path.join(directory,"backup-registry.json") } : {}),
     };
-    const adminPassword = secret(), operatorEmail = "n8n06-operator@automation.test";
-    await runNode([path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/seed.ts"], { ...hostEnv, DATABASE_URL: domainUrls.identity, SEED_ADMIN_EMAIL: operatorEmail, SEED_ADMIN_PASSWORD: adminPassword }, path.join(root, "services/identity"), "operator-seed.log");
+    const checkout = selfRegistration && { crm: secret(), iam: secret(), payment: secret(), sePaySecret: secret(), account: "0000000000" };
+    const fixture = restore?.operator ?? { email: "n8n06-operator@automation.test", password: secret() };
+    const { email: operatorEmail, password: adminPassword } = fixture;
+    if (!restore) await runNode([path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/seed.ts"], { ...hostEnv, DATABASE_URL: domainUrls.identity, SEED_ADMIN_EMAIL: operatorEmail, SEED_ADMIN_PASSWORD: adminPassword }, path.join(root, "services/identity"), "operator-seed.log");
     await writeFile(path.join(directory, "operator-private.json"), JSON.stringify({ email: operatorEmail, password: adminPassword }), { mode: 0o600 });
     async function startService(service, extra = {}) {
       assert(Object.hasOwn(domainUrls, service) || service === "gateway", "Only this runtime's backend services may start");
       const previous = services.get(service); assert(!previous || previous.exitCode !== null || previous.signalCode !== null, `${service} is already running`);
-      const env = { ...hostEnv, ...runtime, DATABASE_URL: domainUrls[service], PORT: String(ports[service]), ...extra };
+      const registrationEnv = checkout ? {
+        crm: { ENROLLMENT_CRM_SECRET: checkout.crm },
+        identity: { ENROLLMENT_IAM_SECRET: checkout.iam },
+        enrollment: { ENROLLMENT_CRM_SECRET: checkout.crm, ENROLLMENT_IAM_SECRET: checkout.iam, ENROLLMENT_PAYMENT_SECRET: checkout.payment, PAYMENT_ADAPTER: "sepay" },
+        payment: { ENROLLMENT_PAYMENT_SECRET: checkout.payment, PAYMENT_ADAPTER: "sepay", SEPAY_MB_ACCOUNT: checkout.account, SEPAY_WEBHOOK_SECRET: checkout.sePaySecret },
+      }[service] : undefined;
+      const env = { ...hostEnv, ...runtime, ...registrationEnv, DATABASE_URL: domainUrls[service], PORT: String(ports[service]), ...extra };
       const ordinal = evidence.services.filter(s => s.service === service).length + 1;
       const log = `service-${service}-${ordinal}.log`, fd = openSync(path.join(directory, log), "wx");
       let child;
@@ -239,12 +278,12 @@ export async function withN8n06Runtime(run, record, bindings) {
     }
     await startService("identity", { IAM_MACHINE_PRIVATE_KEY_FILE: keyFile, IAM_MACHINE_ISSUER: runtime.AUTOMATION_MACHINE_ISSUER });
     const operator = await iamCall("/api/v1/auth/login", { email: operatorEmail, password: adminPassword });
-    for (const service of ["org", "catalog", "class-schedule", "automation-bridge"]) await startService(service);
+    if (!restore) for (const service of ["org", "catalog", "class-schedule", "automation-bridge"]) await startService(service);
     const loginFixture = email => iamCall("/api/v1/auth/login", { email, password: adminPassword });
-    await run({ root, directory, project, envFile, ports, urls, pool: pools["automation-bridge"], pools, domainUrls, identityDb: domainUrls.identity, iamCall, operator, loginFixture, startService, runtime, backendHost, bridgePort: ports["automation-bridge"], iamPort: ports.identity, orgPort: ports.org, catalogPort: ports.catalog, classesPort: ports["class-schedule"], chatPort: ports.conversation, crmPort: ports.crm, enrollmentPort: ports.enrollment, paymentPort: ports.payment, n8nPort: ports.n8n, compose, cli, sql, runNode, freePort, eventually, children, services, check, createDatabase, hostEnv });
+    await run({ root, directory, project, envFile, ports, urls, pool: pools["automation-bridge"], pools, domainUrls, identityDb: domainUrls.identity, iamCall, operator, loginFixture, startService, runtime, checkout, backendHost, bridgePort: ports["automation-bridge"], iamPort: ports.identity, orgPort: ports.org, catalogPort: ports.catalog, classesPort: ports["class-schedule"], chatPort: ports.conversation, crmPort: ports.crm, enrollmentPort: ports.enrollment, paymentPort: ports.payment, n8nPort: ports.n8n, compose, cli, sql, runNode, freePort, eventually, children, services, check, createDatabase, hostEnv });
     await writeFile(path.join(directory, "database-urls-private.json"), JSON.stringify(domainUrls, null, 2), { mode: 0o600 });
     completed = true; evidence.status = "PASS";
-    for(const [file,expected] of Object.entries(sourceHashes))assert.equal(sha(await readFile(file)),expected,`Source changed during acceptance: ${file}`);
+    for(const [file,expected] of Object.entries({...sourceHashes,[provenanceFile]:provenance.provenanceSha256}))assert.equal(sha(await readFile(file)),expected,`Source changed during acceptance: ${file}`);
   } catch (error) { evidence.status = "FAIL"; evidence.failure = { name: error.name, message: error.message }; throw error; }
   finally {
     const cleanupErrors = [];

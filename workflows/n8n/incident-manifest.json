@@ -1,0 +1,10 @@
+{
+  "id": "N8N07LocalWF12Incidents",
+  "workflowId": "WF-12",
+  "workflowVersion": 1,
+  "canonicalActive": false,
+  "file": "workflows/n8n/wf-12-incidents.json",
+  "sha256": "5ad79a7d67de6c2e0f14da184a56cd97b7b04eeaea8bf0f83a4d75eff5dd86ea",
+  "credentialId": "N8N07LocalWF12IncidentsMachine",
+  "credential": "WF-12-incident-machine"
+}

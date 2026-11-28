@@ -3,8 +3,9 @@ import type { Express } from "express";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { allowRoles, authenticate, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
+import { LearnerMemberships } from "@spacex/contracts";
 import { HttpError } from "@spacex/http";
-import { enqueueEvent } from "@spacex/messaging";
+import { enqueueEvent, enqueueReportingRefresh } from "@spacex/messaging";
 import type { PaymentConfig } from "./app.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,7 +19,6 @@ const AdjustmentSource = z.object({ id: Id, enrollmentId: Id, branchId: Id, type
   source: z.object({ amount: z.coerce.number().int().nonnegative() }).passthrough(), amountDelta: z.number().int(), refundMode: z.enum(["EXCESS", "CANCEL"]).nullable(), policyVersion: z.string(), deadlineAt: z.iso.datetime(), correlationId: z.string(),
   actorId: Id, actorSession: Id, approvedBy: Id.nullable(), approvedSession: Id.nullable(), authorized: z.boolean(), eventId: Id }).passthrough();
 const InvoiceInput = z.object({ enrollmentId: Id, recipientName: z.string().trim().min(2).max(150), address: z.string().trim().min(5).max(255), taxCode: z.string().regex(/^\d{10}(?:-\d{3})?$/).optional() }).strict();
-const LearnerIdentity = z.object({ accountId: Id, learnerId: Id, branchId: Id });
 const InvoiceSource = z.object({ id: Id, learnerId: Id, branchId: Id, paymentRequestId: Id, status: z.literal("CONFIRMED"), currentEntitlement: z.object({ state: z.literal("ACTIVE"), amount: z.number().int().positive() }) });
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]!));
 
@@ -60,10 +60,16 @@ export function registerPaymentAdjustments(app: Express, pool: Pool, auth: AuthC
     await c.query("INSERT INTO payment_audit(id,target_id,actor_id,action,correlation_id) VALUES($1,$2,$3,$4,$5)", [id, r.id, actor, action, r.correlation_id]);
     if (r.version) await c.query("INSERT INTO payment_adjustment_history(id,adjustment_id,version,action,actor_id) VALUES($1,$2,$3,$4,$5)", [id, r.id, r.version, action, actor]);
     await enqueueEvent(c, { id, type: action, version: 1, occurredAt: new Date().toISOString(), correlationId: r.correlation_id, entityId: r.id, ...(r.version ? { entityVersion: r.version } : {}), payload: { paymentAdjustmentId: r.id, action, sourceVersion: r.version ?? 1 } });
+    return id;
   }
   async function change(c: PoolClient, r: Row, actor: string, status: string, receiptId: string | null, errorCode: string | null) {
     const next = (await c.query("UPDATE payment_adjustments SET status=$2,receipt_id=$3,error_code=$4,version=version+1 WHERE id=$1 RETURNING *", [r.id, status, receiptId, errorCode])).rows[0];
-    await audit(c, next, actor, `payment.adjustment_${status.toLowerCase()}`);
+    const eventId = await audit(c, next, actor, `payment.adjustment_${status.toLowerCase()}`);
+    if (config.reportingEnabled && receiptId && (status === "EXECUTED" || status === "REVOKED")) {
+      const {rows} = await c.query<{created_at:Date}>(`SELECT created_at FROM synthetic_payment_executions
+        WHERE adjustment_id=$1 AND direction<>'ZERO' AND (id=$2 OR ($3='REVOKED' AND direction='CHARGE'))`, [r.id,receiptId,status]);
+      await enqueueReportingRefresh(c,rows.map(x=>x.created_at),{id:eventId,correlationId:next.correlation_id});
+    }
     return next;
   }
   async function currentFinancialDecisions(r: Row, token: string, originalRefund: boolean) {
@@ -125,6 +131,7 @@ export function registerPaymentAdjustments(app: Express, pool: Pool, auth: AuthC
       checkBranch(u, source.branchId);
       const pay = (await c.query("SELECT *,clock_timestamp() AS now FROM payment_requests WHERE enrollment_id=$1 FOR UPDATE", [source.enrollmentId])).rows[0];
       if (!pay || pay.branch_id !== source.branchId) throw conflict("PAYMENT_SOURCE_REQUIRED");
+      if (pay.snapshot.paymentAccount) throw conflict("LIVE_ADJUSTMENT_UNAVAILABLE");
       let r = await row(c, id, true);
       if (!r) {
         if (!source.authorized || !["PREPARED", "APPLIED"].includes(source.status) || new Date(source.deadlineAt) <= pay.now) throw conflict("ADJUSTMENT_NOT_AUTHORIZED");
@@ -195,7 +202,22 @@ export function registerPaymentAdjustments(app: Express, pool: Pool, auth: AuthC
     res.json({ data: result });
   });
 
-  async function learner(token: string) { return LearnerIdentity.parse(await read(auth.identityUrl, "/api/v1/auth/learner", token)); }
+  async function learner(token: string) { return LearnerMemberships.parse(await read(auth.identityUrl, "/api/v1/auth/learner", token)); }
+  const owns = (identity: Awaited<ReturnType<typeof learner>>, learnerId: string, branchId: string) =>
+    identity.memberships.some(link => link.learnerId === learnerId && link.branchId === branchId);
+  const invoiceMembers = 'JOIN jsonb_to_recordset($1::jsonb) AS l("learnerId" uuid,"branchId" uuid) ON i.learner_id=l."learnerId" AND i.branch_id=l."branchId"';
+  app.get("/api/v1/student/payments", ...student, async (req, res) => {
+    const token = bearer(req.get("authorization")), identity = await learner(token);
+    const enrollments = z.array(z.object({ id: Id, branchId: Id, learnerId: Id })).parse(
+      await read(config.enrollmentUrl, "/api/v1/student/enrollments", token));
+    if (enrollments.some(e => !owns(identity, e.learnerId, e.branchId))) throw denied();
+    const { rows } = await pool.query(`SELECT a.id,a.enrollment_id AS "enrollmentId",a.status,a.amount_delta::int AS delta,
+      x.id AS "receiptRef",x.direction,x.created_at AS "executedAt"
+      FROM payment_adjustments a LEFT JOIN synthetic_payment_executions x ON x.id=a.receipt_id
+      JOIN jsonb_to_recordset($1::jsonb) AS e(id uuid,"branchId" uuid) ON a.enrollment_id=e.id AND a.branch_id=e."branchId"
+      WHERE a.amount_delta<>0 ORDER BY a.created_at DESC,a.id`, [JSON.stringify(enrollments)]);
+    res.set("cache-control", "no-store").json({ data: rows });
+  });
   async function eligibility(token: string, enrollmentId: string) {
     const result = InvoiceSource.safeParse(await read(config.enrollmentUrl, `/api/v1/student/enrollments/${enrollmentId}`, token));
     if (!result.success) throw conflict("INVOICE_NOT_ELIGIBLE");
@@ -203,24 +225,24 @@ export function registerPaymentAdjustments(app: Express, pool: Pool, auth: AuthC
   }
   app.get("/api/v1/student/invoices", ...student, async (req, res) => {
     const mapping = await learner(bearer(req.get("authorization")));
-    const data = (await pool.query("SELECT id,enrollment_id AS \"enrollmentId\",amount::int,created_at AS \"createdAt\" FROM payment_invoices WHERE learner_id=$1 AND branch_id=$2 ORDER BY created_at DESC LIMIT 100", [mapping.learnerId, mapping.branchId])).rows;
+    const data = (await pool.query(`SELECT i.id,i.enrollment_id AS "enrollmentId",i.amount::int,i.created_at AS "createdAt" FROM payment_invoices i ${invoiceMembers} ORDER BY i.created_at DESC LIMIT 100`, [JSON.stringify(mapping.memberships)])).rows;
     res.set("cache-control", "no-store").json({ data });
   });
   app.post("/api/v1/student/invoices", ...student, async (req, res) => {
     enabled();
     const input = InvoiceInput.parse(req.body), key = Id.parse(req.get("idempotency-key")), token = bearer(req.get("authorization")), identity = await learner(token), source = await eligibility(token, input.enrollmentId);
-    if (source.learnerId !== identity.learnerId || source.branchId !== identity.branchId) throw denied();
+    if (!owns(identity, source.learnerId, source.branchId)) throw denied();
     const result = await tx(async c => {
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended($1,4009))", [`invoice:${identity.accountId}:${key}`]);
       const previous = (await c.query("SELECT *,payload=$3::jsonb AS identical FROM payment_invoices WHERE actor_id=$1 AND operation_key=$2", [identity.accountId, key, input])).rows[0];
       if (previous) { if (!previous.identical) throw conflict("IDEMPOTENCY_MISMATCH"); return previous; }
       const payment = (await c.query("SELECT * FROM payment_requests WHERE id=$1 AND enrollment_id=$2 FOR UPDATE", [source.paymentRequestId, input.enrollmentId])).rows[0];
-      if (!payment || payment.branch_id !== identity.branchId) throw conflict("INVOICE_NOT_ELIGIBLE");
+      if (!payment || payment.branch_id !== source.branchId) throw conflict("INVOICE_NOT_ELIGIBLE");
       const verified = (await c.query("SELECT 1 FROM payment_matches m JOIN payment_allocations a ON a.ledger_id=m.ledger_id AND a.payment_id=m.payment_id WHERE m.payment_id=$1 AND a.amount>=m.amount", [payment.id])).rowCount;
       if (!verified) throw conflict("INVOICE_NOT_ELIGIBLE");
       const fresh = await eligibility(token, input.enrollmentId);
-      if (fresh.currentEntitlement.amount !== source.currentEntitlement.amount || fresh.learnerId !== identity.learnerId || fresh.branchId !== identity.branchId) throw conflict("INVOICE_SOURCE_CHANGED");
-      const invoice = (await c.query("INSERT INTO payment_invoices(id,payment_id,enrollment_id,learner_id,branch_id,actor_id,payload,amount,operation_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *", [randomUUID(), payment.id, source.id, identity.learnerId, identity.branchId, identity.accountId, input, source.currentEntitlement.amount, key])).rows[0];
+      if (fresh.currentEntitlement.amount !== source.currentEntitlement.amount || fresh.learnerId !== source.learnerId || fresh.branchId !== source.branchId) throw conflict("INVOICE_SOURCE_CHANGED");
+      const invoice = (await c.query("INSERT INTO payment_invoices(id,payment_id,enrollment_id,learner_id,branch_id,actor_id,payload,amount,operation_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *", [randomUUID(), payment.id, source.id, source.learnerId, source.branchId, identity.accountId, input, source.currentEntitlement.amount, key])).rows[0];
       await audit(c, { ...invoice, correlation_id: res.locals.correlationId }, identity.accountId, "payment.invoice_created");
       return invoice;
     });
@@ -228,11 +250,11 @@ export function registerPaymentAdjustments(app: Express, pool: Pool, auth: AuthC
   });
   app.get("/api/v1/student/invoices/:id/download", ...student, async (req, res) => {
     const token = bearer(req.get("authorization")), identity = await learner(token);
-    const invoice = (await pool.query("SELECT * FROM payment_invoices WHERE id=$1 AND learner_id=$2 AND branch_id=$3", [Id.parse(req.params.id), identity.learnerId, identity.branchId])).rows[0];
+    const invoice = (await pool.query(`SELECT i.* FROM payment_invoices i ${invoiceMembers} WHERE i.id=$2`, [JSON.stringify(identity.memberships), Id.parse(req.params.id)])).rows[0];
     if (!invoice) throw absent();
     await tx(c => audit(c, { ...invoice, correlation_id: res.locals.correlationId }, identity.accountId, "payment.invoice_downloaded"));
     const details = InvoiceInput.parse(invoice.payload);
     res.set({ "cache-control": "no-store", "content-type": "text/html; charset=utf-8", "content-disposition": `attachment; filename="invoice-${invoice.id}.html"`, "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'" });
-    res.send(`<!doctype html><html lang="vi"><meta charset="utf-8"><title>Hóa đơn mô phỏng</title><h1>MÔ PHỎNG — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ</h1><p>Mã hóa đơn: ${invoice.id}</p><p>Người nhận: ${escape(details.recipientName)}</p><p>Địa chỉ: ${escape(details.address)}</p>${details.taxCode ? `<p>Mã số thuế: ${escape(details.taxCode)}</p>` : ""}<p>Tổng giá trị: ${Number(invoice.amount).toLocaleString("vi-VN")} VND</p></html>`);
+    res.send(`<!doctype html><html lang="vi"><meta charset="utf-8"><title>Hóa đơn mô phỏng · DEMO</title><h1>DEMO · MÔ PHỎNG — KHÔNG CÓ GIÁ TRỊ PHÁP LÝ</h1><p>Mã hóa đơn: ${invoice.id}</p><p>Người nhận: ${escape(details.recipientName)}</p><p>Địa chỉ: ${escape(details.address)}</p>${details.taxCode ? `<p>Mã số thuế: ${escape(details.taxCode)}</p>` : ""}<p>Tổng giá trị: ${Number(invoice.amount).toLocaleString("vi-VN")} VND</p></html>`);
   });
 }

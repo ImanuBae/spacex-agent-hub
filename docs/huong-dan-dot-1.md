@@ -33,12 +33,11 @@ npm run db:migrate --workspace=@spacex/org
 npm run db:seed --workspace=@spacex/org
 npm run db:migrate --workspace=@spacex/catalog
 npm run db:seed --workspace=@spacex/catalog
-npm run dev
 ```
 
 Migration/seed IAM và Org chạy lại an toàn; migration có journal và khóa transaction. Org seed một trung tâm + năm chi nhánh với ID ổn định; seed không ghi đè dữ liệu đã sửa. Không sửa migration sau khi đã triển khai vào DB dùng chung; tạo migration tiếp theo khi đổi schema.
 
-`npm run dev` chạy Portal, IAM, Org, Gateway và Catalog; loại service-template để tránh trùng cổng 4000. Các backend chạy `dist/`, nên sửa TypeScript thì build lại workspace liên quan và khởi động lại nếu cần. Có thể chạy riêng bằng `npm start --workspace=@spacex/identity` và tương tự Org/Gateway/Catalog. Portal production dùng `npm start --workspace=@spacex/admin-portal` sau build, yêu cầu HTTPS để cookie Secure hoạt động trong trình duyệt.
+Sau khi cấu hình các service còn lại, dùng `npm run dev` theo [hướng dẫn chạy toàn bộ dự án](../README.md#chạy-toàn-bộ-dự-án-local). Các backend chạy `dist/`, nên sửa TypeScript thì build lại workspace liên quan và khởi động lại nếu cần. Có thể chạy riêng bằng `npm start --workspace=@spacex/identity` và tương tự Org/Gateway/Catalog. Portal production dùng `npm start --workspace=@spacex/admin-portal` sau build, yêu cầu HTTPS để cookie Secure hoạt động trong trình duyệt.
 
 Mở `/login` và dùng tài khoản seed. Giám đốc vào Tổ chức để cấp account → tạo employee gắn chi nhánh/phòng ban → gán role/phạm vi. Account không phải giám đốc chưa có branch không đăng nhập được. Không có tự đăng ký tài khoản quản trị. UI tự khóa thao tác sửa khóa học cho vai trò không phải giám đốc trung tâm; backend vẫn kiểm lại.
 

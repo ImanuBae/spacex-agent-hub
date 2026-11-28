@@ -484,6 +484,8 @@ flowchart LR
 
 ### WF-11 — Báo cáo, đối soát và nhập dữ liệu
 
+Lát cắt báo cáo local dùng `reporting.refresh_requested` từ outbox Enrollment/Payment. WF‑11 claim qua Bridge, gọi Reporting bằng scope `reporting:project` và ghi kết quả qua lease. Reporting đọc aggregate từ API nguồn với scope riêng, giữ checkpoint event/ngày và dựng lại theo kỳ. Cron đối chiếu ngày hôm trước lúc 02:15 Asia/Saigon. [Manifest inactive](../workflows/n8n/reporting-manifest.json) · [Định nghĩa và bằng chứng](acceptance-portal-wf11.md).
+
 - **Trigger/điều kiện:** event projection đã lưu, cron đối soát ngày theo Asia/Ho_Chi_Minh, import request có batchRef/approved mapping. Reporting sở hữu event store/read model, n8n gọi API project/rebuild/compare, không tự giữ checkpoint duy nhất.
 - **Input → output:** sourceEventRef/checkpoint, reconciliationPeriod hoặc importBatchRef → projection/checkpoint/lag, difference report, batch counts/errors/mapping/rollback result.
 - **API/event:** Reporting ingest/project/rebuild/compare mới; Payment reconciliation/transaction lookup; import dry-run/apply/rollback qua API CRM/Class/Enrollment/Payment tương ứng. Không dùng một SQL node ghi nhiều DB.
@@ -507,6 +509,8 @@ flowchart LR
 - **Nghiệm thu:** U18/U19: nguồn khớp chỉ số/branch/kỳ; hoàn sau kỳ cũ, event lặp/thiếu, rebuild, import lỗi giữa batch, dry-run không ghi nghiệp vụ. Dashboard bỏ mock; fixture có nhãn và mapping.
 
 ### WF-12 — Xóa/ẩn danh, cảnh báo và phục hồi
+
+Hai nhánh WF‑12 có canonical inactive. Hồ sơ local ghi replay có audit qua Portal, restore trên instance sạch và xóa/ẩn danh theo policy demo. [Runbook](runbook-wf12.md) · [Evidence](../workflows/n8n/wf12-evidence.json).
 
 - **Trigger/điều kiện:** CRM erasure đã được quản lý xác minh, retention deadline; Bridge job DEAD/lease quá hạn/health alert hoặc replay operator. Hai nhánh erasure/recovery có scope khác nhau, dùng chung registry/evidence, không dùng quyền xóa để replay.
 - **Input → output:** erasureRef/taskRefs hoặc failedJobRef/reason/operatorRef → kết quả/bằng chứng từng nơi hoặc job recovery receipt có audit; không trả raw payload sự cố ra UI.

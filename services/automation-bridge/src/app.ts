@@ -4,6 +4,12 @@ import { AutomationClaim, AutomationCheckpoint, AutomationResult, AutomationRepl
 import { createApp } from "@spacex/http";
 import { machineAuth, machine, type MachineConfig } from "./auth.js";
 import { BridgeStore, jobView } from "./store.js";
+import { alertIncidents, incidentOwner, listIncidents, readIncident } from "./incidents.js";
+
+const IncidentPage = z.object({
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(20),
+}).strict();
 
 export function createBridgeApp(store: BridgeStore, auth: AuthConfig, machines?: MachineConfig) {
   const worker = (scope: string) => machineAuth(machines, scope, auth.identityUrl);
@@ -40,9 +46,23 @@ export function createBridgeApp(store: BridgeStore, auth: AuthConfig, machines?:
       const row = await store.row(store.pool, jobId); machine(res, row.workflow_id);
       res.json({ data: await iamRequest(auth.identityUrl, "/internal/iam/commands/token", bearer(req.get("authorization")), { jobId, ...input }) });
     });
-    app.post("/api/v1/automation/jobs/:id/replay", authenticate(auth), allowRoles("center_director"), async (req, res) => {
+    app.post("/internal/automation/incidents/alert", worker("automation:incidents"), async (_req, res) => {
+      machine(res, "WF-12");
+      res.json({ data: await alertIncidents(store.pool) });
+    });
+    const operator = [authenticate(auth), allowRoles(incidentOwner)];
+    app.get("/api/v1/automation/incidents", ...operator, async (req, res) => {
+      const { page, pageSize } = IncidentPage.parse(req.query);
+      res.set("Cache-Control", "no-store").json(await listIncidents(store.pool, page, pageSize));
+    });
+    app.get("/api/v1/automation/incidents/:id", ...operator, async (req, res) => {
+      const id = z.uuid().parse(req.params.id);
+      res.set("Cache-Control", "no-store").json({ data: await readIncident(store.pool, id) });
+    });
+    app.post("/api/v1/automation/jobs/:id/replay", ...operator, async (req, res) => {
       const id = z.uuid().parse(req.params.id), input = AutomationReplay.parse(req.body);
-      res.json({ data: await store.replay(id, input, principal(res).sub) });
+      const { jobId, workflowVersion, attempt, status, version } = await store.replay(id, input, principal(res).sub);
+      res.set("Cache-Control", "no-store").json({ data: { jobId, workflowVersion, attempt, status, version } });
     });
   });
 }

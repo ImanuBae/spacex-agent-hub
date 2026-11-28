@@ -14,7 +14,7 @@
     "@spacex/contracts": "*",
     "lenis": "1.3.23",
     "motion": "^14.9.0",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "three": "0.143.0"
@@ -26,7 +26,7 @@
     "@types/react-dom": "^19",
     "@types/three": "0.143.2",
     "eslint": "^9",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

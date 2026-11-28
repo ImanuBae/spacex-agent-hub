@@ -9,6 +9,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
   redis:
     image: redis:7
     ports:
@@ -21,5 +26,25 @@ services:
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_UI_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+  ollama:
+    image: ollama/ollama:0.13.5
+    profiles: ["chat"]
+    environment:
+      OLLAMA_NO_CLOUD: "1"
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
 volumes:
   pgdata:
+  ollama_models:

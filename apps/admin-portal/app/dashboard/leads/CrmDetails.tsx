@@ -1,11 +1,25 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { api, allPages, intentKey, kinds, purposes, erasureStates, services, type PersonView, type ConsentView, type RelationshipView, type ErasureView, type ErasureTaskView } from "../../../lib/services/crm";
 import { dateTime } from "../../../lib/services/classes";
 import { ErrorMessage, Field, OperationDialog } from "../components/OperationUI";
 
 type Detail = { person: PersonView; consents: ConsentView[]; relationships: RelationshipView[]; duplicates: PersonView[] };
 type Action = "CONSENT" | "RELATIONSHIP" | "ERASURE" | RelationshipView;
+const erasureOutcomes: Record<string,string> = {
+  ANONYMIZED:"Đã ẩn danh trong dữ liệu nguồn",
+  NO_SCOPED_DATA:"Dịch vụ đã kiểm tra phạm vi",
+  AGGREGATES_ONLY:"Nguồn chỉ lưu số liệu tổng hợp",
+  RETENTION:"Dữ liệu còn thuộc diện lưu giữ",
+  UNVERIFIED_SCOPE:"Cần xác minh phạm vi tại dịch vụ",
+  SERVICE_UNAVAILABLE:"Dịch vụ chưa ghi được bằng chứng. Sẽ thử lại.",
+  BACKUP_RETENTION:"Bản sao còn trong thời hạn lưu giữ",
+  BACKUP_DISPOSAL_PENDING:"Chờ chứng minh đã xử lý bản sao hết hạn",
+  BACKUP_INVENTORY_REQUIRED:"Chờ đối chiếu danh mục bản sao",
+  NO_SCOPED_BACKUP:"Danh mục đã kiểm không có bản sao thuộc phạm vi",
+  OWNER_REVIEW:"Đang chờ người phụ trách kiểm tra",
+};
 export function PersonDetail({ id, manager, onClose, onEdit, onChanged }: { id: string; manager: boolean; onClose: () => void; onEdit: (person: PersonView) => void; onChanged: () => void }) {
   const [data, setData] = useState<Detail | null>(null), [error, setError] = useState<unknown>(null), [loading, setLoading] = useState(true);
   const [action, setAction] = useState<Action | null>(null);
@@ -22,6 +36,7 @@ export function PersonDetail({ id, manager, onClose, onEdit, onChanged }: { id: 
     <ErrorMessage error={error} retry={() => void load()} />
     {loading ? <p role="status">Đang đọc hồ sơ…</p> : !data || error ? <p>Chưa xác minh được hồ sơ.</p> : <>
       <div className="ops-heading"><div><h2>{data.person.fullName}</h2><p className="muted">{kinds[data.person.kind]} · {data.person.status === "ERASED" ? "Đã ẩn danh" : "Đang hoạt động"}</p></div>{data.person.status === "ACTIVE" && <button onClick={() => onEdit(data.person)}>Sửa hồ sơ</button>}</div>
+      {data.person.kind === "LEARNER" && data.person.status === "ACTIVE" && <Link className="ops-link" onNavigate={onClose} href={`/dashboard/enrollments?learner=${data.person.id}#registrations`}>Đăng ký của học viên</Link>}
       <dl><dt>Điện thoại</dt><dd>{data.person.phone || "—"}</dd><dt>Email</dt><dd>{data.person.email || "—"}</dd><dt>Tiếp nhận</dt><dd>{dateTime(data.person.createdAt)}</dd></dl>
       <p className="crm-note">{data.person.notes || "Chưa có ghi chú."}</p>
       {!!data.duplicates.length && <section className="ops-panel"><h3>Hồ sơ có thông tin liên hệ trùng</h3><p className="muted">Cần kiểm tra riêng; hệ thống giữ nguyên từng hồ sơ.</p>{data.duplicates.map(p => <p key={p.id}>{p.fullName} · {p.phone || p.email}</p>)}</section>}
@@ -97,7 +112,7 @@ export function ErasureDetail({ id, manager, onClose, onChanged }: { id: string;
     const f = new FormData(e.currentTarget); setBusy(true); setError(null);
     try {
       const path = `crm/erasure-requests/${request.id}`;
-      const result = action === "VERIFY" ? await api<ErasureView>(`${path}/decision`, "POST", { version: request.version, decision: f.get("decision"), method: f.get("method"), evidenceRef: f.get("evidenceRef") }) : action === "ANONYMIZE" ? await api<ErasureView>(`${path}/anonymize`, "POST", { version: request.version }) : await api<ErasureView>(`${path}/tasks/${action.service}`, "POST", { version: action.version, status: f.get("status"), evidenceRef: f.get("evidenceRef") });
+      const result = action === "VERIFY" ? await api<ErasureView>(`${path}/decision`, "POST", { version: request.version, decision: f.get("decision"), method: f.get("method"), evidenceRef: f.get("evidenceRef") }) : action === "ANONYMIZE" ? await api<ErasureView>(`${path}/anonymize`, "POST", { version: request.version }) : await api<ErasureView>(`${path}/tasks/${action.service}`, "POST", { version: action.version, status: "BLOCKED", evidenceRef: f.get("evidenceRef") });
       setRequest(result.data); setAction(null); onChanged();
     } catch (e) { setError(e); } finally { setBusy(false); }
   }
@@ -108,13 +123,12 @@ export function ErasureDetail({ id, manager, onClose, onChanged }: { id: string;
       {manager && request.status === "PENDING_VERIFICATION" && <button onClick={() => { setError(null); setAction("VERIFY"); }}>Ghi nhận xác minh</button>}
       {manager && request.status === "VERIFIED" && <button onClick={() => { setError(null); setAction("ANONYMIZE"); }}>Ẩn danh trong CRM</button>}
       <section className="ops-panel"><h3>Tiến độ từng nơi xử lý</h3><p className="muted">Các nơi ngoài CRM cần được kiểm tra và có bằng chứng riêng. Chỉ hoàn tất yêu cầu khi mọi nơi đã được xử lý hoặc xác nhận không có dữ liệu liên quan.</p>
-        {request.tasks.map(task => <div className="crm-consent" key={task.service}><div className="ops-heading"><strong>{services[task.service]}</strong><span className="status">{{ PENDING: "Chờ xử lý", DONE: "Đã xử lý", NOT_APPLICABLE: "Không có dữ liệu liên quan", BLOCKED: "Cần xử lý thêm" }[task.status]}</span></div>{task.evidenceRef && <p className="muted">Tham chiếu: {task.evidenceRef}</p>}{manager && request.status === "PROCESSING" && task.service !== "CRM" && <button onClick={() => { setError(null); setAction(task); }}>Ghi nhận kết quả · {services[task.service]}</button>}</div>)}
+        {request.tasks.map(task => <div className="crm-consent" key={task.service}><div className="ops-heading"><strong>{services[task.service]}</strong><span className="status">{{ PENDING: "Chờ xử lý", DONE: "Đã xử lý", NOT_APPLICABLE: "Không có dữ liệu liên quan", BLOCKED: "Cần xử lý thêm" }[task.status]}</span></div>{task.outcomeCode && <p className="muted">{erasureOutcomes[task.outcomeCode] ?? task.outcomeCode}</p>}{task.evidenceRef && <p className="muted">Tham chiếu: {task.evidenceRef}</p>}{manager && request.status === "PROCESSING" && task.service !== "CRM" && ["PENDING", "BLOCKED"].includes(task.status) && <button onClick={() => { setError(null); setAction(task); }}>Ghi nhận lý do chờ · {services[task.service]}</button>}</div>)}
       </section>
       {action && <OperationDialog title={action === "VERIFY" ? "Xác minh người yêu cầu" : action === "ANONYMIZE" ? "Xác nhận ẩn danh hồ sơ" : `Kết quả xử lý · ${services[action.service]}`} onClose={() => { if (!busy) setAction(null); }}>
         <p><strong>{request.personName}</strong></p><form className="ops-form" onSubmit={e => void submit(e)}>
           {action === "VERIFY" && <><Field name="decision" label="Kết quả"><select id="decision" name="decision"><option value="VERIFIED">Đã xác minh người yêu cầu</option><option value="REJECTED">Từ chối yêu cầu</option></select></Field><Field name="method" label="Cách xác minh"><select id="method" name="method"><option value="REGISTERED_CONTACT_CALLBACK">Liên hệ lại qua thông tin đã đăng ký</option><option value="IN_PERSON_CHECK">Kiểm tra trực tiếp</option><option value="VERIFIED_REPRESENTATIVE">Người đại diện đã được xác minh</option></select></Field></>}
           {action === "ANONYMIZE" ? <div className="span"><p>Họ tên, điện thoại, email và ghi chú của hồ sơ này sẽ được ẩn danh; các lead liên quan sẽ đóng. Các nơi khác tiếp tục được theo dõi riêng.</p><label className="crm-check"><input type="checkbox" required />Tôi xác nhận đã kiểm tra yêu cầu và đúng hồ sơ cần ẩn danh.</label></div> : <>
-            {typeof action === "object" && <Field name="task-status" label="Kết quả đã kiểm tra"><select id="task-status" name="status"><option value="BLOCKED">Cần xử lý thêm</option><option value="DONE">Đã xử lý, có bằng chứng</option><option value="NOT_APPLICABLE">Đã kiểm tra, không có dữ liệu liên quan</option></select></Field>}
             <Field name="evidenceRef" label="Mã biên bản / bằng chứng xử lý"><input id="evidenceRef" name="evidenceRef" required maxLength={100} /></Field>
           </>}
           <div className="span"><ErrorMessage error={error} /><div className="ops-actions"><button type="button" disabled={busy} onClick={() => setAction(null)}>Đóng</button><button className="primary" disabled={busy}>{busy ? "Đang xử lý…" : "Xác nhận"}</button></div></div>

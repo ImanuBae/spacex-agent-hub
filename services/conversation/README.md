@@ -1,4 +1,15 @@
-# Conversation / web Channel — N8N-04 local slice
+# Conversation / web Channel
+
+## Local AI with the root dev command
+
+`npm run dev` starts Ollama and enables local course advice. Qwen3 matches the
+question to a course from the public Catalog. Conversation assembles fees,
+package links and open schedules from the public Catalog and Class APIs.
+Waiting turns are stored in PostgreSQL and checked against the current session
+and conversation version before delivery. Unassigned sessions previously blocked
+by provider policy or a missing key can resume automatically.
+
+## N8N-04 external provider
 
 Status: **SYNTHETIC TEST ONLY**; the current agent decision and acceptance are in
 [the N8N-03/04 matrix](../../docs/acceptance-n8n-03-04.md). Provider export is
@@ -19,7 +30,7 @@ Create a dedicated DB/user, revoke PUBLIC CONNECT and grant no access to other s
 Run `node ../../node_modules/tsx/dist/cli.mjs src/migrate.ts` from this service with its
 own `DATABASE_URL`; migration is transactional/versioned and can be rerun.
 Build from root with `npm run check`, then start `node dist/index.js` from this directory
-with the explicit process environment. Default root dev excludes this optional service.
+with the explicit process environment to run this configuration independently.
 
 Configure IAM `CONVERSATION_URL` to this service and Gateway `CONVERSATION_URL` likewise.
 IAM alone holds the signing private key. Provision a dedicated `channel-source` principal:
@@ -87,9 +98,10 @@ prose. Unknown/missing values and every non-test environment remain blocked. Thi
 an operator declaration about the entire isolated dataset, not a PII classifier;
 never connect this deployment to customer ingress or real Catalog data. There is no
 customer-data approval mode in this implementation. `AI_FREE_MODEL_READY=true` alone
-does not open the gate. `/turn` returns empty messages and `DATA_POLICY_BLOCKED`, and
-WF-02 durably hands off to HUMAN without running either model node. Successful
-drafts are also rejected by the backend if the gate is closed.
+does not open the gate. With the gate closed, the first guest message commits HUMAN
+mode and a handoff event atomically. WF-01 observes the inbound event and WF-03 observes
+the handoff. In-flight WF-02 requests still receive `DATA_POLICY_BLOCKED` and an empty
+turn. The backend rejects successful AI drafts and staff release to AI while the gate is closed.
 
 Turn admission locks session then conversation, rechecks context/version/lease and
 excludes STAFF text. WF-02 repeats admission before its second model call; tool errors

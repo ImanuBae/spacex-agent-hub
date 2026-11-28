@@ -4,7 +4,7 @@ import { connectBroker, dispatchOutbox } from "@spacex/messaging";
 import { createEnrollmentApp } from "./app.js";
 const required=(name:string)=>{const value=process.env[name];if(!value)throw new Error(name+" required");return value;};
 const pool=new pg.Pool({connectionString:required("DATABASE_URL"),connectionTimeoutMillis:5000});
-const server=createEnrollmentApp(pool,authConfig(),{catalogUrl: required("CATALOG_URL"), classUrl: required("CLASS_URL"), crmUrl: required("CRM_URL"), paymentUrl: required("PAYMENT_URL"), sourceClientId: required("SOURCE_CLIENT_ID"), sourceClientSecret: required("SOURCE_CLIENT_SECRET"), notificationUrl: process.env.NOTIFICATION_URL}).listen(Number(process.env.PORT??4008),process.env.HOST??"127.0.0.1");
+const server=createEnrollmentApp(pool,authConfig(),{catalogUrl: required("CATALOG_URL"), classUrl: required("CLASS_URL"), crmUrl: required("CRM_URL"), paymentUrl: required("PAYMENT_URL"), sourceClientId: required("SOURCE_CLIENT_ID"), sourceClientSecret: required("SOURCE_CLIENT_SECRET"), notificationUrl: process.env.NOTIFICATION_URL, selfRegistrationCrmSecret: process.env.ENROLLMENT_CRM_SECRET, selfRegistrationIamSecret: process.env.ENROLLMENT_IAM_SECRET, selfRegistrationPaymentSecret: process.env.ENROLLMENT_PAYMENT_SECRET, reportingEnabled:process.env.REPORTING_EVENTS_ENABLED==="true", bankTransfer: process.env.PAYMENT_ADAPTER==="sepay"}).listen(Number(process.env.PORT??4008),process.env.HOST??"127.0.0.1");
 let broker:Awaited<ReturnType<typeof connectBroker>>|undefined,working=false;
 async function tick(){if(working||!process.env.RABBITMQ_URL)return;working=true;try{
  if(broker&&!broker.connected){await broker.close();broker=undefined;}

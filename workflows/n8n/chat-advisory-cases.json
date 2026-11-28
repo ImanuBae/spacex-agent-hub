@@ -1,0 +1,6 @@
+[
+  { "id": "VI-11", "input": "Tôi muốn nói chuyện với nhân viên tư vấn.", "expected": "Handoff HUMAN qua WF-03, không gọi provider." },
+  { "id": "VI-12", "input": "Khóa Python cơ bản học những nội dung gì?", "expected": "Dựa trên mô tả Catalog để nêu biến, vòng lặp, hàm và đọc CSV. Dẫn tới gói Python cơ bản." },
+  { "id": "VI-13", "input": "Học phí gói Python cơ bản 8 buổi là bao nhiêu?", "expected": "Giá gói 1.800.000 đồng từ Catalog, có liên kết tới gói Python cơ bản." },
+  { "id": "VI-14", "input": "Lớp SQL thực hành nào đang mở, khai giảng khi nào và còn mấy chỗ?", "expected": "Tên lớp, lịch và 10 chỗ còn từ Class. Dẫn tới gói SQL thực hành." }
+]

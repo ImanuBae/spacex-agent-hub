@@ -3,7 +3,7 @@ import type { Express } from "express";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { authenticate, allowRoles, principal, bearer, checkBranch, iamRequest, verifyCommand, type AuthConfig, type Principal } from "@spacex/auth";
-import { MachineClaims } from "@spacex/contracts";
+import { LearnerMemberships, MachineClaims } from "@spacex/contracts";
 import { HttpError } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
 import type { EnrollmentConfig } from "./app.js";
@@ -27,7 +27,9 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
   async function tx<T>(work: (c: PoolClient) => Promise<T>) { const c = await pool.connect(); try { await c.query("BEGIN"); await c.query("SET LOCAL lock_timeout='5s'"); const result = await work(c); await c.query("COMMIT"); return result; } catch (error) { await c.query("ROLLBACK"); if ((error as { code?: string }).code === "23505") throw conflict("ACTIVE_ADJUSTMENT_CONFLICT"); throw error; } finally { c.release(); } }
   async function api(base: string, path: string, token: string): Promise<Row> { let r: Response; try { r = await fetch(base + path, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(4000), redirect: "error" }); } catch { throw new HttpError(503, "SOURCE_UNAVAILABLE", "Adjustment source unavailable"); } if (!r.ok) throw new HttpError([401, 403, 404, 409].includes(r.status) ? r.status : 503, "SOURCE_DENIED", "Adjustment source denied"); return (await r.json() as { data: Row }).data; }
   async function live(token: string) { await iamRequest(auth.identityUrl, "/api/v1/auth/introspect", token, {}); }
-  async function learner(token: string) { return api(auth.identityUrl, "/api/v1/auth/learner", token); }
+  async function learner(token: string) { return LearnerMemberships.parse(await api(auth.identityUrl, "/api/v1/auth/learner", token)); }
+  const owns = (identity: Awaited<ReturnType<typeof learner>>, row: Row) => identity.memberships.some(p => p.learnerId === row.learner_id && p.branchId === row.branch_id);
+  const memberRows = 'JOIN jsonb_to_recordset($1::jsonb) AS l("learnerId" uuid,"branchId" uuid) ON r.learner_id=l."learnerId" AND r.branch_id=l."branchId"';
   async function effective(c: Pool | PoolClient, id: string, lock = false) {
     const e = (await c.query(`SELECT *,clock_timestamp() AS now FROM enrollments WHERE id=$1 ${lock ? "FOR UPDATE" : ""}`, [id])).rows[0];
     if (!e) throw new HttpError(404, "NOT_FOUND", "Enrollment not found");
@@ -49,7 +51,7 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
     if (!r.approved_by || r.approved_by === r.actor_id || (requireChoice && (!r.choice_by || r.choice_version !== r.source_version))) throw conflict("DECISION_REQUIRED");
     await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: r.approved_by, sessionId: r.approved_session, branchId: r.branch_id, role: "director" });
     if (r.kind === "REFUND") await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: r.actor_id, sessionId: r.actor_session, branchId: r.branch_id, role: "accountant" });
-    if (requireChoice) { const p = await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: r.choice_by, sessionId: r.choice_session, branchId: r.branch_id, role: "student" }) as Row; if (p.learnerId !== r.learner_id) throw denied(); }
+    if (requireChoice) { const p = await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: r.choice_by, sessionId: r.choice_session, branchId: r.branch_id, role: "student", learnerId: r.learner_id }) as Row; if (p.learnerId !== r.learner_id) throw denied(); }
   }
   async function emit(c: PoolClient, r: Row) {
     const eventId = randomUUID(), entity = { type: "adjustment", id: r.id, version: r.version };
@@ -119,10 +121,10 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
       await live(token); await history(c, r, u.sub, `adjustment.${action}`); if (r.choice_at && action === "approve") await emit(c, r); return r;
     }); res.json({ data: view(r) });
   });
-  app.get("/api/v1/student/adjustments", ...student, async (req, res) => { const p = await learner(bearer(req.get("authorization"))); res.json({ data: (await pool.query("SELECT * FROM enrollment_adjustments WHERE learner_id=$1 AND branch_id=$2 ORDER BY created_at DESC LIMIT 100", [p.learnerId, p.branchId])).rows.map(view) }); });
+  app.get("/api/v1/student/adjustments", ...student, async (req, res) => { const p = await learner(bearer(req.get("authorization"))); res.json({ data: (await pool.query(`SELECT r.* FROM enrollment_adjustments r ${memberRows} ORDER BY r.created_at DESC LIMIT 100`, [JSON.stringify(p.memberships)])).rows.map(view) }); });
   app.post("/api/v1/adjustments/:id/choice", ...student, async (req, res) => {
     const input = z.object({ version: z.number().int().positive(), accepted: z.literal(true) }).strict().parse(req.body), token = bearer(req.get("authorization")), u = principal(res), p = await learner(token), id = uuid.parse(req.params.id);
-    const r = await tx(async c => { let r = await get(c, id, true); if (r.learner_id !== p.learnerId || r.branch_id !== p.branchId) throw denied(); if (r.kind === "WAITLIST" || r.version !== input.version || r.choice_at || !["REQUESTED", "APPROVED"].includes(r.state) || r.deadline_at <= r.now) throw conflict("CHOICE_EXPIRED"); await live(token); r = (await c.query("UPDATE enrollment_adjustments SET choice_by=$2,choice_session=$3,choice_version=source_version,choice_at=clock_timestamp(),version=version+1 WHERE id=$1 RETURNING *", [id, u.sub, u.sid])).rows[0]; await history(c, r, u.sub, "adjustment.choice"); if (r.approved_by) await emit(c, r); return r; }); res.json({ data: view(r) });
+    const r = await tx(async c => { let r = await get(c, id, true); if (!owns(p, r)) throw denied(); if (r.kind === "WAITLIST" || r.version !== input.version || r.choice_at || !["REQUESTED", "APPROVED"].includes(r.state) || r.deadline_at <= r.now) throw conflict("CHOICE_EXPIRED"); await live(token); r = (await c.query("UPDATE enrollment_adjustments SET choice_by=$2,choice_session=$3,choice_version=source_version,choice_at=clock_timestamp(),version=version+1 WHERE id=$1 RETURNING *", [id, u.sub, u.sid])).rows[0]; await history(c, r, u.sub, "adjustment.choice"); if (r.approved_by) await emit(c, r); return r; }); res.json({ data: view(r) });
   });
   function waitlistView(r: Row) {
     return { id: r.id, enrollmentId: r.enrollment_id, learnerId: r.learner_id, branchId: r.branch_id, classId: r.class_id, packageId: r.package_id,
@@ -147,7 +149,7 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
     res.json({ data: rows.map(waitlistView) });
   });
   app.get("/api/v1/student/waitlist", ...student, async (req, res) => {
-    const p = await learner(bearer(req.get("authorization"))), rows = (await pool.query("SELECT *,clock_timestamp() AS now FROM enrollment_waitlist WHERE learner_id=$1 AND branch_id=$2 ORDER BY created_at DESC,id LIMIT 100", [p.learnerId, p.branchId])).rows;
+    const p = await learner(bearer(req.get("authorization"))), rows = (await pool.query(`SELECT r.*,clock_timestamp() AS now FROM enrollment_waitlist r ${memberRows} ORDER BY r.created_at DESC,r.id LIMIT 100`, [JSON.stringify(p.memberships)])).rows;
     res.set("cache-control", "no-store").json({ data: rows.map(waitlistView) });
   });
   app.post("/api/v1/waitlist", ...schedulingStaff, async (req, res) => {
@@ -195,7 +197,7 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
       const id = uuid.parse(req.params.id), input = versionInput.parse(req.body), token = bearer(req.get("authorization")), u = principal(res);
       const r = await tx(async c => {
         const entry = await waitlistEntry(c, id); checkBranch(u, entry.branch_id);
-        if (action !== "revoke") { const p = await learner(token); if (p.learnerId !== entry.learner_id) throw denied(); }
+        if (action !== "revoke") { const p = await learner(token); if (!owns(p, entry)) throw denied(); }
         if (action === "revoke" && entry.status === "WAITING" && entry.version === input.version) {
           const { enrollment } = await effective(c, entry.enrollment_id, true);
           await live(token);
@@ -225,16 +227,18 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
       res.json({ data: waitlistView(r) });
     });
   }
-  async function studentEnrollment(id: string, token: string, p?: Row) {
+  async function studentEnrollment(id: string, token: string, p?: Awaited<ReturnType<typeof learner>>) {
     const identity = p ?? await learner(token), { enrollment: e, entitlement: t } = await effective(pool, id);
-    if (e.learner_id !== identity.learnerId || e.branch_id !== identity.branchId) throw denied();
-    const { courseId, classId, packageId, amountDue, currency, termsVersion, terms } = e.snapshot;
-    return { id: e.id, status: e.status, version: e.version, branchId: e.branch_id, learnerId: e.learner_id, paymentRequestId: e.payment_id, snapshot: { courseId, classId, packageId, amountDue, currency, termsVersion, terms }, currentEntitlement: { classId: t.class_id, seatId: t.seat_id, holdId: t.hold_id, packageId: t.package_id, state: t.state === "SUSPENDED" && t.expires_at <= e.now ? "EXPIRED" : t.state, amount: Number(t.amount), remainingSessions: t.remaining_sessions, version: t.version, expiresAt: t.expires_at } };
+    if (!owns(identity, e)) throw denied();
+    const { classId, packageId, amountDue, currency, termsVersion, terms } = e.snapshot;
+    const courseId = e.snapshot.quote.courseId;
+    return { id: e.id, status: e.status, version: e.version, branchId: e.branch_id, learnerId: e.learner_id, paymentRequestId: e.payment_id, snapshot: { courseId, classId, packageId, amountDue, currency, termsVersion, terms, packageName: e.snapshot.packageName, className: e.snapshot.className }, currentEntitlement: { classId: t.class_id, seatId: t.seat_id, holdId: t.hold_id, packageId: t.package_id, state: t.state === "SUSPENDED" && t.expires_at <= e.now ? "EXPIRED" : t.state, amount: Number(t.amount), remainingSessions: t.remaining_sessions, version: t.version, expiresAt: t.expires_at } };
   }
-  app.get("/api/v1/student/enrollments", ...student, async (req, res) => { const token = bearer(req.get("authorization")), p = await learner(token), rows = (await pool.query("SELECT id FROM enrollments WHERE learner_id=$1 AND branch_id=$2 ORDER BY created_at DESC LIMIT 100", [p.learnerId, p.branchId])).rows; res.set("cache-control", "no-store").json({ data: await Promise.all(rows.map(r => studentEnrollment(r.id, token, p))) }); });
+  app.get("/api/v1/student/enrollments", ...student, async (req, res) => { const token = bearer(req.get("authorization")), p = await learner(token), rows = (await pool.query(`SELECT r.id FROM enrollments r ${memberRows} ORDER BY r.created_at DESC LIMIT 100`, [JSON.stringify(p.memberships)])).rows; res.set("cache-control", "no-store").json({ data: await Promise.all(rows.map(r => studentEnrollment(r.id, token, p))) }); });
   app.get("/api/v1/student/enrollments/:id", ...student, async (req, res) => { res.json({ data: await studentEnrollment(uuid.parse(req.params.id), bearer(req.get("authorization"))) }); });
-  app.get("/api/v1/enrollments/:id/entitlement", ...schedulingStaff, async (req, res) => {
-    const { enrollment: e, entitlement: t } = await effective(pool, uuid.parse(req.params.id)); checkBranch(principal(res), e.branch_id);
+  app.get("/api/v1/enrollments/:id/entitlement", ...staff, async (req, res) => {
+    const u = principal(res), { enrollment: e, entitlement: t } = await effective(pool, uuid.parse(req.params.id));
+    checkBranch(u, e.branch_id); if (u.role === "admissions" && e.actor_id !== u.sub) throw denied();
     res.json({ data: { id: e.id, branchId: e.branch_id, learnerId: e.learner_id, sourceVersion: e.version, state: t.state === "SUSPENDED" && t.expires_at <= e.now ? "EXPIRED" : t.state, classId: t.class_id, seatId: t.seat_id, holdId: t.hold_id, version: t.version } });
   });
   app.get("/internal/enrollment/adjustments/:id", async (req, res) => { const id = uuid.parse(req.params.id), u = await bound(bearer(req.get("authorization")), id), r = await get(pool, id); checkBranch(u, r.branch_id); res.json({ data: view(r) }); });
@@ -358,7 +362,7 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
       const choice = (await pool.query("SELECT * FROM enrollment_schedule_choices WHERE change_id=$1 AND enrollment_id=$2 AND change_version=$3 AND source_version=$4", [id, r.id, change.version, r.version])).rows[0];
       let choiceValid = false;
       if (choice) {
-        try { const p = await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: choice.actor_id, sessionId: choice.session_id, branchId: r.branch_id, role: "student" }) as Row; choiceValid = p.learnerId === r.learner_id; }
+        try { const p = await iamRequest(auth.identityUrl, "/internal/iam/commands/stored-session", token, { accountId: choice.actor_id, sessionId: choice.session_id, branchId: r.branch_id, role: "student", learnerId: r.learner_id }) as Row; choiceValid = p.learnerId === r.learner_id; }
         catch (error) { if (!(error instanceof HttpError) || ![401, 403].includes(error.status)) throw error; }
       }
       result.push({ enrollmentId: r.id, version: r.version, state: r.state, seatId: r.seat_id, resolutionRef: r.adjustment_id, choiceValid, resolved: false });
@@ -374,6 +378,6 @@ export function registerAdjustments(app: Express, pool: Pool, auth: AuthConfig, 
   app.get("/internal/enrollment/notifications/:id", async (req, res) => {
     const id = uuid.parse(req.params.id), token = bearer(req.get("authorization")), u = await verifyCommand(auth, token, "notification", "notification:deliver"); if (u.delegation?.entity?.id !== id || u.delegation.workflowId !== "WF-10" || !config.notificationUrl) throw denied();
     const intent = await api(config.notificationUrl, `/internal/notification/intents/${id}/authority`, token), { enrollment: e, entitlement: t } = await effective(pool, uuid.parse(intent.enrollmentId ?? intent.sourceId)); checkBranch(u, e.branch_id);
-    res.json({ data: { valid: e.status === "CONFIRMED" && t.state === "ACTIVE" && intent.recipientRef === e.learner_id && intent.branchId === e.branch_id, branchId: e.branch_id, learnerId: e.learner_id, sourceVersion: e.version, entitlementVersion: t.version, classId: t.class_id, holdId: t.hold_id, seatId: t.seat_id, committed: e.status === "CONFIRMED" && t.state === "ACTIVE", historicallyConfirmed: e.status === "CONFIRMED" && !!e.match_ref && !!e.hold_id } });
+    res.json({ data: { valid: e.status === "CONFIRMED" && t.state === "ACTIVE" && intent.recipientRef === e.learner_id && intent.branchId === e.branch_id, branchId: e.branch_id, learnerId: e.learner_id, sourceVersion: e.version, entitlementVersion: t.version, classId: t.class_id, holdId: t.hold_id, seatId: t.seat_id, committed: e.status === "CONFIRMED" && t.state === "ACTIVE", historicallyConfirmed: e.status === "CONFIRMED" && !!e.match_ref && !!e.hold_id, selfRegistration: e.snapshot.selfRegistration === true } });
   });
 }

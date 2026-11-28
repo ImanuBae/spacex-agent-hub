@@ -30,7 +30,7 @@ const target = (operation: string) => operation === "catalog.read"
 const registrationOperations = ["enrollment.execute", "payment.execute", "classes.enroll"];
 const adjustmentOperations = ["enrollment.adjust", "payment.refund", "classes.adjust"];
 const newOperations = ["classes.change", ...adjustmentOperations, "notification.deliver"];
-const sourceWorkflows: Record<string, string[]> = { enrollment: ["WF-07", "WF-09"], payment: ["WF-06", "WF-07", "WF-09"], "class-schedule": ["WF-08"], notification: ["WF-10"] };
+const sourceWorkflows: Record<string, string[]> = { enrollment: ["WF-05", "WF-07", "WF-09"], payment: ["WF-06", "WF-07", "WF-09"], "class-schedule": ["WF-08"], notification: ["WF-10"] };
 function allowedNewHumanDelegation(input: z.infer<typeof DelegationInput>, role: Role) {
   if (!input.operations.some(operation => newOperations.includes(operation))) return true;
   if (input.workflowVersion !== 1 || input.inputRef !== input.entity.id) return false;
@@ -181,8 +181,17 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     configured(); const input = MachineTokenInput.parse(req.body), c = await client(input.clientId);
     if (!await verifyPassword(input.clientSecret, c.secret_hash)) throw invalid();
     grant(c, input.audience, input.scopes, input.workflows);
+    if (input.scopes.includes("automation:incidents") && (input.audience !== "automation-bridge" ||
+      input.scopes.length !== 1 || input.workflows.some(w => w !== "WF-12"))) throw denied();
+    const erasure = input.audience === "crm" && input.scopes.length === 1 && input.scopes[0] === "erasure:process" &&
+      input.workflows.every(w => w === "WF-12");
+    if (input.scopes.includes("erasure:process") && !erasure) throw denied();
     const source = input.scopes.every(s => s === "automation:source") && input.workflows.every(w => sourceWorkflows[input.audience]?.includes(w));
-    if (input.audience !== "automation-bridge" && !source && !(input.audience === "conversation" && input.scopes.every(s => s === "channel:context") && input.workflows.every(w => w === "WF-02"))) throw denied();
+    const reporting = input.workflows.every(w => w === "WF-11") && (
+      input.audience === "reporting" && input.scopes.every(s => s === "reporting:project") ||
+      ["enrollment", "payment"].includes(input.audience) && input.scopes.every(s => s === "reporting:source")
+    );
+    if (input.audience !== "automation-bridge" && !source && !reporting && !erasure && !(input.audience === "conversation" && input.scopes.every(s => s === "channel:context") && input.workflows.every(w => w === "WF-02"))) throw denied();
     res.json({ data: { accessToken: await sign(c, input.audience, input.scopes, input.workflows, input.ttlSeconds), expiresIn: input.ttlSeconds } });
   });
   app.post("/internal/iam/machine/introspect", async (req, res) => {
@@ -284,22 +293,22 @@ export function registerMachineRoutes(app: Express, pool: Pool, live: (token: st
     if (JSON.stringify(await binding(probe, b)) !== JSON.stringify(b)) throw denied();
     return delegation(b);
   }
-  async function storedSession(accountId: string, sessionId: string, branchId: string, role: "student" | "accountant" | "director") {
+  async function storedSession(accountId: string, sessionId: string, branchId: string, role: "student" | "accountant" | "director", learnerId?: string) {
     const roles = role === "director" ? ["center_director", "branch_director"] : [role];
     const row = (await pool.query(`SELECT a.id,l.learner_id FROM accounts a JOIN sessions s ON s.account_id=a.id
-      LEFT JOIN learner_identities l ON l.account_id=a.id AND l.branch_id=$3
+      LEFT JOIN learner_identities l ON l.account_id=a.id AND l.branch_id=$3 AND ($5::uuid IS NULL OR l.learner_id=$5)
       WHERE a.id=$1 AND s.id=$2 AND a.active=true AND a.role=ANY($4::text[])
       AND (a.role='center_director' OR $3=ANY(a.branch_ids))
-      AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()`, [accountId, sessionId, branchId, roles])).rows[0];
+      AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp() ORDER BY l.created_at,l.learner_id LIMIT 1`, [accountId, sessionId, branchId, roles, learnerId ?? null])).rows[0];
     if (!row || (role === "student" && !row.learner_id)) throw denied();
     return row;
   }
   app.post("/internal/iam/commands/stored-session", async (req, res) => {
-    const input = z.object({ accountId: z.uuid(), sessionId: z.uuid(), branchId: z.uuid(), role: z.enum(["student", "accountant", "director"]) }).strict().parse(req.body);
+    const input = z.object({ accountId: z.uuid(), sessionId: z.uuid(), branchId: z.uuid(), role: z.enum(["student", "accountant", "director"]), learnerId: z.uuid().optional() }).strict().parse(req.body);
     const user = await currentCommand(bearer(req.get("authorization")));
     const { workflowId } = user.delegation;
     if (input.branchId !== user.delegation.branchId || !(workflowId === "WF-09" || workflowId === "WF-08" && input.role === "student")) throw denied();
-    const row = await storedSession(input.accountId, input.sessionId, input.branchId, input.role);
+    const row = await storedSession(input.accountId, input.sessionId, input.branchId, input.role, input.learnerId);
     res.json({ data: { allowed: true, ...(row.learner_id ? { learnerId: row.learner_id } : {}) } });
   });
   app.post("/internal/iam/financial-proposal-session", async (req, res) => {

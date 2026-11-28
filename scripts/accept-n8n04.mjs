@@ -82,7 +82,8 @@ try {
         const decision = run("Clarification decision", { data: { providerAllowed: true, modelReady: true, messages: [{ sender: "GUEST", text: test.input }] } });
         assert.equal(condition("Needs clarification", decision), true);
         const allow = run("Tool allowlist", run("Clarification tool plan", {})); assert.equal(allow.allowed, true);
-        const sources = run("Sources", {}, () => ({ first: () => ({ json: { data: [] } }) }));
+        const sources = run("Sources", {}, name => ({ first: () => ({ json: { data: name === "Class list" ? [] :
+          name === "Catalog courses" ? policySources.courses : policySources.packages } }) }));
         const lookup = name => ({ isExecuted: true, first: () => ({ json: name === "Job" ? { startedAt: Date.now(), jobId: "00000000-0000-4000-8000-000000000001", leaseToken: "00000000-0000-4000-8000-000000000002", attempt: 1 } : name === "Clarification decision" ? decision : name === "Sources" ? sources : allow }) });
         draft = run("Draft", run("Clarification answer", {}), lookup);
         assert.equal(draft.text, clarificationText); assert.equal(draft.model, clarificationModel); assert.equal(draft.sources.length, 3);

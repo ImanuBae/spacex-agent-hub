@@ -131,7 +131,7 @@ try {
       { ...hostEnv, DATABASE_URL: url }, path.join(root, "services", service), `${service}-migration.log`);
   }
   pool = new pg.Pool({ connectionString: dbUrl });
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n, 1);
+  assert.deepEqual((await pool.query("SELECT version FROM schema_migrations ORDER BY version")).rows.map(row => row.version), ["0001", "0002"]);
   const denied = new URL(identityUrl); denied.username = "bridge_test"; denied.password = bridgePassword;
   const other = new pg.Pool({ connectionString: denied.toString() });
   try { await assert.rejects(other.query("SELECT 1")); } finally { await other.end(); }

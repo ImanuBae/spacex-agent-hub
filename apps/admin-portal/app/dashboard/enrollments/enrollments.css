@@ -28,18 +28,40 @@
   overflow-wrap: anywhere;
 }
 .enrollment-payment {
-  border-top: 1px solid var(--hub-line);
-  padding-top: 12px;
+  background: var(--hub-bg);
+  padding: 16px;
   margin: 16px 0;
-}
-.enrollment-qr {
-  display: block;
+  border-radius: 6px;
   overflow-wrap: anywhere;
-  font-size: 12px;
+}
+.enrollment-payment .enrollment-payment-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
   margin: 12px 0;
+}
+.enrollment-payment dt { color: var(--hub-muted); font-size: 13px; }
+.ops .enrollment-payment dd { margin: 2px 0 0; font-weight: 600; text-align: left; }
+.enrollment-amount { font-size: 22px; font-variant-numeric: tabular-nums; }
+.enrollment-reference { grid-column: 1 / -1; }
+.enrollment-payment figure { margin: 16px 0 0; }
+.enrollment-payment img { display: block; max-width: 100%; height: auto; }
+.enrollment-payment figcaption { margin-top: 8px; }
+.enrollment-offer { margin-bottom: 16px; }
+@media (max-width: 480px) {
+  .enrollment-payment .enrollment-payment-facts { grid-template-columns: minmax(0, 1fr); }
 }
 .enrollment-result .ops-actions {
   margin: 16px 0;
+}
+.enrollment-list .enrollment-small { display: none; }
+@media (max-width: 640px) {
+  .enrollment-list { table-layout: fixed; }
+  .enrollment-list .enrollment-wide { display: none; }
+  .enrollment-list .enrollment-small { display: inline-block; white-space: normal; }
+  .enrollment-list :is(th, td):last-child { width: 128px; padding-inline: 4px; }
+  .enrollment-list td { overflow-wrap: anywhere; }
+  .enrollment-list td button { padding-inline: 8px; white-space: normal; }
 }
 @media (max-width: 1100px) {
   .enrollment-workspace {

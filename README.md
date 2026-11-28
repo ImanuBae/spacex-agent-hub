@@ -59,26 +59,36 @@ Lệnh demo yêu cầu RabbitMQ đang chạy; điều chỉnh `RABBITMQ_URL` tro
 - [Kết quả triển khai và kiểm chứng đợt 1](docs/ban-giao-dot-1.md).
 - [Bằng chứng nghiệm thu Portal/Catalog ngày 26/10/2026](docs/nghiem-thu-sau-fix-2026-10-26.md).
 
-## Chạy Portal, IAM, Org, Gateway và Catalog
+## Chạy toàn bộ dự án local
 
 Chỉ chạy một stack tại một thời điểm: `npm run dev` hoặc `npm run demo:class`.
 Nếu Next báo `Another next dev server is already running`, dừng terminal/tiến trình
 đang chạy checkout này trước khi khởi động lại; không xóa `.next/dev/lock` khi server còn sống.
 
-1. Bật PostgreSQL; chuẩn bị `.env` riêng của IAM/Org/Catalog/Gateway theo
-   [hướng dẫn đợt 1](docs/huong-dan-dot-1.md). Cấu hình AUTH_SECRET chung,
-   DATABASE_URL riêng và tài khoản admin seed; không ghi đè `.env` cá nhân.
-2. Build, migrate và seed IAM/Org/Catalog theo hướng dẫn, rồi chạy `npm run dev`.
-   Lệnh dev loại service-template để không trùng cổng Gateway 4000 và loại Bridge chưa cấp cấu hình;
-   Bridge chạy riêng theo runbook N8N-02.
-3. Portal dùng GATEWAY_URL và PORTAL_ORIGIN trong `.env.local`.
-   Mở `http://localhost:3000/login`, đăng nhập tài khoản seed; role không còn chọn giả.
+Chuẩn bị `.env` cho các service theo [hướng dẫn cấu hình](docs/huong-dan-dot-1.md)
+và README của từng service. Portal đọc `GATEWAY_URL` và `PORTAL_ORIGIN` từ `.env.local`.
+Sau khi cấu hình và bật Docker, chạy từ thư mục gốc:
+
+```powershell
+npm run dev
+```
+
+Lệnh dùng lại PostgreSQL và RabbitMQ đang chạy tại các địa chỉ đã cấu hình,
+khởi động hạ tầng Compose cần thiết, n8n và Ollama, build backend, chạy migration
+trên các DB local, rồi khởi động Portal cùng các service. Workflow và credential
+n8n được thiết lập lần đầu theo [runbook n8n](workflows/n8n/README.md). Tài khoản
+admin và dữ liệu khóa học được seed riêng theo hướng dẫn cấu hình.
+
+Mở `http://localhost:3000` và gửi tin trong chatbox hoặc tại `/chat`. Lần đầu
+Ollama tải model Qwen3 1.7B (khoảng 1,4 GB), sau đó dùng cache local. Chat dev
+dùng dữ liệu công khai từ Catalog và Class. `npm run dev -- --ai-demo` chạy cùng cấu hình.
 
 Chi tiết cấu hình, kiểm tra và giới hạn: [Catalog](services/catalog/README.md),
 [Portal](apps/admin-portal/README.md). IAM/Org/Catalog lưu PostgreSQL; Gateway và
 từng service kiểm quyền thật. CRM/Lead đã có API PostgreSQL và Portal thật theo
-[bàn giao CRM](docs/ban-giao-crm-2026-11-03.md); chat/tài chính còn mock/khung,
-chưa có luồng tư vấn/đăng ký/thanh toán xuyên suốt. Production cần HTTPS cho cookie Secure.
+[bàn giao CRM](docs/ban-giao-crm-2026-11-03.md). Web chat ở `/chat` dùng phiên khách
+khi Conversation đã được cấu hình. Nghiệm thu đăng ký và thanh toán mô phỏng dùng
+môi trường riêng. Production cần HTTPS cho cookie Secure.
 
 Luồng **lớp/lịch và giữ chỗ kỹ thuật** đã có service PostgreSQL riêng, UI Catalog/gói,
 Gateway/BFF và kiểm thử đồng thời. Chạy theo [runbook lớp và giữ chỗ](docs/ban-giao-lop-giu-cho.md).

@@ -92,7 +92,7 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     await pools[1].query("INSERT INTO branches(id,code,name,kind) VALUES($1,'CRM-A','DEMO Branch A','branch'),($2,'CRM-B','DEMO Branch B','branch')", [a, b]);
     const crmUrl = new URL(databaseUrl!); crmUrl.pathname = `/${names[3]}`;
     for (let i = 0; i < 2; i++) execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/migrate.ts"], { cwd: `${root}/services/crm`, env: { ...process.env, DATABASE_URL: crmUrl.toString() }, stdio: "pipe" });
-    expect((await crm.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(3);
+    expect((await crm.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(4);
     const catalogUrl = new URL(databaseUrl!); catalogUrl.pathname = `/${names[2]}`; process.env.DATABASE_URL = catalogUrl.toString();
     execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/db/migrate.ts"], { cwd: `${root}/services/catalog`, env: process.env, stdio: "pipe" });
     const { createApp } = await import("../../catalog/src/app.js"), { registerCatalogRoutes } = await import("../../catalog/src/routes.js");
@@ -101,7 +101,9 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     const authority = { privateKey: keys.privateKey, issuer: "crm-test-machine", bridgeUrl: "" };
     auth.identityUrl = await listen(createIdentityApp(iam, auth, orgUrl, authority));
     await pools[4].query(await readFile(`${root}/services/automation-bridge/migrations/0001.sql`, "utf8")); await pools[4].query(messagingSchema);
-    await pools[5].query(await readFile(`${root}/services/conversation/migrations/0001.sql`, "utf8")); await pools[5].query(messagingSchema);
+    await pools[4].query(await readFile(`${root}/services/automation-bridge/migrations/0002.sql`, "utf8"));
+    const conversationUrl = new URL(databaseUrl!); conversationUrl.pathname = `/${names[5]}`;
+    execFileSync(process.execPath, [`${root}/node_modules/tsx/dist/cli.mjs`, "src/migrate.ts"], { cwd: `${root}/services/conversation`, env: { ...process.env, DATABASE_URL: conversationUrl.toString() }, stdio: "pipe" });
     store = new BridgeStore(pools[4], [{ eventType: "crm.requested", workflowId: "WF-04", workflowVersion: 1, inputSchemaVersion: 1 }]);
     bridge = await listen(createBridgeApp(store, auth, { publicKey: keys.publicKey, issuer: authority.issuer, subjects: { "crm-test-worker": ["WF-04"] } })); authority.bridgeUrl = bridge;
     const catalog = await listen(createApp("catalog", app => registerCatalogRoutes(app, auth)));
@@ -158,7 +160,7 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
       expect((await legacy.query("SELECT report,report_hash,status,result,erasure_request_id FROM crm_merge_plans WHERE id=$1", [planId])).rows[0]).toEqual({ report: { erased: true }, report_hash: reportHash, status: "EXECUTED", result: { sourceId, targetId }, erasure_request_id: requestId });
       expect((await legacy.query("SELECT payload->'lead'->>'notes' AS notes,erasure_request_id FROM crm_automation_requests WHERE id=$1", [automationId])).rows[0]).toEqual({ notes: "", erasure_request_id: requestId });
       await expect(legacy.query("UPDATE crm_automation_requests SET payload='{}' WHERE id=$1", [automationId])).rejects.toThrow("append only");
-      expect((await legacy.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(3);
+      expect((await legacy.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n).toBe(4);
     } finally { await legacy.end(); await admin.query(`DROP DATABASE ${name}`); }
   });
   it("protects direct and Gateway calls; enforces role/branch on reads and writes", async () => {
@@ -271,10 +273,11 @@ describe("CRM integrated with real IAM/Org/Catalog/Gateway/PostgreSQL", () => {
     await expect(crm.query("DELETE FROM crm_erasure_tombstones WHERE person_id=$1", [p.id])).rejects.toThrow("append only");
     for (const task of erased.body.data.tasks.filter((t: { service: string }) => t.service !== "CRM")) {
       const result = await call(`crm/erasure-requests/${id}/tasks/${task.service}`, "POST", { version: task.version, status: "NOT_APPLICABLE", evidenceRef: "DEMO-REVIEW-NO-DOWNSTREAM-DATA" }, director);
-      expect(result.status).toBe(200);
+      expect(result.status).toBe(409);
+      expect(result.body.error.code).toBe("SERVICE_PROOF_REQUIRED");
     }
     const requests = await call("crm/erasure-requests");
-    expect(requests.body.data.find((r: { id: string }) => r.id === id).status).toBe("COMPLETED");
+    expect(requests.body.data.find((r: { id: string }) => r.id === id).status).toBe("PROCESSING");
   });
   it("keeps outbox writes atomic with business failures", async () => {
     const before = Number((await crm.query("SELECT count(*) FROM event_outbox")).rows[0].count);

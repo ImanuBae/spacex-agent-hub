@@ -6,6 +6,14 @@ import { getMenuByRole, roleLabels } from "../../../lib/roles";
 import { useAuth } from "../../../src/context/AuthContext";
 import HubIcon from "./HubIcon";
 import Brand from "../../landing/Brand";
+
+const navigationSections = [
+  { label: "Tuyển sinh", paths: ["overview", "mailbox", "leads", "enrollments"] },
+  { label: "Đào tạo", paths: ["courses", "schedule", "classes", "availability", "class-changes", "adjustments", "notifications"] },
+  { label: "Tài chính", paths: ["finance", "reconciliation", "refunds"] },
+  { label: "Quản trị" },
+];
+
 export default function Sidebar({
   isOpen = false,
   onClose,
@@ -56,6 +64,13 @@ export default function Sidebar({
     };
   }, [isOpen, onClose]);
   if (!user) return null;
+  const menu = getMenuByRole(user.role);
+  const groups = navigationSections.map(({ label, paths }) => ({
+    label,
+    links: paths
+      ? menu.filter(item => paths.includes(item.href.split("/").at(-1)!))
+      : menu.filter(item => !navigationSections.some(section => section.paths?.includes(item.href.split("/").at(-1)!))),
+  }));
   const initials = user.name
     .split(/\s+/)
     .slice(-2)
@@ -78,7 +93,7 @@ export default function Sidebar({
         aria-label="Điều hướng chính"
       >
         <div className="hub-brand">
-          <Brand />
+          <Brand href={menu[0]?.href} onClick={onClose} />
           <button
             className="hub-icon-button hub-menu-close"
             aria-label="Đóng menu"
@@ -87,29 +102,21 @@ export default function Sidebar({
             <HubIcon name="close" />
           </button>
         </div>
-        <div className="hub-workspace">
-          <span className="hub-workspace-dot" />
-          <div>
-            SpaceX Việt Nam<small>Quản trị trung tâm đào tạo</small>
-          </div>
-        </div>
-        <p className="hub-nav-label">Không gian làm việc</p>
-        <nav>
-          {getMenuByRole(user.role).map((item) => {
-            const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`),
-              icon = item.href.split("/").at(-1)!;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                onClick={onClose}
-              >
-                <HubIcon name={icon} />
-                <span>{item.label}</span>
-              </Link>
-            );
+        <nav aria-label="Các khu vực quản trị">
+          {groups.map(({ label, links }) => {
+            if (!links.length) return null;
+            return <div className="hub-nav-group" key={label}>
+              <p className="hub-nav-label">{label}</p>
+              <ul>
+                {links.map(item => <li key={item.href}>
+                  <Link href={item.href} onClick={onClose}
+                    aria-current={pathname === item.href || pathname.startsWith(`${item.href}/`) ? "page" : undefined}>
+                    <HubIcon name={item.href.split("/").at(-1)!} />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>)}
+              </ul>
+            </div>;
           })}
         </nav>
         <div className="hub-account">

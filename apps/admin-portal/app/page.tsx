@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Landing from "./landing/Landing";
 
 export const metadata: Metadata = {
-  title: "SpaceX Agent Hub — Điều phối tuyển sinh",
+  title: "Khóa học và tư vấn demo | SpaceX Agent Hub",
   description:
-    "Không gian làm việc cho đội ngũ SpaceX Việt Nam: tra cứu khóa học, lịch lớp và giữ chỗ kỹ thuật trong môi trường demo theo vai trò, chi nhánh.",
+    "Xem khóa học mẫu, học phí và số buổi. Hỏi thêm qua chat tư vấn.",
   openGraph: {
-    title: "SpaceX Agent Hub — Điều phối tuyển sinh",
+    title: "Khóa học và tư vấn demo | SpaceX Agent Hub",
     description:
-      "Tra cứu khóa học, lịch lớp và chỗ giữ trong cùng một không gian làm việc cho đội ngũ SpaceX Việt Nam.",
+      "Xem khóa học mẫu và thử tìm gói phù hợp với chủ đề, ngân sách của bạn.",
     locale: "vi_VN",
     type: "website",
   },

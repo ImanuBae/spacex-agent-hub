@@ -9,7 +9,8 @@ const delay = (ms: number) => ({ "--rd": `${ms}ms` }) as CSSProperties;
 const features = [
   [
     "Khóa học & gói học",
-    "Tra cứu khóa học, gói học và giá VND; quản lý chính sách có phiên bản.",
+    "Xem tên khóa, hình thức học, học phí và số buổi của từng gói mẫu.",
+    ["Xem khóa học", "/khoa-hoc"],
   ],
   [
     "Lớp học & lịch học",
@@ -28,10 +29,11 @@ const features = [
     "Đăng nhập bằng phiên thật; quyền truy cập được kiểm tra theo vai trò và phạm vi chi nhánh.",
   ],
   [
-    "AI trong lộ trình",
-    "Dự kiến hỗ trợ tư vấn và chuyển tiếp cho nhân viên sau khi hoàn thiện dữ liệu, công cụ và kiểm chứng nghiệp vụ.",
+    "Tư vấn khóa học",
+    "Hỏi về học phí, nội dung khóa học và lịch lớp qua chat.",
+    ["Thử tư vấn", "/chat"],
   ],
-];
+] as const;
 function Icon({ index = 6 }: { index?: number }) {
   return (
     <svg
@@ -82,7 +84,7 @@ function Brand() {
   );
 }
 function Login({
-  children = "Đăng nhập hệ thống",
+  children = "Đăng nhập nhân viên",
 }: {
   children?: React.ReactNode;
 }) {
@@ -97,7 +99,7 @@ const footerColumns = [
   {
     title: "Nghiệp vụ",
     links: [
-      ["Khóa & gói học", "#features"],
+      ["Khóa & gói học", "/khoa-hoc"],
       ["Lớp & lịch", "#solutions"],
       ["Giữ chỗ demo", "#features"],
     ],
@@ -113,7 +115,9 @@ const footerColumns = [
   {
     title: "Truy cập",
     links: [
-      ["Đăng nhập", "/login"],
+      ["Cổng học viên", "/student/login"],
+      ["Liên hệ tư vấn", "/lien-he"],
+      ["Đăng nhập nhân viên", "/login"],
       ["Tính năng", "#features"],
       ["Về đầu trang", "#top"],
     ],
@@ -126,7 +130,7 @@ export default async function Landing() {
     <div className={`ascend ${inter.className}`} id="top">
       <Planet />
       <Motion />
-      <a className="skip-link" href="#features">
+      <a className="skip-link" href="#main-content">
         Đến nội dung chính
       </a>
       <div className="page">
@@ -134,30 +138,30 @@ export default async function Landing() {
           <nav className="nav" aria-label="Điều hướng chính">
             <Brand />
             <div className="nav-links">
-              <a href="#features">Tính năng</a>
+              <Link href="/khoa-hoc">Khóa học</Link>
+              <Link href="/lien-he">Liên hệ</Link>
               <a href="#solutions">Vận hành</a>
-              <a href="#roadmap">Lộ trình</a>
-              <a href="#cta">Truy cập</a>
             </div>
-            <Link href="/login" className="btn btn-ghost">
-              Đăng nhập
+            <Link href="/student/login" className="btn btn-ghost">
+              Cổng học viên
             </Link>
           </nav>
           <div className="hero-inner">
             <h1 className="hero-title" data-reveal style={delay(60)}>
-              Tuyển sinh liền mạch,
+              Tìm khóa học
               <br />
-              Vận hành <em>rõ ràng</em>
+              phù hợp với bạn
             </h1>
             <p className="hero-sub" data-reveal style={delay(180)}>
-              Tra cứu khóa học, lịch lớp và chỗ giữ trong một không gian làm
-              việc dành cho đội ngũ SpaceX Việt Nam.
+              Xem học phí, số buổi và hỏi thêm qua chat tư vấn.
             </p>
             <div className="hero-actions" data-reveal style={delay(300)}>
-              <Login />
-              <a className="btn btn-outline" href="#features">
-                Khám phá tính năng
-              </a>
+              <Link className="btn public-catalog-cta" href="/khoa-hoc">
+                Xem khóa học
+              </Link>
+              <Link className="btn btn-outline" href="/chat">
+                Thử tư vấn
+              </Link>
             </div>
           </div>
           <div className="logos" data-reveal style={delay(420)}>
@@ -178,7 +182,7 @@ export default async function Landing() {
             </div>
           </div>
         </header>
-        <main>
+        <main id="main-content" tabIndex={-1}>
           <section
             className="section features"
             id="features"
@@ -197,7 +201,7 @@ export default async function Landing() {
               </p>
             </div>
             <div className="feature-grid">
-              {features.map(([title, description], index) => (
+              {features.map(([title, description, action], index) => (
                 <article
                   className="card"
                   key={title}
@@ -209,6 +213,7 @@ export default async function Landing() {
                   </div>
                   <h3>{title}</h3>
                   <p>{description}</p>
+                  {action && <Link className="feature-link" href={action[1]}>{action[0]}</Link>}
                 </article>
               ))}
             </div>

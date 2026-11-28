@@ -43,6 +43,23 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
         if (!rows[0]) throw new HttpError(409, "NOT_SELLABLE", "Offer inactive or outside branch");
         return { ...rows[0], priceVnd: Number(rows[0].priceVnd), currency: "VND" };
     }
+    app.get("/api/v1/public-offers{/:id}", async (req, res) => {
+        const id = IdParam.optional().parse(req.params.id);
+        const { rows } = await pool.query(`SELECT p.id AS "packageId",p.code AS "packageCode",p.name AS "packageName",
+          c.id AS "courseId",c.code AS "courseCode",c.name AS "courseName",c.goal,c.description,c.level,
+          c.delivery_modes AS "deliveryModes",c.branch_ids AS "branchIds",p.price_vnd AS "priceVnd",
+          p.session_count AS "sessionCount",(c.status='active' AND p.status='active' AND p.price_vnd>0) AS sellable
+          FROM course_packages p JOIN courses c ON c.id=p.course_id
+          WHERE p.status<>'draft' AND c.status<>'draft' AND p.effective_at<=statement_timestamp()
+          AND c.effective_at<=statement_timestamp() AND ($1::uuid IS NULL AND p.status='active' AND c.status='active' OR p.id=$1)
+          ORDER BY c.name,p.name,p.id`, [id ?? null]);
+        const offers = rows.map(row => ({ ...row, priceVnd: Number(row.priceVnd) }));
+        if (id && !offers.length) throw new HttpError(404, "NOT_FOUND", "Không tìm thấy gói học.");
+        res.json({ data: id ? offers[0] : offers });
+    });
+    app.get("/public/catalog/quotes/:id", async (req, res) => {
+        res.json({ data: await liveQuote(IdParam.parse(req.params.id), IdParam.parse(req.query.branchId)) });
+    });
     for (const kind of ["enrollment", "class"] as const) app.get(`/internal/catalog/${kind}-quote/:id`, async (req, res) => {
         const user = await verifyCommand(config, bearer(req.get("authorization")), kind === "class" ? "class-schedule" : "enrollment", kind === "class" ? "classes:enroll" : "enrollment:write");
         if (user.delegation?.entity?.type !== "enrollment") throw new HttpError(403, "FORBIDDEN", "Enrollment job required");
@@ -103,7 +120,7 @@ export function registerCatalogRoutes(app: Express, config: AuthConfig = authCon
             .limit(pageSize)
             .offset((page - 1) * pageSize);
         const [totalRow] = await db.select({ total: count() }).from(courses).where(where);
-        res.json({ data: delegation?.source === "guest" ? rows.map(r => ({ id: r.id, name: r.name, goal: r.goal, level: r.level, deliveryModes: r.deliveryModes, policyText: r.policyText, policyVersion: r.policyVersion })) : rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 }, readAt: new Date().toISOString() });
+        res.json({ data: delegation?.source === "guest" ? rows.map(r => ({ id: r.id, name: r.name, description: r.description, goal: r.goal, level: r.level, deliveryModes: r.deliveryModes, policyText: r.policyText, policyVersion: r.policyVersion })) : rows, pagination: { page, pageSize, total: totalRow?.total ?? 0 }, readAt: new Date().toISOString() });
     });
 
     app.get("/api/v1/courses/:id", async (req, res) => {

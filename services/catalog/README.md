@@ -58,7 +58,7 @@ npm run db:seed --workspace=@spacex/catalog
 
 - `db:generate`: sinh file migration mới trong `drizzle/` từ `src/db/schema.ts`. Chỉ cần chạy khi sửa schema; không kết nối database.
 - `db:migrate`: áp dụng các migration chưa chạy vào database. Chạy lại nhiều lần an toàn.
-- `db:seed`: nạp 4 khóa học và 3 gói học mẫu. Chạy lại nhiều lần an toàn (bỏ qua `code` đã có).
+- `db:seed`: nạp 8 khóa học và 7 gói học mẫu. Mã đã có được giữ nguyên khi chạy lại.
 
 
 Đã áp dụng hoặc commit migration thì không sửa tay file đó. Muốn đổi cấu trúc, sửa `schema.ts` rồi chạy `db:generate` để tạo migration mới.
@@ -125,7 +125,7 @@ $course = Invoke-RestMethod -Method Post -Uri "$base/api/v1/courses" -ContentTyp
 $pkg = @{ courseId = $course.data.id; code = "DEMO-PKG-1"; name = "Goi 12 buoi"; sessionCount = 12; priceVnd = 1200000 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri "$base/api/v1/packages" -ContentType "application/json" -Body $pkg
 Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=20"
-# Thử phân trang (seed có 4 khóa, pageSize=2 sẽ chia thành 2 trang)
+# Thử phân trang với 2 khóa mỗi trang
 Invoke-RestMethod "$base/api/v1/courses?page=1&pageSize=2"
 ```
 
@@ -278,6 +278,10 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 | `GRAPHIC-DESIGN` | Thiết kế đồ hoạ với Canva & Photoshop | beginner | active | 2 000 000 |
 | `DATA-ANALYSIS` | Phân tích dữ liệu với Excel nâng cao | intermediate | active | 3 000 000 |
 | `WEB-FULLSTACK` | Lập trình Web Fullstack | advanced | draft | 5 000 000 |
+| `DEMO-PYTHON` | Python cơ bản | beginner | active | 1 800 000 |
+| `DEMO-SQL` | SQL thực hành | beginner | active | 2 100 000 |
+| `DEMO-POWER-BI` | Phân tích dữ liệu với Power BI | intermediate | active | 2 800 000 |
+| `DEMO-FIGMA` | UI/UX với Figma | beginner | active | 2 400 000 |
 
 **Gói học (`course_packages`):**
 
@@ -286,6 +290,12 @@ Sau khi chạy `npm run db:seed`, cơ sở dữ liệu có sẵn:
 | `OFFICE-12` | Gói 12 buổi | OFFICE-BASIC | 12 | draft | 1 500 000 |
 | `GRAPHIC-8` | Gói 8 buổi | GRAPHIC-DESIGN | 8 | active | 2 000 000 |
 | `DATA-16` | Gói 16 buổi chuyên sâu | DATA-ANALYSIS | 16 | active | 3 000 000 |
+| `DEMO-PYTHON-8` | Gói 8 buổi | DEMO-PYTHON | 8 | active | 1 800 000 |
+| `DEMO-SQL-10` | Gói 10 buổi | DEMO-SQL | 10 | active | 2 100 000 |
+| `DEMO-POWER-BI-12` | Gói 12 buổi | DEMO-POWER-BI | 12 | active | 2 800 000 |
+| `DEMO-FIGMA-10` | Gói 10 buổi | DEMO-FIGMA | 10 | active | 2 400 000 |
+
+Bốn khóa `DEMO-*` có gói học trong Catalog. Lớp và lịch học được quản lý riêng trong Class Schedule.
 
 ### Lưu ý cho Frontend (FE) tích hợp
 

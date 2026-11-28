@@ -6,6 +6,8 @@ import { createServer } from "node:http";
 import { parseN8nOutput } from "./n8n-output.mjs";
 import { setTimeout as delay } from "node:timers/promises";
 import { browserAcceptance } from "./n8n06-portal.mjs";
+import { contextualPortalAcceptance } from "./portal-follow-up-cases.mjs";
+import { reportingAcceptance, overviewAcceptance } from "./reporting-cases.mjs";
 
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const file = "workflows/n8n/adjustment-manifest.json";
@@ -90,9 +92,11 @@ export async function runN8n06Cases(t) {
     let result;
     await h.eventually(() => { result=h.sql(query); return !!result; }, wf+" execution trace committed");
     const saved = JSON.parse(result);
-    await save(name, raw ?? result);
+    const keepPrivateTrace = !h.incidentWorker && !h.restoreDrill;
+    if (keepPrivateTrace) await save(name, raw ?? result);
     const proof = { workflowId:wf, executionId:saved.id, jobId:job.id, eventId:job.event_id, correlationId:job.correlation_id, attempt:job.attempt, status:job.status,
-      resultRef:job.result_ref, errorCode:job.error_code, operationKeys:job.operation_refs.map(r=>r.operationKey), trace:name, traceSha256:sha(raw??result) };
+      resultRef:job.result_ref, errorCode:job.error_code, operationKeys:job.operation_refs.map(r=>r.operationKey),
+      ...(keepPrivateTrace ? { trace:name, traceSha256:sha(raw??result) } : {}) };
     report.executions.push(proof);
     return proof;
   }
@@ -174,6 +178,19 @@ export async function runN8n06Cases(t) {
   stop(); await start();
   report.activatedInProject = h.project;
   const helpers = { ...t, test, jobFor, manual, waitDone, student, confirmed, adjustment };
+  if (h.erasureWorker) {
+    const { erasureAcceptance } = await import("./wf12-erasure-case.mjs");
+    await test("WF12-ERASURE", "Verified CRM and service proofs keep retention pending and reapply exclusions before serving a restored CRM database", () => erasureAcceptance(helpers));
+  }
+  if (h.reportingWorker) {
+    let proof;
+    await test("REPORTING-SOURCE", "WF-11 projection/rebuild reconcile branch totals with durable Enrollment/Payment sources", async () => {
+      proof = await reportingAcceptance(helpers); return proof;
+    });
+    await test("REPORTING-OVERVIEW", "Overview reads scoped reconciled totals and recovers from load error at 1440/768/390", async () =>
+      overviewAcceptance(helpers, proof ?? await reportingAcceptance(helpers)));
+  }
+  await test("PORTAL-CONTEXT", "CRM and Enrollment actions use current versions, work at three widths, and a transfer displays Payment-backed delta after reload", () => contextualPortalAcceptance(helpers));
 
   async function interruptAfterCommit({ wf, domain, canonicalPort, collection, action, trigger, inspect }) {
     const port = await h.freePort();

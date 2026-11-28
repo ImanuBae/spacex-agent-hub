@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { apiError, authenticatedFetch, checkOrigin } from "../../../../lib/server-session";
+import { apiError, authenticatedFetch, checkOrigin, gatewayFetch } from "../../../../lib/server-session";
 
 async function proxy(request: Request, context: { params: Promise<{ path: string[] }> }) {
   if (!["GET", "HEAD"].includes(request.method) && !checkOrigin(request)) return apiError(403, "FORBIDDEN", "Invalid origin");
   const { path } = await context.params;
-  if (!["courses", "packages", "accounts", "branches", "departments", "employees", "teachers", "access-sync", "classes", "rooms", "holds", "hold-fixtures", "teacher-time", "operations", "crm", "assignees", "conversations", "enrollment-confirmations", "enrollments", "payment-requests", "payment-reviews", "class-changes", "adjustments", "refunds", "waitlist", "notifications", "learner-identities", "student"].includes(path[0]) || path.some(p => !/^[a-zA-Z0-9-]+$/.test(p))) return apiError(404, "NOT_FOUND", "Not found");
+  const publicRoute = ["public-offers", "public-checkouts"].includes(path[0]);
+  if ((!publicRoute && !["courses", "packages", "accounts", "branches", "departments", "employees", "teachers", "access-sync", "classes", "rooms", "holds", "hold-fixtures", "teacher-time", "operations", "crm", "assignees", "conversations", "enrollment-confirmations", "enrollments", "payment-requests", "payment-reviews", "payment-transactions", "class-changes", "adjustments", "refunds", "waitlist", "notifications", "learner-identities", "student", "reports", "automation"].includes(path[0])) || path.some(p => !/^[a-zA-Z0-9-]+$/.test(p))) return apiError(404, "NOT_FOUND", "Not found");
   const headers: Record<string, string> = { "content-type": "application/json" };
   for (const name of ["idempotency-key", "x-correlation-id", "traceparent"]) { const value = request.headers.get(name); if (value) headers[name] = value; }
+  const checkoutKey = request.headers.get("x-checkout-key");
+  if (path[0] === "public-checkouts" && checkoutKey) headers["x-checkout-key"] = checkoutKey;
   try {
-    const response = await authenticatedFetch(`/api/v1/${path.join("/")}${new URL(request.url).search}`, { method: request.method, headers, body: ["GET", "HEAD"].includes(request.method) ? undefined : await request.text() });
+    const send = publicRoute ? gatewayFetch : authenticatedFetch;
+    const response = await send(`/api/v1/${path.join("/")}${new URL(request.url).search}`, { method: request.method, headers, body: ["GET", "HEAD"].includes(request.method) ? undefined : await request.text() });
     const responseHeaders: Record<string, string> = { "content-type": "application/json", "cache-control": "no-store" };
     const invoiceDownload = request.method === "GET" && path.length === 4 && path[0] === "student" && path[1] === "invoices" && path[3] === "download";
     if (invoiceDownload && response.ok) {

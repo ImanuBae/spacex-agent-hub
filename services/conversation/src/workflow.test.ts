@@ -65,6 +65,43 @@ it("Class snapshots join active offers; internal sellable exchange stays disable
   expect(result.sources).toHaveLength(3);
   expect(nodes.find(n => n.name === "Class list")!.parameters.url).not.toContain("sellable=true");
 });
+it("an empty Catalog hands off and an answer links only to matched source offers", () => {
+  const empty = () => ({ first: () => ({ json: { data: [] } }) });
+  expect(run("Sources", {}, empty)).toEqual({ errorCode: "TOOL_ERROR" });
+
+  const packageId = "00000000-0000-4000-8000-000000000001";
+  const data = { courses: [{ id: "python", name: "Python cơ bản" }, { id: "sql", name: "SQL thực hành" }],
+    packages: [{ id: packageId, courseId: "python", priceVnd: 1800000 }, { id: "other", courseId: "sql", priceVnd: 2100000 }] };
+  const lookup = (name: string) => ({ isExecuted: true, first: () => ({ json: name === "Job" ? { startedAt: Date.now(), jobId: packageId, leaseToken: packageId, attempt: 1 } : name === "Sources" ? {
+    data, sources: [{ api: "catalog.packages", readAt: "2026-11-27T00:00:00Z" }],
+  } : {} }) });
+  const draft = run("Draft", { choices: [{ message: { content: "Python cơ bản có phần đọc tệp CSV." } }] }, lookup);
+  expect(ConversationDraft.parse(draft).sources[0].offers).toEqual([{ packageId, name: "Python cơ bản" }]);
+});
+it("named course price and schedule answers ignore unsupported model facts", () => {
+  const python = "00000000-0000-4000-8000-000000000001", sql = "00000000-0000-4000-8000-000000000002";
+  const data = {
+    courses: [{ id: "python", name: "Python cơ bản" }, { id: "sql", name: "SQL thực hành" }],
+    packages: [
+      { id: python, courseId: "python", name: "Gói 8 buổi", sessionCount: 8, priceVnd: 1800000, policyVersion: 1 },
+      { id: sql, courseId: "sql", name: "Gói 10 buổi", sessionCount: 10, priceVnd: 2100000, policyVersion: 1 },
+    ],
+    classes: [{ courseId: "sql", packageId: sql, name: "SQL thực hành trực tuyến", sessions: [{ startsAt: "2026-12-12T12:00:00Z" }], available: 10 }],
+  };
+  const draft = (question: string, answer: string) => run("Draft", { choices: [{ message: { content: answer } }] }, (name: string) => ({
+    isExecuted: true, first: () => ({ json: name === "Job" ? { startedAt: Date.now(), jobId: python, leaseToken: python, attempt: 1 }
+      : name === "Sources" ? { data, sources: [{ api: "catalog.packages", readAt: "2026-11-27T00:00:00Z" }] }
+      : name === "Turn" ? { data: { messages: [{ sender: "GUEST", text: question }] } } : {} }),
+  }));
+  const price = ConversationDraft.parse(draft("Học phí gói Python cơ bản 8 buổi là bao nhiêu?", "Python cơ bản 1.000.000 đồng, còn 10 chỗ."));
+  expect(price.text).toContain("1.800.000 đồng");
+  expect(price.text).not.toMatch(/10 chỗ|SQL/);
+  expect(price.sources[0].offers?.[0].packageId).toBe(python);
+  const schedule = ConversationDraft.parse(draft("Lớp SQL thực hành nào đang mở và khai giảng khi nào?", "SQL thực hành còn 20 chỗ, học mỗi thứ Hai."));
+  expect(schedule.text).toContain("19:00 12/12/26 (giờ Việt Nam), còn 10 chỗ");
+  expect(schedule.text).not.toMatch(/thứ Hai|20 chỗ/);
+  expect(schedule.sources[0].offers?.[0].packageId).toBe(sql);
+});
 it("provider calls require explicit export admission and recheck before answer; tool errors bypass the model", () => {
   const wf = workflows[1];
   const condition = (name: string) => wf.nodes.find((n: { name: string }) => n.name === name).parameters.conditions.conditions[0].leftValue;

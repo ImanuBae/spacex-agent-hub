@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "decision": {
+    "status": "ACCEPT_LOCAL",
+    "parentN8N07": "PARTIAL",
+    "timezone": "Asia/Saigon",
+    "scope": [
+      "Portal payment exceptions",
+      "Portal workflow UX",
+      "WF-11 branch reporting and overview"
+    ]
+  },
+  "dataset": "SYNTHETIC",
+  "budgetUsd": 0,
+  "providerRequests": 0,
+  "canonical": {
+    "manifest": {
+      "file": "workflows/n8n/reporting-manifest.json",
+      "sha256": "7c2db949da92c432c4232034f23bfaac59b5ff7908a79e2308cdac5a89c7af3e"
+    },
+    "workflow": {
+      "file": "workflows/n8n/wf-11.json",
+      "sha256": "5f55ebd10a674cb83fc717b626f0959172e328f3653869f6add20fdfbc73e70e"
+    },
+    "active": false
+  },
+  "preservation": {
+    "file": ".local/automation/portal-wf11-867b614cba/preservation.json",
+    "sha256": "6aa88301783737389e98f63fe810698b56a7fb0e544196ecba7e1107b810107a"
+  },
+  "checkpoint": {
+    "commit": "e9a6a9200602e5be7ed087813f50d86cd6170f7e",
+    "ref": "refs/checkpoints/portal-wf11-e9a6a9200602",
+    "file": ".local/automation/portal-wf11-checkpoint-6ec7720102/checkpoint.json",
+    "sha256": "68ed7a0e7db1549d19b7196317b6d83bf9f155575107008c30089443661ace20"
+  },
+  "preflightRechecks": [
+    {
+      "case": "WF09-EXCESS-REFUND-KEEPS-TUITION",
+      "directory": ".local/automation/space-agent-n8n06-acceptance-38fb567eb26e",
+      "preflightSha256": "2bd6d00e72ebcb6eda2c73ea3923d656f249b8df9b8ab10470ec3fc1cbfe8fb2",
+      "evidenceSha256": "2ebf185d81456591226e8b3e4a89f74c43f9cb083b7ffa5c910cf2bd555c55f0"
+    },
+    {
+      "case": "REPORTING-SOURCE",
+      "directory": ".local/automation/space-agent-n8n07-acceptance-6defe0f0a405",
+      "preflightSha256": "b48ffcb03dc0f719362531ebdcb9dbaf6d9fc8147c73ab0ecc5877a7e6e98210",
+      "evidenceSha256": "241693eadb2a5a5421c84abc96bd3006be09b58226fe56bfa770eccc360b8e82"
+    }
+  ],
+  "runs": [
+    {
+      "project": "space-agent-n8n06-acceptance-5aa0bfe511da",
+      "cases": [
+        "PORTAL-RECONCILIATION",
+        "WF09-EXCESS-REFUND-KEEPS-TUITION"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-5aa0bfe511da/evidence.json",
+        "sha256": "696a14b15609477a24ab396cac5e2597d16c9c730bc1ac07f2322d1971cf0e7c"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-5aa0bfe511da/acceptance-cases.json",
+        "sha256": "fe832382eb85bc8fe2c3fb615594cea493bf2fb857f41d75253d65240e1af62b"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    },
+    {
+      "project": "space-agent-n8n06-acceptance-2a5367998028",
+      "cases": [
+        "PORTAL-CONTEXT",
+        "WF09-TRANSFER-DELTA",
+        "WF10-TRANSFER-MEMBERSHIP",
+        "N8N06-BROWSER"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-2a5367998028/evidence.json",
+        "sha256": "eb554a6ef5ca402e6a6b7ad1a92da2eea6665d0789449ba6ffe8aa1eecaf0f93"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-2a5367998028/acceptance-cases.json",
+        "sha256": "c9416669b9dcfbfc378d50630e538b1c8932e1151495c9800fd1a65ef706bcf1"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    },
+    {
+      "project": "space-agent-n8n07-acceptance-3a2fd1aa6dda",
+      "cases": [
+        "REPORTING-SOURCE"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-3a2fd1aa6dda/evidence.json",
+        "sha256": "5ae698011c23a7dc728b3fdaaf3c3298ad87eb6dd2aa4ab232ef52e2f3ce5583"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-3a2fd1aa6dda/acceptance-cases.json",
+        "sha256": "40c03987b4073fd7020fcd1f08f6157cee033d7c452f57fd71bc77370fc4d2fa"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS"
+    },
+    {
+      "project": "space-agent-n8n07-acceptance-6eadbb8f9664",
+      "cases": [
+        "REPORTING-SOURCE",
+        "REPORTING-OVERVIEW"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-6eadbb8f9664/evidence.json",
+        "sha256": "fe8b31d0f2df760f03f9d36f91891ed4f07150ef4fcbf59ccc96dc556579402f"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-6eadbb8f9664/acceptance-cases.json",
+        "sha256": "0a3080702c7eb78f5e7f5de74dbd754fe1ffaeb7ed828a9936a44c52b20545f4"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    },
+    {
+      "project": "space-agent-n8n06-acceptance-0f15678c73e7",
+      "cases": [
+        "API-WF05-HELD",
+        "API-WF06-CONFIRMED",
+        "PORTAL-RECONCILIATION",
+        "WF09-EXCESS-REFUND-KEEPS-TUITION"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-0f15678c73e7/evidence.json",
+        "sha256": "a772bec870433af6e4a2ed96443e6167041447065b5f0ce997d75a6faa703611"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-0f15678c73e7/acceptance-cases.json",
+        "sha256": "f014afc29124cdd40a28bbafbbb95968490ae7f07f6ff7bd019f1d74e646b4c8"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    },
+    {
+      "project": "space-agent-n8n06-acceptance-47cff74fe025",
+      "cases": [
+        "PORTAL-CONTEXT",
+        "WF10-CONSENT-DEDUP-REMINDER",
+        "WF10-CLASS-VERSION-ORDER"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-47cff74fe025/evidence.json",
+        "sha256": "74fb4f580908afc059cbbb2a91641eaf715a4552cb05bc0bd9e104920428e4c4"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-47cff74fe025/acceptance-cases.json",
+        "sha256": "49e45d46c031a4a1070207dba36690f13db079c1ff2027da19e5256774ab60db"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    },
+    {
+      "project": "space-agent-n8n07-acceptance-d267f8212418",
+      "cases": [
+        "REPORTING-SOURCE",
+        "REPORTING-OVERVIEW"
+      ],
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-d267f8212418/evidence.json",
+        "sha256": "5be6b415a279b08a94866f44ab2ca83ddf33d30ad1ca2a3ae8543c9d9631d0aa"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n07-acceptance-d267f8212418/acceptance-cases.json",
+        "sha256": "3434e4da17f1295c479331d89dcaa51f316111ac822b39f89727eebd26f07185"
+      },
+      "cleanup": "PASS",
+      "acl": "PASS",
+      "build": "STAGED"
+    }
+  ],
+  "retainedFailedRuns": [
+    {
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-1f20350cfcf8/evidence.json",
+        "sha256": "17b8be83119439f049cec1d9ba0ee155753e2ba45172ed1a46bfc8d072a89a45"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-1f20350cfcf8/acceptance-cases.json",
+        "sha256": "3c1e43d96ca1c57d3f8e163e3c9e1204ee58f5e87b642a707872ce4547eb777f"
+      },
+      "case": "PORTAL-RECONCILIATION"
+    },
+    {
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-38ad8a612d84/evidence.json",
+        "sha256": "d880ad1fb97853ef58dba940c491c85d748bfffd7118a03c35e85ad5b0f6104b"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-38ad8a612d84/acceptance-cases.json",
+        "sha256": "0795eb3ee4d431526a9a773b8ae6cceba00097e48debb198f5e83e8d25350afb"
+      },
+      "case": "PORTAL-CONTEXT"
+    },
+    {
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-6832e8625dbe/evidence.json",
+        "sha256": "aa6ccc2c2c0e765458dad6209203a71b0f7bed4d8e3e89fd9a06df76822c395c"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-6832e8625dbe/acceptance-cases.json",
+        "sha256": "de3cab465db788e406c608ad2bf947ff6579426ba70eb4640cf4bfb4a268dfe6"
+      },
+      "case": "PORTAL-CONTEXT"
+    },
+    {
+      "evidence": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-a2cf0185ba1a/evidence.json",
+        "sha256": "4e1ff31311e55b4aaf3b65af921a71931ed45cfa60595c04a6739f493c158ac2"
+      },
+      "checklist": {
+        "file": ".local/automation/space-agent-n8n06-acceptance-a2cf0185ba1a/acceptance-cases.json",
+        "sha256": "c6f50de504ebd73763fd8ec713327694b4e4fc5fd8ed84fa2fc1230af81d32f9"
+      },
+      "case": "PORTAL-CONTEXT"
+    }
+  ],
+  "unitTests": {
+    "passed": 46,
+    "failed": 0
+  },
+  "documents": {
+    "acceptance": "docs/acceptance-portal-wf11.md",
+    "readiness": "docs/n8n-readiness.md",
+    "runbook": "services/reporting/README.md"
+  },
+  "separateMilestones": [
+    "Import",
+    "WF-12",
+    "Provider/live",
+    "Restore to?n h? th?ng"
+  ]
+}

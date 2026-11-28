@@ -62,17 +62,30 @@ export async function runN8n06AdjustmentCases(t) {
     const pending = await api("payment", `${base}/refunds/${r.id}`, "GET", undefined, accountant.accessToken);
     assert.equal(pending.status, "RESERVED");
     assert.equal(pending.receiptRef, null);
+    const financeRefund = async () => (await api("payment", `${base}/payment-transactions?id=${r.id}`, "GET", undefined, accountant.accessToken))[0];
+    const pendingTransaction = await financeRefund();
+    assert.equal(pendingTransaction.status, "REFUND_PENDING");
+    assert.equal(pendingTransaction.receiptRef, null);
+    const reviewDetail = () => api("payment", `${base}/payment-reviews/${review.id}`, "GET", undefined, director.accessToken);
+    assert.deepEqual((await reviewDetail()).refunds.map(x => [x.id, x.status, x.receiptRef]), [[r.id, "RESERVED", null]]);
     const execution = await Promise.all([request("payment", `${base}/refunds/${r.id}/execute`, "POST", { version: pending.version }, accountant.accessToken, null), request("payment", `${base}/refunds/${r.id}/execute`, "POST", { version: pending.version }, accountant.accessToken, null)]);
     assert.deepEqual(execution.map(x => x.status).sort(), [200, 409]);
     const done = await waitDone("WF-09", r.id);
     const posted = (await h.pools.payment.query("SELECT id,direction,amount::int,adapter FROM synthetic_payment_executions WHERE adjustment_id=$1", [r.id])).rows;
     assert.deepEqual(posted.map(({ direction, amount, adapter }) => ({ direction, amount, adapter })), [{ direction: "REFUND", amount: 12_000, adapter: "SYNTHETIC" }]);
+    const detail = await reviewDetail();
+    assert.equal(detail.status, "REFUND_PENDING");
+    assert.deepEqual(detail.refunds.map(x => [x.id, x.status, x.receiptRef]), [[r.id, "EXECUTED", posted[0].id]]);
+    const refundedTransaction = await financeRefund();
+    assert.equal(refundedTransaction.status, "REFUNDED");
+    assert.equal(refundedTransaction.receiptRef, posted[0].id);
+    assert.equal(refundedTransaction.amount, 12_000);
     const ledger = (await h.pools.payment.query("SELECT count(*)::int AS entries,sum(amount)::int AS received FROM payment_ledger WHERE payment_id=$1", [person.payment.id])).rows[0];
     assert.deepEqual(ledger, { entries: 2, received: 130_000 });
     const tuition = await entitlement(person);
     assert.equal(tuition.currentEntitlement.state, "ACTIVE");
     assert.deepEqual((await seats(person.id, r.targetSeatId)).map(x => x.status), ["COMMITTED"]);
-    return { waiting, done, adjustmentId: r.id, reviewedLedgerId: extra.data.ledgerId, ledger, refundReceiptId: posted[0].id, executionStatuses: execution.map(x => x.status) };
+    return { waiting, done, adjustmentId: r.id, reviewedLedgerId: extra.data.ledgerId, ledger, refundReceiptId: posted[0].id, financeStatuses: [pendingTransaction.status, refundedTransaction.status], executionStatuses: execution.map(x => x.status) };
   });
 
   await test("WF09-SUSPEND-RESUME", "Suspension preserves the unused rights and releases the old seat. Resumption obtains and commits a distinct new seat", async () => {
@@ -222,7 +235,10 @@ export async function runN8n06AdjustmentCases(t) {
     } finally { await restartPayment(); }
   });
 
-  for (const fault of ["UNKNOWN_BEFORE","UNKNOWN_AFTER"]) await test(`WF09-REFUND-${fault}`, "A refund with an uncertain provider result keeps the reservation and only reconciles a durable adapter receipt on replay", async () => {
+  const refundCases = [["WF09-REFUND-UNKNOWN_BEFORE", "UNKNOWN_BEFORE"], ["WF09-REFUND-UNKNOWN_AFTER", "UNKNOWN_AFTER"]];
+  if (h.incidentWorker) refundCases.push(["WF12-INCIDENT-REPLAY", "UNKNOWN_AFTER"]);
+  if (h.restoreDrill) refundCases.push(["WF12-RESTORE", "UNKNOWN_AFTER"]);
+  for (const [caseId, fault] of refundCases) await test(caseId, "A refund with an uncertain provider result keeps the reservation and only reconciles a durable adapter receipt on replay", async () => {
     await restartPayment(fault);
     try {
       const person = await confirmed(), r = await adjustment(person,{type:"REFUND",amount:100_000,refundMode:"CANCEL"});
@@ -236,14 +252,27 @@ export async function runN8n06AdjustmentCases(t) {
       assert.equal(state.status,"UNKNOWN"); assert.equal(state.receiptRef,null); assert(state.ownerId);
       const before = await movements(r.id), withReceipt = fault==="UNKNOWN_AFTER";
       assert.equal(before.length,withReceipt?1:0);
-      await replayJob(unknown);
+      if (caseId === "WF12-RESTORE") {
+        const { restoreIncident } = await import("./wf12-restore-case.mjs");
+        return restoreIncident(h, unknown, { enrollmentId: person.id, adjustmentId: r.id, paymentId: person.payment.id }, () => replayJob(unknown));
+      }
+      let incident;
+      if (caseId === "WF12-INCIDENT-REPLAY") {
+        const { replayIncident } = await import("./wf12-incident-case.mjs");
+        incident = await replayIncident(t, unknown);
+      } else await replayJob(unknown);
       const replay = await waitDone("WF-09",r.id,withReceipt?"DONE":"DEAD"), after = await refund(r.id);
       assert(replay.attempt>unknown.attempt);
       assert.equal(after.status,withReceipt?"EXECUTED":"UNKNOWN");
       assert.equal(after.receiptRef,withReceipt?before[0].id:null);
       assert.deepEqual(await movements(r.id),before);
+      if (incident) {
+        assert.equal(replay.jobId, unknown.jobId);
+        assert.deepEqual([...replay.operationKeys].sort(), [...unknown.operationKeys].sort());
+        return { waiting, unknown, replay, before, refundStatus:after.status, incident:await incident.verify(replay) };
+      }
       return { waiting,unknown,replay,before,refundStatus:after.status,ownerId:after.ownerId };
-    } finally { await restartPayment(); }
+    } finally { if (caseId !== "WF12-RESTORE") await restartPayment(); }
   });
 
   await test("WF09-REVOKED-APPROVAL", "The preparer cannot approve and an independently recorded approval with a revoked session cannot authorize settlement or change entitlement", async () => {

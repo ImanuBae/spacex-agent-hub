@@ -16,8 +16,8 @@ export default function RefundsPage() {
       {!rows.length && <p role="status">{busy ? "Đang tải khoản hoàn…" : "Chưa có khoản hoàn."}</p>}
       {rows.map(row => <article key={row.id} className="n8n06-row" data-refund-id={row.id}><div>
         <strong>{money(Math.abs(row.delta))}</strong><p>{states[row.status] ?? row.status}</p>
-        <small>{row.deadlineAt && dateTime(row.deadlineAt)} · {row.adapter}</small>
-        {row.receiptRef && <p>Chứng từ mô phỏng {row.receiptRef}</p>}</div>
+        <small>{row.deadlineAt && dateTime(row.deadlineAt)} · {row.adapter === "SYNTHETIC" ? "DEMO" : row.adapter}</small>
+        {row.receiptRef && <p>Chứng từ mô phỏng {row.receiptRef} · DEMO</p>}</div>
         {user?.role === "accountant" && !row.executionAuthorized && ["WAITING", "RESERVED"].includes(row.status) && <button disabled={busy} onClick={() => void run(() => api("refunds/"+row.id+"/execute", "POST", { version: row.version }))}>{row.delta > 0 ? "Cho phép thu chênh lệch mô phỏng" : "Cho phép thực hiện hoàn mô phỏng"}</button>}
       </article>)}
     </section>

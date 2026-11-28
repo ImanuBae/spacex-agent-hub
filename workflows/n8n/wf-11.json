@@ -1,0 +1,451 @@
+[
+  {
+    "id": "N8N07LocalWF11",
+    "name": "N8N07 WF-11 Reporting",
+    "active": false,
+    "nodes": [
+      {
+        "name": "Manual",
+        "id": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          240
+        ],
+        "parameters": {}
+      },
+      {
+        "name": "Poll",
+        "id": "Poll",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          200,
+          240
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "seconds",
+                "secondsInterval": 5
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Daily close",
+        "id": "Daily-close",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          400,
+          240
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "cronExpression",
+                "expression": "15 2 * * *"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Bridge token",
+        "id": "Bridge-token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          600,
+          240
+        ],
+        "parameters": {
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"automation-bridge\",\"scopes\":[\"automation:claim\",\"automation:result\"],\"workflows\":[\"WF-11\"],\"ttlSeconds\":120}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N07LocalWF11Machine",
+            "name": "WF-11-N8N07-machine"
+          }
+        }
+      },
+      {
+        "name": "Claim",
+        "id": "Claim",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          240
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4006/internal/automation/jobs/claim",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Bridge token').first().json.data?.accessToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"workflowId\":\"WF-11\",\"workflowVersion\":1}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Job",
+        "id": "Job",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1000,
+          240
+        ],
+        "parameters": {
+          "jsCode": "const job=$json.data;\nreturn job?.workflowId==='WF-11'&&job.workflowVersion===1&&job.entity?.type==='reporting-day'&&job.entity.id===job.inputRef&&job.leaseToken?[{json:job}]:[];"
+        }
+      },
+      {
+        "name": "Reporting token",
+        "id": "Reporting-token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1200,
+          240
+        ],
+        "parameters": {
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"reporting\",\"scopes\":[\"reporting:project\"],\"workflows\":[\"WF-11\"],\"ttlSeconds\":120}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N07LocalWF11Machine",
+            "name": "WF-11-N8N07-machine"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "name": "Project",
+        "id": "Project",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1400,
+          240
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4011/internal/reporting/project",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Reporting token').first().json.data?.accessToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { day:$('Job').first().json.inputRef,eventId:$('Job').first().json.eventId } }}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            },
+            "response": {
+              "response": {
+                "neverError": true,
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "name": "Result payload",
+        "id": "Result-payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1600,
+          240
+        ],
+        "parameters": {
+          "jsCode": "\nconst job=$('Job').first().json, receipt=$json.body?.data, token=$('Reporting token').first().json.data?.accessToken;\nconst ok=$json.statusCode===200&&typeof receipt?.resultRef==='string';\nconst retry=!token||!$json.statusCode||$json.statusCode>=500||$json.statusCode===429;\nreturn [{json:{leaseToken:job.leaseToken,attempt:job.attempt,expectedVersion:job.version,step:'report-projected',\n  ...(ok?{outcome:'DONE',resultRef:receipt.resultRef}:retry?{outcome:'RETRY',errorCode:'UPSTREAM_UNAVAILABLE'}:{outcome:'DEAD',errorCode:'REPORT_PROJECTION_REJECTED'})}}];"
+        }
+      },
+      {
+        "name": "Result",
+        "id": "Result",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1800,
+          240
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ 'http://host.docker.internal:4006/internal/automation/jobs/' + $('Job').first().json.jobId + '/result' }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Bridge token').first().json.data?.accessToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json }}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Daily reporting token",
+        "id": "Daily-reporting-token",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2000,
+          240
+        ],
+        "parameters": {
+          "url": "http://host.docker.internal:4002/internal/iam/machine/token",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"audience\":\"reporting\",\"scopes\":[\"reporting:project\"],\"workflows\":[\"WF-11\"],\"ttlSeconds\":120}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "N8N07LocalWF11Machine",
+            "name": "WF-11-N8N07-machine"
+          }
+        }
+      },
+      {
+        "name": "Rebuild previous day",
+        "id": "Rebuild-previous-day",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          240
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:4011/internal/reporting/rebuild",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Daily reporting token').first().json.data?.accessToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{}",
+          "options": {
+            "timeout": 15000,
+            "redirect": {
+              "redirect": {
+                "followRedirects": false
+              }
+            }
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [
+          [
+            {
+              "node": "Bridge token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poll": {
+        "main": [
+          [
+            {
+              "node": "Bridge token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bridge token": {
+        "main": [
+          [
+            {
+              "node": "Claim",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claim": {
+        "main": [
+          [
+            {
+              "node": "Job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job": {
+        "main": [
+          [
+            {
+              "node": "Reporting token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reporting token": {
+        "main": [
+          [
+            {
+              "node": "Project",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Project": {
+        "main": [
+          [
+            {
+              "node": "Result payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Result payload": {
+        "main": [
+          [
+            {
+              "node": "Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Daily close": {
+        "main": [
+          [
+            {
+              "node": "Daily reporting token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Daily reporting token": {
+        "main": [
+          [
+            {
+              "node": "Rebuild previous day",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "timezone": "Asia/Saigon",
+      "executionTimeout": 50,
+      "saveDataErrorExecution": "none",
+      "saveDataSuccessExecution": "none",
+      "saveManualExecutions": false
+    },
+    "pinData": {},
+    "tags": []
+  }
+]

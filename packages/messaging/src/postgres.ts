@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
-import { EventEnvelope } from "@spacex/contracts";
+import { randomUUID } from "node:crypto";
+import { EventEnvelope, ReportingRefreshEvent, reportDay } from "@spacex/contracts";
 
 // Install in each service's OWN database, inside its versioned migration.
 export const messagingSchema = `
@@ -29,6 +30,14 @@ export async function enqueueEvent(client: PoolClient, input: EventEnvelope) {
     [event.id, JSON.stringify(event)],
   );
   if (!rows[0].identical) throw new Error("Event ID reused with different content");
+}
+
+export async function enqueueReportingRefresh(client: PoolClient, dates: Date[], cause: { id: string; correlationId: string }) {
+  for (const day of new Set(dates.map(reportDay))) {
+    await enqueueEvent(client, ReportingRefreshEvent.parse({ id: randomUUID(), type: "reporting.refresh_requested", version: 1,
+      occurredAt: new Date().toISOString(), correlationId: cause.correlationId, causationId: cause.id,
+      payload: { entity: { type: "reporting-day", id: day }, inputRef: day, contextRef: "reporting:source-refresh" } }));
+  }
 }
 
 // Acknowledge the broker only AFTER this durable insert commits.

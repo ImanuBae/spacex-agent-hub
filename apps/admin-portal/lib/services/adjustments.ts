@@ -21,10 +21,15 @@ export type ClassChange = Operation & { classId: string; kind: string; payload: 
 
 export function useOperations<T>(resource: string) {
   const [rows, setRows] = useState<T[]>([]), [error, setError] = useState<unknown>(null);
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number; total: number }>();
   const [busy, setBusy] = useState(true);
   const run = useCallback(async (change?: () => Promise<unknown>) => {
     setBusy(true); setError(null);
-    try { if (change) await change(); setRows((await api<T[]>(resource)).data); }
+    try {
+      if (change) await change();
+      const result = await api<T[]>(resource);
+      setRows(result.data); setPagination(result.pagination);
+    }
     catch (e) { setError(e); }
     finally { setBusy(false); }
   }, [resource]);
@@ -32,5 +37,5 @@ export function useOperations<T>(resource: string) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void run();
   }, [run]);
-  return { rows, busy, error, run };
+  return { rows, pagination, busy, error, run };
 }

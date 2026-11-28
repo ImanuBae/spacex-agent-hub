@@ -1,8 +1,20 @@
 # N8N readiness — hiện hành 20/11/26
 
+**N8N‑07 đã kiểm lát cắt báo cáo WF‑11 local**. Ba chỉ số đăng ký và dòng tiền đã đối chiếu Enrollment/Payment theo kỳ Asia/Saigon rồi nối Tổng quan. Edge kiểm lỗi tải, thử lại và quyền chi nhánh qua BFF. Bản sao WF‑11 chạy manual, poll và cron trong project riêng. Canonical inactive. [Định nghĩa, API/DB và evidence](acceptance-portal-wf11.md).
+
+Baseline Portal/WF‑11 đã chốt tại checkpoint `e9a6a9200602`. Đối chiếu lại 25 hash trong index và 191 artifact lịch sử. Hai lượt cô lập kiểm preflight mới cùng ca WF‑09 hoàn phần dư và WF‑11 báo cáo nguồn đều PASS. Các kết quả Portal trên Edge được kế thừa từ receipt trước. N8N‑07 giữ PARTIAL. [Checkpoint và receipt](../workflows/n8n/reporting-evidence.json).
+
+**WF‑12 sự cố và replay đã kiểm local.** Bridge ghi cảnh báo duy nhất cho job DEAD và gán nhóm giám đốc trung tâm. Portal kiểm replay qua Gateway/BFF, phiên hết quyền, xung đột version và kết quả sau reload. Replay sau khi Payment đã ghi chứng từ giữ cùng job/operation key và một chứng từ tổng hợp. [Runbook](runbook-wf12.md) · [Index bằng chứng](../workflows/n8n/wf12-evidence.json).
+
+**Restore local đã diễn tập trên instance sạch.** N8n giải mã được credential test. Bridge tiếp tục job PENDING qua WF‑09 manual, giữ một chứng từ và khớp số tiền/chỗ với nguồn. Đối chiếu xong sau 89,35 giây và kiểm xong replay sau 98,27 giây. [Bài diễn tập và giới hạn](runbook-wf12.md#diễn-tập-backup-và-restore).
+
+**WF‑12 xóa/ẩn danh đã kiểm local theo policy demo.** Lỗi Conversation giữ yêu cầu PROCESSING và chạy lại có thể hoàn tất khi đủ bằng chứng. Enrollment, Payment và bản sao còn retention giữ PROCESSING. Restore bản sao CRM/Conversation cũ áp dụng danh sách loại trừ trước khi mở API. [Runbook](runbook-wf12.md#xóa-và-ẩn-danh-có-bằng-chứng) · [Index](../workflows/n8n/wf12-evidence.json).
+
+**N8N‑07 giữ PARTIAL.** Import theo C12 là ticket riêng. Với Facebook và Zalo, thông tin hiện có chưa đủ xác minh chủ tài khoản, app, quyền hoặc điều kiện webhook. Provider/live cần ủy quyền riêng. Triển khai erasure ngoài fixture tổng hợp cần policy C09 được duyệt và danh mục sao lưu có chủ quản. [Gates C09, C10, C12](product-plan-v3.md#31-c01c12-và-mặc-định-đồ-án).
+
 **N8N-06 ACCEPT_LOCAL**. Đã kiểm WF08–10, Portal nhân viên và học viên, quyền lợi, chỗ, tiền mô phỏng và hai ca SIGKILL. Canonical WF08–10 inactive. [Matrix](acceptance-n8n-06.md), [index](../workflows/n8n/adjustment-evidence.json), [bàn giao](ban-giao-n8n-06.md).
 
-**N8N-05 ACCEPT_LOCAL**. WF04–07 đã nối CRM/Enrollment/Payment/Class và kiểm tổng hợp backend thật. [Matrix](acceptance-n8n-05.md), [index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md). Provider/live/production và N8N07–08 giữ các gate riêng.
+**N8N-05 ACCEPT_LOCAL**. WF04–07 đã nối CRM/Enrollment/Payment/Class và kiểm tổng hợp backend thật. [Matrix](acceptance-n8n-05.md), [index](../workflows/n8n/registration-evidence.json), [bàn giao](ban-giao-n8n-05.md).
 
 <details>
 <summary>Snapshot readiness ngày12/11/2026 — giữ nguyên nội dung, TODO và thiếu backend tại thời điểm cũ</summary>

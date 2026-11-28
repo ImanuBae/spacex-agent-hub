@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Brand from "../../landing/Brand";
 import { inter } from "../../ui/fonts";
 import "../../ui/theme.css";
 import "../../dashboard/components/operations.css";
@@ -24,7 +25,7 @@ export default function StudentLogin() {
     finally { setBusy(false); }
   }
   return <main className={`hub-theme ops student-login ${inter.className}`}>
-    <Link href="/" className="student-brand">Space Agent Hub</Link>
+    <Brand />
     <section className="ops-panel">
       <h1>Đăng nhập học viên</h1>
       <p className="muted">Xem lịch, quyền lợi và hóa đơn của bạn.</p>

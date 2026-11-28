@@ -2,7 +2,7 @@ import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { authenticate, bearer, checkBranch, iamRequest, principal, verifyCommand, type AuthConfig } from "@spacex/auth";
-import { EnrollmentConfirmedEvent, MachineClaims, type EventEnvelope } from "@spacex/contracts";
+import { EnrollmentConfirmedEvent, LearnerMemberships, MachineClaims, type EventEnvelope } from "@spacex/contracts";
 import { createApp, HttpError } from "@spacex/http";
 import { enqueueEvent } from "@spacex/messaging";
 
@@ -12,7 +12,7 @@ const timeout = () => new HttpError(503, "ADAPTER_TIMEOUT", "Delivery response t
 const denied = () => new HttpError(403, "FORBIDDEN", "Notification authority denied");
 const empty = z.object({}).strict();
 const recipient = z.object({ accountId: Id, learnerId: Id, branchId: Id, email: z.email() });
-const enrollment = z.object({ valid: z.boolean(), branchId: Id, learnerId: Id, sourceVersion: Version, classId: Id, committed: z.boolean(), historicallyConfirmed: z.boolean().optional(), entitlementVersion: Version });
+const enrollment = z.object({ valid: z.boolean(), branchId: Id, learnerId: Id, sourceVersion: Version, classId: Id, committed: z.boolean(), historicallyConfirmed: z.boolean().optional(), entitlementVersion: Version, selfRegistration: z.boolean().optional() });
 const session = z.object({ startsAt: Timestamp });
 const schedule = z.object({ classId: Id, version: Version, status: z.string(), sessions: z.array(session), committed: z.boolean() });
 const classEvent = z.object({ classId: Id, branchId: Id, sourceVersion: Version, status: z.string() });
@@ -36,6 +36,7 @@ export interface NotificationConfig {
   enrollmentUrl: string; classUrl: string; crmUrl: string;
   sourceClientId: string; sourceClientSecret: string; iamNotificationSecret: string;
   ownerId: string; testFaults?: boolean;
+  otpEmail?: { apiKey: string; from: string };
 }
 
 function view(row: Intent) {
@@ -189,6 +190,21 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
         correlationId: row.correlation_id, dueAt: new Date(start.getTime() - 86400000), expiresAt: start }, config.ownerId);
     }
   }
+  async function sendOtpEmail(challengeId: string, to: string, subject: string, body: string) {
+    const email = config.otpEmail!;
+    let response: Response;
+    try {
+      response = await fetch("https://api.resend.com/emails", {
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(3500),
+        headers: { authorization: `Bearer ${email.apiKey}`, "content-type": "application/json", "idempotency-key": `otp/${challengeId}` },
+        body: JSON.stringify({ from: email.from, to: [to], subject, text: body }),
+      });
+    } catch { throw timeout(); }
+    if (!response.ok) throw new HttpError(503, "OTP_EMAIL_UNAVAILABLE", "Email provider did not accept the verification message");
+    const receipt = z.object({ id: Id }).safeParse(await response.json().catch(() => null));
+    if (!receipt.success) throw timeout();
+    return receipt.data.id;
+  }
 
   return createApp("notification", app => {
     app.get("/ready", async (_req, res) => { await pool.query("SELECT 1 FROM notification_intents LIMIT 1"); res.json({ status: "ok" }); });
@@ -198,8 +214,18 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
       const claims = MachineClaims.parse(await iamRequest(auth.identityUrl, "/internal/iam/machine/introspect", token, { audience: "automation-bridge", scope: "automation:claim" }));
       if (!claims.workflows.includes("WF-10")) throw denied();
       const count = await tx(async c => {
-        const rows = (await c.query<Intent>(`SELECT * FROM notification_intents WHERE event_id IS NULL AND template<>'OTP'
+        const due = (await c.query<Intent>(`SELECT * FROM notification_intents WHERE event_id IS NULL AND template<>'OTP'
           AND status IN ('PENDING','WAITING') AND due_at<=clock_timestamp() ORDER BY due_at,id LIMIT 10 FOR UPDATE SKIP LOCKED`)).rows;
+        const ready = await Promise.all(due.map(async row => {
+          if (row.error_code !== "AWAITING_VERIFIED_EMAIL") return true;
+          const { ready } = await read(z.object({ ready: z.boolean() }), auth.identityUrl,
+            `/internal/iam/learner-ready/${row.learner_id}?branchId=${row.branch_id}`, { "x-iam-notification-secret": config.iamNotificationSecret });
+          return ready;
+        }));
+        const rows = due.filter((_row, index) => ready[index]);
+        for (const row of due.filter((_row, index) => !ready[index])) {
+          await c.query("UPDATE notification_intents SET due_at=clock_timestamp()+interval '1 minute' WHERE id=$1", [row.id]);
+        }
         if (!rows.length) return 0;
         const sourceToken = z.object({ accessToken: z.string() }).parse(await iamRequest(auth.identityUrl, "/internal/iam/machine/token", "", {
           clientId: config.sourceClientId, clientSecret: config.sourceClientSecret, audience: "notification", scopes: ["automation:source"], workflows: ["WF-10"], ttlSeconds: 60,
@@ -209,7 +235,7 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
           const { contextRef } = z.object({ contextRef: Id }).parse(await iamRequest(auth.identityUrl, "/internal/iam/service-delegations", sourceToken, {
             audience: "notification", input: { entity, eventId, workflowId: "WF-10", workflowVersion: 1, branchId: row.branch_id, operations: ["notification.deliver"], inputRef },
           }));
-          await c.query("UPDATE notification_intents SET event_id=$2,context_id=$3,status='PENDING' WHERE id=$1", [row.id, eventId, contextRef]);
+          await c.query("UPDATE notification_intents SET event_id=$2,context_id=$3,status='PENDING',error_code=NULL WHERE id=$1", [row.id, eventId, contextRef]);
           await enqueueEvent(c, { id: eventId, type: "notification.requested", version: 1, occurredAt: new Date().toISOString(),
             correlationId: row.correlation_id, causationId: row.source_event_id ?? undefined, entityId: row.id, entityVersion: 1,
             payload: { entity, inputRef, contextRef } });
@@ -262,6 +288,11 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
         catch (error) {
           if (!(error instanceof HttpError) || error.status !== 403) throw error;
           await scope(token, id);
+          if (e.selfRegistration && row.template === "ENROLLMENT_CONFIRMED") {
+            const waiting = await outcome(c, row, "WAITING", "AWAITING_VERIFIED_EMAIL", null, user.sub, d.jobId);
+            await c.query("UPDATE notification_intents SET event_id=NULL,context_id=NULL,due_at=clock_timestamp()+interval '5 seconds' WHERE id=$1", [row.id]);
+            return { row: waiting, timedOut: false };
+          }
           return { row: await outcome(c, row, "FAILED", "RECIPIENT_UNVERIFIED", null, user.sub), timedOut: false };
         }
         if (target.branchId !== row.branch_id || target.learnerId !== row.learner_id) throw denied();
@@ -298,7 +329,9 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
         const row = await intent(c, proposed.id, true);
         if (row.status === "SENT") return { intentId: row.id, receiptId: row.receipt_id };
         if (!(await c.query("SELECT 1 WHERE $1::timestamptz>clock_timestamp()", [row.expires_at])).rowCount) throw denied();
-        const receiptId = await mailbox(c, row, source.email, "Mã đăng nhập học viên", `Mã đăng nhập của bạn: ${input.code}. Mã có hạn 5 phút.`);
+        const subject = "Mã đăng nhập học viên";
+        const body = `Mã đăng nhập của bạn: ${input.code}. Mã có hạn 5 phút.`;
+        const receiptId = config.otpEmail ? await sendOtpEmail(source.challengeId, source.email, subject, body) : await mailbox(c, row, source.email, subject, body);
         await outcome(c, row, "SENT", null, receiptId, source.accountId);
         return { intentId: row.id, receiptId };
       });
@@ -319,10 +352,11 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
     app.get("/api/v1/notifications", async (req, res) => {
       const user = principal(res);
       if (user.role === "student") {
-        const { learnerId, branchId } = await read(recipient.pick({ learnerId: true, branchId: true }), auth.identityUrl, "/api/v1/auth/learner", { authorization: req.get("authorization")! });
+        const { memberships } = await read(LearnerMemberships, auth.identityUrl, "/api/v1/auth/learner", { authorization: req.get("authorization")! });
         const messages = await pool.query(`SELECT m.id,m.intent_id AS "intentId",m.subject,m.body,m.created_at AS "createdAt" FROM notification_portal_messages m
-          JOIN notification_intents i ON i.id=m.intent_id WHERE m.learner_id=$1 AND i.branch_id=$2 ORDER BY m.created_at DESC LIMIT 100`, [learnerId, branchId]);
-        res.json({ data: messages.rows }); return;
+          JOIN notification_intents i ON i.id=m.intent_id JOIN jsonb_to_recordset($1::jsonb) AS l("learnerId" uuid,"branchId" uuid)
+          ON m.learner_id=l."learnerId" AND i.branch_id=l."branchId" ORDER BY m.created_at DESC LIMIT 100`, [JSON.stringify(memberships)]);
+        res.set("cache-control", "no-store").json({ data: messages.rows }); return;
       }
       if (!["center_director", "branch_director", "admissions"].includes(user.role)) throw denied();
       const rows = await pool.query<Intent>(`SELECT * FROM notification_intents WHERE template<>'OTP' AND ($1::uuid[] IS NULL OR branch_id=ANY($1))
@@ -332,19 +366,20 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
     app.post("/api/v1/notifications", async (req, res) => {
       const user = principal(res);
       if (!["center_director", "branch_director", "admissions"].includes(user.role)) throw denied();
-      const input = z.object({ enrollmentId: Id, template: z.literal("REMINDER"), sourceVersion: Version, dueAt: Timestamp.optional() }).strict().parse(req.body);
+      const input = z.object({ enrollmentId: Id, template: z.literal("REMINDER"), classId: Id.optional(), sourceVersion: Version, dueAt: Timestamp.optional() }).strict().parse(req.body);
       const headers = { authorization: req.get("authorization")! };
-      const e = await read(z.object({ id: Id, status: z.literal("CONFIRMED"), snapshot: z.object({ branchId: Id, learnerId: Id, classId: Id }) }), config.enrollmentUrl, `/api/v1/enrollments/${input.enrollmentId}`, headers);
-      checkBranch(user, e.snapshot.branchId);
-      const s = await read(schedule.omit({ classId: true, committed: true }).extend({ id: Id, branchId: Id }), config.classUrl, `/api/v1/classes/${e.snapshot.classId}`, headers);
-      if (s.id !== e.snapshot.classId || s.branchId !== e.snapshot.branchId || s.status === "CANCELLED" || input.sourceVersion !== s.version) throw new HttpError(409, "SOURCE_CHANGED", "Class schedule version changed");
+      const e = await read(z.object({ id: Id, state: z.string(), branchId: Id, learnerId: Id, classId: Id }), config.enrollmentUrl, `/api/v1/enrollments/${input.enrollmentId}/entitlement`, headers);
+      checkBranch(user, e.branchId);
+      if (e.state !== "ACTIVE" || (input.classId && input.classId !== e.classId)) throw new HttpError(409, "SOURCE_CHANGED", "Enrollment class changed");
+      const s = await read(schedule.omit({ classId: true, committed: true }).extend({ id: Id, branchId: Id }), config.classUrl, `/api/v1/classes/${e.classId}`, headers);
+      if (s.id !== e.classId || s.branchId !== e.branchId || s.status === "CANCELLED" || input.sourceVersion !== s.version) throw new HttpError(409, "SOURCE_CHANGED", "Class schedule version changed");
       const data = await tx(async c => {
         const now = (await c.query<{ now: Date }>("SELECT clock_timestamp() AS now")).rows[0].now;
         const next = s.sessions.filter(x => new Date(x.startsAt) > now).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
         if (!next) throw new HttpError(409, "NO_FUTURE_SESSION", "There is no future session for this class");
         const startsAt = new Date(next.startsAt), dueAt = input.dueAt ? new Date(input.dueAt) : new Date(startsAt.getTime() - 86400000);
         if (dueAt >= startsAt) throw new HttpError(409, "REMINDER_DEADLINE", "Reminder must be due before the session begins");
-        const row = await addIntent(c, { enrollmentId: e.id, learnerId: e.snapshot.learnerId, branchId: e.snapshot.branchId,
+        const row = await addIntent(c, { enrollmentId: e.id, learnerId: e.learnerId, branchId: e.branchId,
           classId: s.id, sourceVersion: s.version, template: "REMINDER", sessionStartsAt: startsAt, dueAt, expiresAt: startsAt, correlationId: res.locals.correlationId }, config.ownerId);
         if (input.dueAt && row.due_at.getTime() !== dueAt.getTime()) throw new HttpError(409, "INTENT_CONFLICT", "Reminder already exists with a different due time");
         await audit(c, row, "REMINDER_REQUESTED", user.sub);

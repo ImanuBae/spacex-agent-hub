@@ -2,8 +2,8 @@ import { z } from "zod";
 import { AutomationInput } from "./automation.js";
 import { TokenClaims } from "./auth.js";
 
-export const MachineScope = z.enum(["automation:claim", "automation:checkpoint", "automation:result", "automation:read", "automation:authorize", "catalog:read", "classes:read", "classes:cancel", "channel:context", "crm:write", "enrollment:write", "payment:write", "classes:enroll", "automation:source", "classes:change", "classes:adjust", "enrollment:adjust", "payment:refund", "notification:deliver"]);
-export const MachineAudience = z.enum(["automation-bridge", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification"]);
+export const MachineScope = z.enum(["automation:claim", "automation:checkpoint", "automation:result", "automation:read", "automation:authorize", "automation:incidents", "erasure:process", "catalog:read", "classes:read", "classes:cancel", "channel:context", "crm:write", "enrollment:write", "payment:write", "classes:enroll", "automation:source", "classes:change", "classes:adjust", "enrollment:adjust", "payment:refund", "notification:deliver", "reporting:source", "reporting:project"]);
+export const MachineAudience = z.enum(["automation-bridge", "catalog", "class-schedule", "conversation", "crm", "enrollment", "payment", "notification", "reporting"]);
 export const MachineGrant = z.object({ audience: MachineAudience, scopes: z.array(MachineScope).min(1) }).strict();
 export const MachinePrincipalInput = z.object({
   id: z.string().regex(/^[a-zA-Z0-9._-]{1,100}$/),

@@ -121,7 +121,7 @@ try {
       { ...process.env, DATABASE_URL: url }, path.join(root, "services", service), `${service}-migration-${i}.log`);
   }
   pool = new pg.Pool({ connectionString: dbUrl });
-  assert.equal((await pool.query("SELECT count(*)::int AS n FROM schema_migrations")).rows[0].n, 1);
+  assert.deepEqual((await pool.query("SELECT version FROM schema_migrations ORDER BY version")).rows.map(row => row.version), ["0001", "0002"]);
   const denied = new URL(identityUrl); denied.username = "bridge_test"; denied.password = bridgePassword;
   const other = new pg.Pool({ connectionString: denied.toString() });
   try { await assert.rejects(other.query("SELECT 1")); } finally { await other.end(); }
@@ -245,7 +245,7 @@ try {
 } finally {
   if (child && child.exitCode === null && child.signalCode === null) await new Promise(resolve => { child.once("exit", resolve); child.kill("SIGKILL"); });
   for (const processChild of children.reverse()) if (processChild.exitCode === null && processChild.signalCode === null) await new Promise(resolve => { processChild.once("exit", resolve); processChild.kill("SIGKILL"); });
-  await broker?.close(); await pool?.end();
+  await broker?.close().catch(() => undefined); await pool?.end();
   evidence.finishedAt = new Date().toISOString();
   evidence.artifacts["scripts/n8n-output.mjs"] = createHash("sha256").update(await readFile("scripts/n8n-output.mjs")).digest("hex");
   const envAfter=await personalEnvMetadata(),runtimeAfter=existingRuntime();

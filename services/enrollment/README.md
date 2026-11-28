@@ -49,3 +49,19 @@ Staff create `/api/v1/adjustments` with a UUID idempotency key, the expected eff
 Use a UUID-named service principal with the `enrollment` audience, `automation:source` scope and `WF-09` allowance. Existing deployments that use `WF-07` retain their grant. `NOTIFICATION_URL` enables the bound WF10 authoritative entitlement projection. All mutating workflow calls require current IAM and Bridge bindings for the same adjustment and operation. A Class-approved target with stale quote, consent or class impact fails before commitment. Once a target commit exists, recovery reads it and continues forward.
 
 Waitlist eligibility requires a paid active or unexpired suspended source entitlement and verified current consent. An independent director offers a 24-hour invitation to the earliest eligible waiting entry while Class reports space. Accepting the invitation records learner choice and triggers normal target seat acquisition, which may still lose a capacity race. `POST /internal/enrollment/adjustment-deadlines` performs bounded expiry processing for WF09. Server-time checks also deny expired decisions when orchestration is offline.
+
+## Học viên tự đăng ký
+
+Chạy migration Enrollment `0004` và Identity `0006`. Cấp `WF-05` cho principal `automation:source` của Enrollment, cùng các quyền workflow đang dùng. Cấu hình ba khóa độc lập từ 32 byte trở lên ở Enrollment và ở đúng dịch vụ nhận tương ứng.
+
+| Biến | Dịch vụ dùng chung với Enrollment |
+| --- | --- |
+| `ENROLLMENT_CRM_SECRET` | CRM |
+| `ENROLLMENT_IAM_SECRET` | Identity |
+| `ENROLLMENT_PAYMENT_SECRET` | Payment |
+
+Identity cần `ENROLLMENT_URL`, `NOTIFICATION_URL` và khóa OTP dùng chung với Notification. Catalog và Class cần gói đang bán, lớp mở đúng gói và chi nhánh, cùng lịch hợp lệ. Enrollment và Payment phải cùng dùng `PAYMENT_ADAPTER=sepay` khi nhận chuyển khoản MB. RabbitMQ và các workflow WF‑05, WF‑06, WF‑07, WF‑10 cần hoạt động. Cấu hình webhook và ngân hàng theo [Payment](../payment/README.md) và hộp thư theo [Notification](../notification/README.md#otp-gửi-đến-hộp-thư-thật).
+
+Trình duyệt lưu một mã ngẫu nhiên trong phiên tab để tiếp tục cùng đơn sau khi tải lại. Chỉ OTP của hộp thư đăng ký mới tạo hoặc gắn đăng ký vào tài khoản học viên. Một tài khoản học viên có thể sở hữu nhiều đăng ký đã xác minh. Email dành cho tài khoản nhân viên hoặc tài khoản đã khóa bị từ chối trước khi tạo yêu cầu thanh toán.
+
+Chạy `node scripts/test-n8n06.mjs --case=SELF-REGISTRATION` để kiểm trên trình duyệt với cơ sở dữ liệu, n8n, webhook SePay ký bằng khóa thử và mailbox riêng của lần chạy. Dùng `--case=SELF-REGISTRATION-EDGES` để chạy riêng ca hết hạn, đối soát và Portal nhân viên. Bài kiểm tra xác minh tham số VietQR MB từ Payment và thay ảnh từ máy chủ bên ngoài bằng ảnh thử cho tài khoản giả.

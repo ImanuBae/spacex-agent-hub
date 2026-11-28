@@ -6,8 +6,10 @@ import { modelId, responseModelId, providerName, providerSlug, temperature, prov
 import { selectBenchmarkCases, plannedModelRequests } from "./n8n04-benchmark-guard.mjs";
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
 const json = async file => JSON.parse(await readFile(file, "utf8"));
-assert(process.argv.length <= 3, "Optional argument: comma-separated corpus case IDs in original order");
-const selectedCases = selectBenchmarkCases(await json("workflows/n8n/chat-benchmark.json"), process.argv[2]?.split(","));
+assert(process.argv.length <= 3, "Optional argument: --advisory or comma-separated corpus case IDs in original order");
+const advisory = process.argv[2] === "--advisory";
+const advisoryCorpus = "workflows/n8n/chat-advisory-cases.json";
+const selectedCases = selectBenchmarkCases(await json(advisory ? advisoryCorpus : "workflows/n8n/chat-benchmark.json"), advisory ? undefined : process.argv[2]?.split(","));
 const caseIds = selectedCases.map(row => row.id);
 const index = await json("workflows/n8n/chat-hardening-evidence.json"), receipts = [], seen = new Set();
 const utcDate = new Date().toISOString().slice(0, 10);
@@ -33,6 +35,10 @@ for (const file of [...Object.keys(previous.sourceChecks), "services/class-sched
   if (previous.sourceChecks[file] && previous.sourceChecks[file] !== sourceChecks[file]) sourceChanges[file] = { beforeSha256: previous.sourceChecks[file], sha256: sourceChecks[file] };
 }
 for (const file of ["scripts/n8n04-wire-trace.mjs", "scripts/n8n04-wire-trace.test.mjs", "scripts/test-n8n04-transport.mjs", "scripts/n8n04-transport-preload.mjs"]) sourceChecks[file] = sha(await readFile(file));
+for (const file of [advisoryCorpus, "packages/contracts/src/catalog-demo.ts", "packages/contracts/src/conversation.ts", "services/conversation/src/app.ts", "services/catalog/src/routes.ts"]) {
+  sourceChecks[file] = sha(await readFile(file));
+  if (previous.sourceChecks[file] && previous.sourceChecks[file] !== sourceChecks[file]) sourceChanges[file] = { beforeSha256: previous.sourceChecks[file], sha256: sourceChecks[file] };
+}
 const directory = `.local/automation/n8n04-authorized-${randomBytes(6).toString("hex")}`;
 await mkdir(directory, { recursive: true });
 const key = (await readFile(".local/credentials/openrouter.key", "utf8")).trim();
@@ -57,6 +63,7 @@ assert.equal(endpoints[0].supports_tool_choice.function, true);
 const maxRequests = Math.min(20, 50 - dailyAttempts, quota.remaining);
 const grant = { status: "PREFLIGHT_PASS_INFERENCE_PENDING", authorization: { status: "NEW_RUN_BUDGET_CONFIRMED", source: "User delegated local N8N-03/04 completion, free-model selection and new batches after reviewed fixes", priorRequestAttempts, maxRequests, totalAuthorizedRequests: priorRequestAttempts + maxRequests, maxRequestsPerCase: 2, maxCostUsd: 0, retries: 0, probeRequests: 0, paidFallback: false, utcDate, dailyLimit: 50, dailyAttemptsBefore: dailyAttempts, quotaRemainingBefore: quota.remaining }, selection: { modelId, providerName, providerSlug, temperature, providerTimeoutMs, modelNodeTimeoutMs, draftBudgetMs }, sourceChecks, sourceChanges, receiptChecks: [...receipts, ...metadata.map(({data,route,...ref})=>ref)], metadata: metadata.map(({data, ...ref}) => ref), checkedAt: new Date().toISOString() };
 grant.caseIds = caseIds;
+if (advisory) grant.advisory = true;
 grant.plannedModelRequests = plannedModelRequests(selectedCases);
 grant.selection.responseModelId = responseModelId;
 await writeFile(`${directory}/preflight.json`, JSON.stringify(grant, null, 2) + "\n", { flag: "wx", mode: 0o600 });

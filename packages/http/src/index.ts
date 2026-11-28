@@ -1,4 +1,4 @@
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID, randomBytes, timingSafeEqual } from "node:crypto";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { ZodError } from "zod";
 import { createLogger } from "@spacex/logger";
@@ -7,7 +7,15 @@ export class HttpError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
-export function createApp(service: string, routes: (app: Express) => void) {
+export function requireServiceSecret(expected: string | undefined, supplied: string | undefined) {
+  const secret = Buffer.from(expected ?? "");
+  const value = Buffer.from(supplied ?? "");
+  if (secret.length < 32 || secret.length !== value.length || !timingSafeEqual(secret, value)) {
+    throw new HttpError(403, "FORBIDDEN", "Service credential required");
+  }
+}
+
+export function createApp(service: string, routes: (app: Express) => void, rawJsonPath?: string) {
   const app = express();
   const logger = createLogger(service);
   const requests = new Map<string, { count: number; errors: number; totalDurationMs: number }>();
@@ -38,6 +46,7 @@ export function createApp(service: string, routes: (app: Express) => void) {
     });
     next();
   });
+  if (rawJsonPath) app.post(rawJsonPath, express.raw({ type: "application/json", limit: "100kb", inflate: false }));
   app.use(express.json({ limit: "100kb" }));
   app.get("/health", (_req, res) => res.json({ status: "ok", service }));
   routes(app);
