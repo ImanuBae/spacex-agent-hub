@@ -3,6 +3,10 @@
   padding: clamp(20px, 3.1vw, 44px) clamp(22px, 5vw, 64px);
 }
 .course-intro.public-orbit::before { top: 7%; opacity: .72; }
+.course-intro.orbit-hero::before, .course-intro.orbit-hero::after { content: none; }
+@media (max-width: 640px) {
+  .course-intro.orbit-hero { --orbit-size: 64%; --orbit-right: -17%; --orbit-top: 22%; --orbit-opacity: .5; }
+}
 .course-page .course-intro p {
   max-width: 44ch;
   margin-top: 12px;

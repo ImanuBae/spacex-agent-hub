@@ -1,5 +1,16 @@
 import type { CSSProperties } from "react";
 const paths:Record<string,string>={
+  home:"M3 11l9-8 9 8 M5 10v11h5v-6h4v6h5V10",
+  check:"M5 12l4 4L19 6",
+  bookmark:"M6 3h12v18l-6-4-6 4z",
+  progress:"M4 4v16h16 M8 15V11 M13 15V8 M18 15V5",
+  exam:"M8 4H5v17h14V4h-3 M8 3h8v4H8z M8 12l2 2 5-5 M8 17h7",
+  certificate:"M8 16l-2 5 6-2 6 2-2-5 M12 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M12 7v6 M9 10h6",
+  folder:"M3 7h7l2 2h9v10H3z M3 7V5h7l2 2h7v2",
+  bell:"M5 16h14l-2-3V9a5 5 0 0 0-10 0v4z M10 19a2 2 0 0 0 4 0",
+  settings:"M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2",
+  grid:"M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
+  list:"M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1",
   overview:"M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   mailbox:"M3 5h18v14H3z M3 6l9 7 9-7",leads:"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M20 8v6 M17 11h6",
   courses:"M4 3h13a3 3 0 0 1 3 3v15H7a3 3 0 0 1-3-3z M4 17h16 M8 7h8 M8 11h6",

@@ -381,12 +381,14 @@ export function registerChanges(
       )
         throw denied();
       const result = await view(c, row);
+      const room = row.room_id ? (await c.query("SELECT name FROM rooms WHERE id=$1 AND branch_id=$2", [row.room_id, row.branch_id])).rows[0] : undefined;
       return {
         enrollmentId: id,
         classId: row.id,
         name: row.name,
         status: row.status,
         mode: row.mode,
+        roomName: room?.name ?? null,
         onlineUrl: ["OPEN", "IN_PROGRESS"].includes(row.status) ? row.online_url : null,
         sessions: result.sessions,
         version: row.version,

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { execFileSync, spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
-import { writeFileSync, openSync, closeSync, readdirSync } from "node:fs";
+import { writeFileSync, openSync, closeSync, readdirSync, existsSync } from "node:fs";
 import { createServer, createConnection, isIPv4 } from "node:net";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -109,7 +109,7 @@ export async function withN8n06Runtime(run, record, bindings, { provenanceFile, 
   const evidence = record;
   Object.assign(evidence, { project, startedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), status: "FAIL", runtimeChecks: [], artifacts: { ...record.artifacts }, services: [], acl });
   const paths = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "utf8" }).split("\0").filter(f =>
-    ["package.json", "package-lock.json", "turbo.json"].includes(f) || /^(services|packages|scripts|workflows|infra|apps)\//.test(f) && /\.(ts|tsx|sql|mjs|cjs|json|yml|css)$/.test(f));
+    existsSync(f) && (["package.json", "package-lock.json", "turbo.json"].includes(f) || /^(services|packages|scripts|workflows|infra|apps)\//.test(f) && /\.(ts|tsx|sql|mjs|cjs|json|yml|css)$/.test(f)));
   const sourceHashes = Object.fromEntries(await Promise.all([...new Set(paths)].map(async file => [file, sha(await readFile(file))])));
   const provenance = {
     authorization: record.authorization,

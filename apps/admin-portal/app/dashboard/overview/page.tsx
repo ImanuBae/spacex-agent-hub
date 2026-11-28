@@ -7,6 +7,7 @@ import { allPages, stages, type LeadView } from "../../../lib/services/crm";
 import { courseService, type Course } from "../../../lib/services/courses";
 import { useAuth } from "../../../src/context/AuthContext";
 import { ErrorMessage, Field } from "../components/OperationUI";
+import OrbitArt from "../../ui/OrbitArt";
 
 type Summary = {
   confirmed: string; received: string; refunded: string; unassignedReceived: string;
@@ -53,7 +54,7 @@ export default function OverviewPage() {
   const reload = () => setAttempt(value => value + 1);
 
   return <div className="ops">
-    <header className="ops-heading"><div><h1>Tổng quan</h1><p className="muted">Đăng ký và dòng tiền theo chi nhánh.</p></div>
+    <header className="ops-heading orbit-hero hub-overview-intro"><OrbitArt /><div><h1>Tổng quan</h1><p className="muted">Đăng ký và dòng tiền theo chi nhánh.</p></div>
       <Link className="ops-link" href="/dashboard/reconciliation">Đối soát ngoại lệ</Link></header>
     <section className="ops-panel" aria-labelledby="report-heading" aria-busy={!current}>
       <div className="ops-heading"><div><h2 id="report-heading">Báo cáo đăng ký và thanh toán</h2><p className="muted">Dữ liệu tổng hợp mô phỏng · Asia/Saigon</p></div>

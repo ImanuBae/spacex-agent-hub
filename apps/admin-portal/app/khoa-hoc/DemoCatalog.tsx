@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { PublicClass, PublicOffer } from "@spacex/contracts";
 import { dateTime, money } from "../../lib/services/classes";
 import CourseCover from "./CourseCover";
-import { levels, modes } from "./course-previews";
+import { levels, modes } from "./course-roadmaps";
 
 const categories = ["Tất cả", "Lập trình", "Dữ liệu", "Thiết kế"] as const;
 const courseCategories = {

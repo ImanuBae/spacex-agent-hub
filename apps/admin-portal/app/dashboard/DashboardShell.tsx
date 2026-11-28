@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "./components/Sidebar";
 import HubIcon from "./components/HubIcon";
 import { AuthProvider, useAuth } from "../../src/context/AuthContext";
@@ -8,6 +9,7 @@ import { getMenuByRole } from "../../lib/roles";
 import { inter } from "../ui/fonts";
 import "./components/operations.css";
 import "../ui/theme.css";
+import "../ui/orbit.css";
 import "./components/shell.css";
 export default function DashboardShell({ children }: { children: ReactNode }) {
   return (
@@ -108,10 +110,16 @@ function DashboardContent({ children }: { children: ReactNode }) {
             <HubIcon name="chevron" size={13} />
             <strong>{title}</strong>
           </div>
-          <button className="hub-logout" aria-label="Đăng xuất" onClick={() => void logout()}>
-            <HubIcon name="logout" size={16} />
-            <span>Đăng xuất</span>
-          </button>
+          <div className="hub-topbar-actions">
+            <Link className="hub-logout portal-home-link" href="/" aria-label="Trang chủ" title="Trang chủ">
+              <HubIcon name="home" size={16} />
+              <span>Trang chủ</span>
+            </Link>
+            <button className="hub-logout" aria-label="Đăng xuất" onClick={() => void logout()}>
+              <HubIcon name="logout" size={16} />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
         </header>
         <main className="hub-canvas" id="hub-main" tabIndex={-1}>
           {logoutError && (

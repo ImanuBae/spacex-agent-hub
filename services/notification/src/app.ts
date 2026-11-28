@@ -349,19 +349,35 @@ export function createNotificationApp(pool: Pool, auth: AuthConfig, config: Noti
       res.json({ data: { id, mode } });
     });
     app.use("/api/v1/notifications", authenticate(auth));
+    const messageMembers = `notification_intents i JOIN jsonb_to_recordset($1::jsonb) AS l("learnerId" uuid,"branchId" uuid)
+      ON i.learner_id=l."learnerId" AND i.branch_id=l."branchId"`;
+    const studentMemberships = async (authorization: string) => JSON.stringify(
+      (await read(LearnerMemberships, auth.identityUrl, "/api/v1/auth/learner", { authorization })).memberships);
     app.get("/api/v1/notifications", async (req, res) => {
       const user = principal(res);
       if (user.role === "student") {
-        const { memberships } = await read(LearnerMemberships, auth.identityUrl, "/api/v1/auth/learner", { authorization: req.get("authorization")! });
-        const messages = await pool.query(`SELECT m.id,m.intent_id AS "intentId",m.subject,m.body,m.created_at AS "createdAt" FROM notification_portal_messages m
-          JOIN notification_intents i ON i.id=m.intent_id JOIN jsonb_to_recordset($1::jsonb) AS l("learnerId" uuid,"branchId" uuid)
-          ON m.learner_id=l."learnerId" AND i.branch_id=l."branchId" ORDER BY m.created_at DESC LIMIT 100`, [JSON.stringify(memberships)]);
+        const members = await studentMemberships(req.get("authorization")!);
+        const messages = await pool.query(`SELECT m.id,m.intent_id AS "intentId",m.subject,m.body,m.created_at AS "createdAt",
+          m.read_at AS "readAt",i.template,i.enrollment_id AS "enrollmentId" FROM notification_portal_messages m
+          JOIN ${messageMembers} ON i.id=m.intent_id AND i.learner_id=m.learner_id
+          ORDER BY m.created_at DESC,m.id LIMIT 100`, [members]);
         res.set("cache-control", "no-store").json({ data: messages.rows }); return;
       }
       if (!["center_director", "branch_director", "admissions"].includes(user.role)) throw denied();
       const rows = await pool.query<Intent>(`SELECT * FROM notification_intents WHERE template<>'OTP' AND ($1::uuid[] IS NULL OR branch_id=ANY($1))
         ORDER BY created_at DESC LIMIT 100`, [user.role === "center_director" ? null : user.branchIds]);
       res.json({ data: rows.rows.map(view) });
+    });
+    app.put("/api/v1/notifications/read", async (req, res) => {
+      if (principal(res).role !== "student") throw denied();
+      const input = z.union([z.object({ id: Id }).strict(), z.object({ all: z.literal(true) }).strict()]).parse(req.body);
+      const members = await studentMemberships(req.get("authorization")!);
+      const { rowCount } = await pool.query(`UPDATE notification_portal_messages m
+        SET read_at=COALESCE(m.read_at,clock_timestamp()) FROM ${messageMembers}
+        WHERE i.id=m.intent_id AND i.learner_id=m.learner_id AND ($2::uuid IS NULL OR m.id=$2)`,
+      [members, "id" in input ? input.id : null]);
+      if ("id" in input && !rowCount) throw new HttpError(404, "NOT_FOUND", "Notification not found");
+      res.set("cache-control", "no-store").json({ data: { read: true } });
     });
     app.post("/api/v1/notifications", async (req, res) => {
       const user = principal(res);

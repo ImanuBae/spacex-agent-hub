@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { api, dateTime, money, OperationError } from "../../lib/services/classes";
 import { kinds, states, type ClassChange } from "../../lib/services/adjustments";
 import { ErrorMessage } from "../dashboard/components/OperationUI";
+import { registrationCode, type Enrollment } from "../../lib/student-portal";
 
-type Entitlement = { state: string; classId: string; amount: number; remainingSessions: number; expiresAt?: string };
-export type Enrollment = { id: string; currentEntitlement: Entitlement; snapshot: { amountDue: number; packageName?: string; className?: string } };
 type Session = { startsAt: string; endsAt: string };
 type Schedule = { name: string; mode: string; onlineUrl?: string | null; sessions: Session[] };
 type Calendar = Record<string, Schedule | null>;
 type ScheduleChange = Pick<ClassChange, "id" | "kind" | "version"> & { reason: string };
-
-export const registrationCode = (id: string) => `ĐK ${id.slice(0, 8).toUpperCase()}`;
 
 export default function StudentStudy({ enrollments, busy, run }: {
   enrollments: Enrollment[];
@@ -36,7 +33,7 @@ export default function StudentStudy({ enrollments, busy, run }: {
       try {
         return [id, (await api<Schedule>("student/class-schedule/" + id)).data] as const;
       } catch (error) {
-        if (current && error instanceof OperationError && error.code === "UNAUTHORIZED") router.replace("/student/login");
+        if (current && error instanceof OperationError && error.code === "UNAUTHORIZED") router.replace("/student/session-expired");
         return [id, null] as const;
       }
     });
@@ -58,7 +55,7 @@ export default function StudentStudy({ enrollments, busy, run }: {
       result => { if (current) setPlans({ selection, source: enrollments, data: result.data }); },
       error => {
         if (!current) return;
-        if (error instanceof OperationError && error.code === "UNAUTHORIZED") router.replace("/student/login");
+        if (error instanceof OperationError && error.code === "UNAUTHORIZED") router.replace("/student/session-expired");
         else setPlans({ selection, source: enrollments, error });
       },
     );

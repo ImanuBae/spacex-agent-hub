@@ -49,6 +49,7 @@ export function createGatewayApp(config: AuthConfig, targets: { catalog: string;
         : (req.method === "POST" && /^\/api\/v1\/student\/class-changes\/[a-f0-9-]+\/choice$/.test(path)) ? targets.enrollment
         : (/^\/api\/v1\/(adjustments|waitlist)(\/[a-f0-9-]+(\/(approve|revoke|choice|invite|accept|decline))?)?$/.test(path) || /^\/api\/v1\/student\/(enrollments|adjustments|waitlist)(\/[a-f0-9-]+)?$/.test(path)) ? targets.enrollment
         : (/^\/api\/v1\/refunds(\/[a-f0-9-]+(\/execute)?)?$/.test(path) || /^\/api\/v1\/student\/invoices(\/[a-f0-9-]+(\/download)?)?$/.test(path) || req.method === "GET" && path === "/api/v1/student/payments") ? targets.payment
+        : req.method === "GET" && /^\/api\/v1\/student\/order-payments\/[a-f0-9-]+$/.test(path) ? targets.payment
         : /^\/api\/v1\/notifications(\/|$)/.test(path) ? targets.notification
         : req.method === "GET" && path === "/api/v1/reports" ? targets.reporting
         : (req.method === "GET" && /^\/api\/v1\/automation\/incidents(\/[a-f0-9-]+)?$/i.test(path)

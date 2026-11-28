@@ -160,6 +160,18 @@
   color: var(--hub-muted);
   flex-shrink: 0;
 }
+.hub-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.hub-overview-intro {
+  --orbit-size: min(32%, 210px);
+  --orbit-top: -40%;
+  --orbit-right: 14%;
+  --orbit-opacity: .48;
+  overflow: hidden;
+  padding: clamp(14px, 2vw, 24px);
+  background: #101b32;
+  border: 1px solid var(--hub-line);
+  border-radius: 14px;
+}
 .hub-logout {
   display: inline-flex;
   align-items: center;

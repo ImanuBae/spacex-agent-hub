@@ -10,5 +10,9 @@ try {
     await c.query(await readFile(new URL("../migrations/0001.sql", import.meta.url), "utf8"));
     await c.query(messagingSchema); await c.query("INSERT INTO schema_migrations VALUES('0001')");
   }
+  if (!(await c.query("SELECT 1 FROM schema_migrations WHERE version='0002'")).rowCount) {
+    await c.query(await readFile(new URL("../migrations/0002_portal_read.sql", import.meta.url), "utf8"));
+    await c.query("INSERT INTO schema_migrations VALUES('0002')");
+  }
   await c.query("COMMIT"); console.log("Notification migration completed");
 } catch (error) { await c.query("ROLLBACK"); throw error; } finally { c.release(); await pool.end(); }

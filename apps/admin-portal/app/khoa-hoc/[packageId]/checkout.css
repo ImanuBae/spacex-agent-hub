@@ -10,6 +10,8 @@
 }
 .course-checkout .offer-back:hover { color: var(--accent); }
 .course-checkout .offer-hero {
+  --orbit-size: min(52%, 540px);
+  --orbit-opacity: .33;
   display: grid;
   grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);
   align-items: center;
@@ -50,26 +52,15 @@
 }
 .offer-content section + section { margin-top: 28px; }
 .course-checkout .offer-content h2 + p, .offer-content p + p { margin-top: 10px; }
-.course-checkout .offer-syllabus { margin-top: 12px; list-style: decimal; padding-inline-start: 1.6em; }
-.offer-syllabus li { border-block-end: 1px solid var(--line); padding: 11px 0 11px 6px; }
-.offer-syllabus li::marker { color: var(--accent); font-variant-numeric: tabular-nums; }
-.course-checkout .offer-preview {
-  padding: clamp(16px, 3vw, 28px);
-  background: #0d182e;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-}
-.course-checkout .offer-preview .offer-preview-label { margin-bottom: 5px; color: var(--accent); font-size: .875rem; font-weight: 650; }
-.offer-preview summary { display: list-item; min-height: 44px; cursor: pointer; color: var(--accent); padding-block: 12px; }
-.course-checkout .offer-preview details { margin-top: 10px; border-top: 1px solid var(--line); }
-.course-checkout .offer-preview pre {
-  overflow-x: auto;
-  padding: 12px;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  background: var(--bg);
-  color: #cfe1ff;
-}
+#offer-roadmap { scroll-margin-top: 20px; }
+.course-checkout .offer-syllabus, .course-checkout .offer-outcomes { margin-top: 12px; padding-inline-start: 1.6em; }
+.course-checkout .offer-syllabus { list-style: decimal; }
+.course-checkout .offer-outcomes { list-style: disc; }
+.offer-outcomes li { padding-block: 4px; }
+.offer-syllabus li { border-block-end: 1px solid var(--line); padding: 12px 0 12px 6px; }
+.offer-syllabus h3 { font-weight: 650; }
+.offer-syllabus p { margin-top: 3px; }
+.offer-syllabus li::marker, .offer-outcomes li::marker { color: var(--accent); }
 .checkout-panel {
   min-width: 0;
   border: 1px solid var(--line-strong);

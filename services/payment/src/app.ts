@@ -74,6 +74,27 @@ export function createPaymentApp(pool:Pool,auth:AuthConfig,config:PaymentConfig)
       return row.found ? {status:"BLOCKED",code:"RETENTION"} : {status:"NOT_APPLICABLE",code:"NO_SCOPED_DATA"};
     });
     registerPaymentAdjustments(app,pool,auth,config);
+    app.get("/api/v1/student/order-payments/:id", authenticate(auth), allowRoles("student"), async (req, res) => {
+      const id = z.uuid().parse(req.params.id);
+      const enrollment = await api(config.enrollmentUrl, `/api/v1/student/enrollments/${id}`, bearer(req.get("authorization")));
+      if (enrollment.id !== id) throw denied();
+      const row = (await pool.query("SELECT * FROM payment_requests WHERE id=$1 AND enrollment_id=$2 AND branch_id=$3",
+        [enrollment.paymentRequestId, id, enrollment.branchId])).rows[0];
+      res.set("cache-control", "no-store");
+      if (!row) { res.json({ data: null }); return; }
+      const payment = await view(pool, row);
+      const canPay = enrollment.status === "HELD" && payment.status === "OPEN" && payment.moneyStatus === "UNPAID"
+        && Date.parse(enrollment.holdExpiresAt) > Date.now();
+      const { rows: transactions } = await pool.query(`SELECT l.id,l.amount::int,l.received_at AS "receivedAt"
+        FROM payment_ledger l JOIN payment_allocations a ON a.ledger_id=l.id AND a.payment_id=$1
+        WHERE l.payment_id=$1 ORDER BY l.received_at,l.id`, [row.id]);
+      res.json({ data: {
+        id: payment.id, amountDue: payment.amountDue, reference: payment.reference, adapter: payment.adapter,
+        status: payment.status, moneyStatus: payment.moneyStatus, expiresAt: payment.expiresAt, transactions,
+        qrImageDataUrl: canPay ? payment.qrImageDataUrl : undefined,
+        qrImageUrl: canPay ? payment.qrImageUrl : undefined,
+      } });
+    });
     app.get("/internal/reporting/source",async(req,res)=>{
       await verifyReportingMachine(auth,bearer(req.get("authorization")),"payment");
       const {start,end}=ReportPeriod.parse(req.query);

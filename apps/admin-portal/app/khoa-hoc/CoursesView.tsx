@@ -5,7 +5,8 @@ import { gatewayFetch } from "../../lib/server-session";
 import PublicHeader from "../ui/PublicHeader";
 import { inter } from "../ui/fonts";
 import DemoCatalog from "./DemoCatalog";
-import { coursePreview } from "./course-previews";
+import { courseRoadmap } from "./course-roadmaps";
+import OrbitArt from "../ui/OrbitArt";
 import "../landing/landing.css";
 import "../ui/theme.css";
 import "./courses.css";
@@ -22,7 +23,7 @@ export default async function CoursesView({ backdrop = false }: { backdrop?: boo
     } catch { /* The customer can still open the consultation. */ }
   }
   const nextClasses = Object.fromEntries(await Promise.all((offers ?? [])
-    .filter(offer => offer.sellable && coursePreview(offer.courseCode))
+    .filter(offer => offer.sellable && courseRoadmap(offer.courseCode))
     .map(async ({ packageId }) => {
       const response = await gatewayFetch(`/api/v1/public-checkouts/classes/${packageId}`).catch(() => null);
       const classes: PublicClass[] | null = response?.ok ? (await response.json()).data : null;
@@ -35,7 +36,8 @@ export default async function CoursesView({ backdrop = false }: { backdrop?: boo
       {!backdrop && <a className="skip-link" href="#course-main">Đến nội dung chính</a>}
       <PublicHeader current="courses" backdrop={backdrop} />
       <Content id="course-main" tabIndex={-1}>
-        <div className="public-frame public-orbit course-intro">
+        <div className={`public-frame public-orbit course-intro ${backdrop ? "" : "orbit-hero"}`}>
+          {!backdrop && <OrbitArt />}
           <Title className="public-display">Khám phá <em>khóa học</em></Title>
           <p>Chọn khóa học phù hợp với mục tiêu, lịch học và ngân sách của bạn.</p>
           {!backdrop && <a className="btn btn-outline" href="#course-results">Xem danh mục <span aria-hidden="true">↓</span></a>}

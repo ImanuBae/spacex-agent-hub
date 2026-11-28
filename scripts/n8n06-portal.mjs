@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, copyFile, open, readFile } from "node:fs/promises";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -19,8 +20,10 @@ export async function stagePortal(root, directory) {
     if (relative.split("/").some(part => /^\.env(?:\.|$)/.test(part) || [".next","out","node_modules"].includes(part))) continue;
     const destination = path.resolve(portal, relative);
     assert(destination.startsWith(portal + path.sep));
+    const input = path.join(root, file);
+    if (!existsSync(input)) continue;
     await mkdir(path.dirname(destination), { recursive:true });
-    await copyFile(path.join(root,file), destination);
+    await copyFile(input, destination);
   }
   const preload = path.join(root,"scripts/no-personal-env.cjs").replaceAll("\\", "/"), next = path.join(root,"node_modules/next/dist/bin/next");
   const env = { ...environment, NODE_OPTIONS:'--require "'+preload+'"', NODE_ENV:"production", NEXT_TELEMETRY_DISABLED:"1", NEXT_PUBLIC_ENABLE_MOCK:"false" };
@@ -127,10 +130,19 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
       return page;
     }
     const page = await studentLogin(await newPage(), origin, h, user, true);
-    await page.getByRole("heading",{name:"Hồ sơ học viên"}).waitFor();
+    await page.getByRole("heading",{name:/^Chào /}).waitFor();
+    await page.goto(origin+"/student/don-hang/"+source.id);
+    await page.getByText("Giao dịch đã được hệ thống xác thực.", { exact:true }).waitFor();
+    const orderPaymentRoute = origin+"/api/v1/student/order-payments/"+source.id;
+    const ownedPayment = (await (await page.request.get(orderPaymentRoute)).json()).data;
+    assert.equal(ownedPayment.status,"SETTLED");
+    assert.equal(ownedPayment.transactions.length,1);
+    assert(!ownedPayment.qrImageUrl && !ownedPayment.qrImageDataUrl);
+    await page.goto(origin+"/student/yeu-cau");
     const entitlement = page.locator('[data-enrollment-id="'+source.id+'"]');
     await entitlement.getByRole("button",{name:"Xem lịch và link lớp"}).click();
     await page.getByRole("link",{name:"Vào lớp",exact:true}).waitFor();
+    await page.goto(origin+"/student/don-hang/hoa-don");
     await page.getByLabel("Đăng ký",{exact:true}).selectOption(source.id);
     await page.getByLabel("Tên người nhận").fill("DEMO Người nhận");
     await page.getByLabel("Địa chỉ").fill("DEMO địa chỉ tổng hợp");
@@ -153,6 +165,7 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
     const crossInvoice = await otherPage.request.get(origin+invoiceRoute);
     assert([403,404].includes(crossSchedule.status()));
     assert.equal(crossInvoice.status(),404);
+    assert([403,404].includes((await otherPage.request.get(orderPaymentRoute)).status()));
 
     const admin = await openStaff(staff, "adjustments");
     await admin.getByRole("heading",{name:"Điều chỉnh quyền lợi"}).waitFor();
@@ -175,7 +188,7 @@ export async function browserAcceptance({ h, api, confirmed, customer, student, 
     const approved = approver.locator('[data-adjustment-id="'+id+'"]');
     await approved.getByRole("button",{name:"Duyệt yêu cầu"}).click();
     await approved.getByText("Đã duyệt",{exact:false}).waitFor();
-    await page.reload();
+    await page.goto(origin+"/student/yeu-cau");
     await page.getByRole("button",{name:"Đồng ý phương án",exact:true}).click();
     const waiting = await waitDone("WF-09",id,"WAITING");
     assert.equal((await api("payment","/api/v1/refunds/"+id,"GET",undefined,accountant.accessToken)).status,"RESERVED");

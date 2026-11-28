@@ -1,99 +1,20 @@
-.student-login,
-.student-workspace {
-  min-height: 100svh;
-  padding: 24px max(18px, calc((100vw - 1120px) / 2)) 96px;
-  background: radial-gradient(ellipse at 75% -12%, #12264b 0, transparent 42%), var(--hub-bg);
-}
-.student-login { padding: clamp(32px, 9vw, 100px) max(18px, calc((100vw - 460px) / 2)) 96px; }
-.student-login .ops-panel { padding: clamp(20px, 5vw, 32px); }
-.student-login h1,
-.student-heading h1 { line-height: 1.15; letter-spacing: -.045em; }
-.student-login form { display: grid; gap: 8px; margin-top: 24px; }
-.student-login form .primary,
-.student-login form .ops-actions { margin-top: 8px; }
-.student-login > p { margin-top: 16px; }
-.student-login > p a { display: inline-flex; align-items: center; min-height: 44px; color: var(--hub-muted); }
-
-.student-topbar {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--hub-line);
-}
-.student-topbar .hub-brand-link { min-height: 44px; font-size: 1rem; letter-spacing: 0; }
-.student-heading { padding-block: 26px 18px; }
-.student-heading h1 { font-size: clamp(1.8rem, 5vw, 2.65rem); font-weight: 740; }
-.student-heading nav { display: flex; flex-wrap: wrap; gap: 0 20px; margin-top: 8px; }
-.student-heading nav a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--hub-muted);
-  font-weight: 600;
-  text-underline-offset: 4px;
-}
-.student-heading nav a:hover { color: var(--hub-ink); text-decoration: underline; }
-.student-heading nav .student-attention { color: var(--hub-warning); }
-
-.student-workspace .student-list { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
-.student-workspace .ops-panel { margin-top: 0; overflow-wrap: anywhere; scroll-margin-top: 18px; }
-.student-workspace .student-library-course + .student-library-course { margin-top: 14px; }
-.student-library-course :is(.ops-link, .python-materials) { margin-top: 14px; }
-.student-workspace .student-study { grid-row: span 2; padding: 0; overflow: clip; }
-.student-workspace .student-notices { max-height: 475px; overflow: auto; }
-.student-workspace #student-invoices { grid-column: 1 / -1; }
-.student-workspace .student-next {
-  position: relative;
-  padding: clamp(18px, 3.6vw, 32px);
-  background:
-    radial-gradient(ellipse at 100% 0%, #23586f66, transparent 65%),
-    linear-gradient(115deg, #101c37, #0f1d38);
-  border-bottom: 1px solid var(--hub-line);
-}
-.student-next h2 { color: #bdcbe6; font-size: .9375rem; }
-.student-next h3 {
-  margin-top: 8px;
-  font-size: clamp(1.55rem, 3.8vw, 2.15rem);
-  font-weight: 740;
-  line-height: 1.2;
-  letter-spacing: -.045em;
-}
-.student-next .student-date { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin-top: 12px; color: var(--hub-muted); }
-.student-date time { color: var(--hub-ink); font-size: 1.125rem; font-weight: 650; font-variant-numeric: tabular-nums; }
-.student-next .ops-actions { margin-top: 16px; }
-.student-workspace a.ops-link.primary { background: var(--hub-accent); color: var(--hub-accent-ink); border-color: transparent; font-weight: 700; }
-.student-workspace a.ops-link.primary:hover { background: #77f5b9; }
-.student-workspace .student-enrollments { padding: clamp(16px, 3vw, 26px); scroll-margin-top: 16px; }
-.student-enrollments > h3 { font-size: 1.05rem; }
-.student-enrollment { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hub-line); }
-.student-course-heading { display: flex; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
-.student-course-heading h4 { font-size: 1rem; font-weight: 680; }
-.student-course-heading .status[data-state="ACTIVE"] { color: var(--hub-positive); background: #5df0a815; }
-.student-enrollment > button { margin-top: 8px; }
-.student-entitlement summary { display: flex; align-items: center; gap: 12px; color: var(--hub-muted); width: fit-content; }
-.student-entitlement summary::before { content: "+"; color: var(--hub-accent); }
-.student-entitlement[open] summary::before { content: "−"; }
-.student-calendar { margin-top: 10px; padding: 10px; background: var(--hub-control); border: 1px solid var(--hub-line); border-radius: 10px; }
-.student-calendar li { padding: 5px 0; font-variant-numeric: tabular-nums; }
+.student-study { padding: 0 !important; overflow: clip; }
+.student-next, .student-enrollments { padding: 16px; }
+.student-next { background: var(--sp-soft); border-bottom: 1px solid var(--hub-line); }
+.student-next h3 { margin-top: 6px; }
+.student-next .ops-actions { margin-top: 10px; }
+.student-date { display: flex; gap: 2px 7px; flex-wrap: wrap; margin-top: 5px; color: var(--hub-muted); }
+.student-date time { color: var(--hub-ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.student-enrollment { padding-block: 9px; border-top: 1px solid var(--hub-line); overflow-wrap: anywhere; }
+.student-enrollment:first-of-type { margin-top: 8px; }
+.student-course-heading { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 6px 8px; }
+.student-course-heading h4 { font-weight: 650; }
+.student-enrollment > button, .student-entitlement { margin-top: 8px; }
+.student-entitlement summary { color: var(--hub-muted); cursor: pointer; width: fit-content; }
+.student-calendar { margin-top: 10px; padding: 10px; border: 1px solid var(--hub-line); border-radius: 8px; }
+.student-calendar li { padding-block: 4px; font-variant-numeric: tabular-nums; }
 .student-calendar li[data-past="true"] { color: var(--hub-muted); }
-.student-calendar .primary { margin-top: 10px; }
-.student-workspace .n8n06-row[data-attention="true"] { border-inline-start: 2px solid var(--hub-warning); padding-inline-start: 12px; }
-.student-workspace .ops-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--hub-line); }
-.student-workspace :is(button, a.ops-link) { transition: background 160ms ease, border-color 160ms ease; }
-
-@media (max-width: 740px) {
-  .student-workspace .student-list { grid-template-columns: minmax(0, 1fr); }
-  .student-workspace .student-study { grid-row: auto; }
-  .student-workspace .student-notices { max-height: none; }
-}
-@media (max-width: 430px) {
-  .student-workspace { padding-top: 12px; }
-  .student-topbar .ops-actions { gap: 6px; }
-  .student-topbar button { padding-inline: 9px; font-size: .8125rem; }
-  .student-topbar .hub-brand-link { font-size: .875rem; gap: 6px; }
-  .student-heading { padding-top: 18px; }
-}
+.student-calendar .primary { margin-top: 8px; }
+.sp-operations .n8n06-row[data-attention="true"] { border-inline-start: 2px solid var(--hub-warning); padding-inline-start: 10px; }
+.sp-operations .ops-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hub-line); }
+.sp-operations :is(button, a.ops-link).primary { color: var(--hub-accent-ink); background: var(--hub-accent); border-color: var(--hub-accent); }
